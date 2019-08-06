@@ -82,9 +82,9 @@ subprojects { subproject ->
 		mockitoVersion = '2.15.0'
 		scalaVersion = '2.11'
 		slf4jVersion = '1.7.25'
-		springRetryVersion = '1.2.2.RELEASE'
-		springVersion = '5.0.12.RELEASE'
-		springDataCommonsVersion = '2.0.13.RELEASE'
+		springRetryVersion = '1.2.4.RELEASE'
+		springVersion = '5.0.15.RELEASE'
+		springDataCommonsVersion = '2.0.14.RELEASE'
 
 		idPrefix = 'kafka'
 
