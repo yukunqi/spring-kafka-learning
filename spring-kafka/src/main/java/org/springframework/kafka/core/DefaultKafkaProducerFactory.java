@@ -132,8 +132,8 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	/**
 	 * The time to wait when physically closing the producer via the factory rather than
-	 * closing the producer itself (when {@link #reset()}, {@link #destroy() or
-	 * #closeProducerFor(String)} are invoked). Specified in seconds; default
+	 * closing the producer itself (when {@link #destroy()} or
+	 * {@link #closeProducerFor(String)} are invoked). Specified in seconds; default
 	 * {@link #DEFAULT_PHYSICAL_CLOSE_TIMEOUT}.
 	 * @param physicalCloseTimeout the timeout in seconds.
 	 * @since 1.0.7
