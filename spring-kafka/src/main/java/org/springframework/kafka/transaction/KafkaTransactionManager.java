@@ -44,7 +44,7 @@ import org.springframework.util.Assert;
  *
  * <p>
  * Application code is required to retrieve the transactional Kafka resources via
- * {@link ProducerFactoryUtils#getTransactionalResourceHolder(ProducerFactory, java.time.Duration)}.
+ * {@link ProducerFactoryUtils#getTransactionalResourceHolder}.
  * Spring's {@link org.springframework.kafka.core.KafkaTemplate KafkaTemplate} will auto
  * detect a thread-bound Producer and automatically participate in it.
  *
@@ -71,7 +71,7 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 
 	private final ProducerFactory<K, V> producerFactory;
 
-	private final long closeTimeout = DEFAULT_CLOSE_TIMEOUT;
+	private long closeTimeout = DEFAULT_CLOSE_TIMEOUT;
 
 	/**
 	 * Create a new KafkaTransactionManager, given a ConnectionFactory.
@@ -101,7 +101,7 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 	 * @since 1.3.11
 	 */
 	public void setCloseTimeout(long closeTimeout) {
-		setCloseTimeout(closeTimeout);
+		this.closeTimeout = closeTimeout;
 	}
 
 	@Override
