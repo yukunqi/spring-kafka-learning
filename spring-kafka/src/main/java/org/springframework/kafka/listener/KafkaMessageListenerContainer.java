@@ -730,7 +730,6 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						}
 						publishConsumerPausedEvent(this.consumer.assignment());
 					}
-					this.lastPoll = System.currentTimeMillis();
 					this.polling.set(true);
 					ConsumerRecords<K, V> records = this.consumer.poll(this.containerProperties.getPollTimeout());
 					if (!this.polling.compareAndSet(true, false)) {
@@ -741,8 +740,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						if (records.count() > 0 && this.logger.isDebugEnabled()) {
 							this.logger.debug("Discarding polled records, container stopped: " + records.count());
 						}
-						return;
+						break;
 					}
+					this.lastPoll = System.currentTimeMillis();
 					if (this.consumerPaused && !isPaused()) {
 						if (this.logger.isDebugEnabled()) {
 							this.logger.debug("Resuming consumption from: " + this.consumer.paused());
