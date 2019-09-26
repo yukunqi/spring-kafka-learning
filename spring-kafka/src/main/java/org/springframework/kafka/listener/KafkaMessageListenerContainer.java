@@ -743,7 +743,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
 			}
 			processSeeks();
 			checkPaused();
-			this.lastPoll = System.currentTimeMillis();
 			this.polling.set(true);
 			ConsumerRecords<K, V> records = this.consumer.poll(this.pollTimeout);
 			if (!this.polling.compareAndSet(true, false)) {
@@ -756,6 +755,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
 				}
 				return;
 			}
+			this.lastPoll = System.currentTimeMillis();
 			checkResumed();
 			debugRecords(records);
 			if (records != null && records.count() > 0) {

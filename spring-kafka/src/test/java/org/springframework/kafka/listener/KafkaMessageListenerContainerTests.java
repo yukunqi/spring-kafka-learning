@@ -587,7 +587,6 @@ public class KafkaMessageListenerContainerTests {
 		inOrder.verify(messageListener).onMessage(any(ConsumerRecord.class));
 		inOrder.verify(consumer).commitSync(any(Map.class));
 		container.stop();
-		verify(consumer).wakeup();
 	}
 
 	@SuppressWarnings("unchecked")
