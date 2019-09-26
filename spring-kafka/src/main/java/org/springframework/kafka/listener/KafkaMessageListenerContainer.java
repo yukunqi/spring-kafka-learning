@@ -32,6 +32,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
@@ -292,7 +293,7 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				}
 			});
 			setRunning(false);
-			this.listenerConsumer.consumer.wakeup();
+			this.listenerConsumer.wakeIfNecessary();
 		}
 	}
 
@@ -404,6 +405,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				this.containerProperties.getCommitLogLevel());
 
 		private volatile Map<TopicPartition, OffsetMetadata> definedPartitions;
+
+		private final AtomicBoolean polling = new AtomicBoolean();
 
 		private volatile Collection<TopicPartition> assignedPartitions;
 
@@ -727,8 +730,19 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						}
 						publishConsumerPausedEvent(this.consumer.assignment());
 					}
-					ConsumerRecords<K, V> records = this.consumer.poll(this.containerProperties.getPollTimeout());
 					this.lastPoll = System.currentTimeMillis();
+					this.polling.set(true);
+					ConsumerRecords<K, V> records = this.consumer.poll(this.containerProperties.getPollTimeout());
+					if (!this.polling.compareAndSet(true, false)) {
+						/*
+						 * There is a small race condition where wakeIfNecessary was called between
+						 * exiting the poll and before we reset the boolean.
+						 */
+						if (records.count() > 0 && this.logger.isDebugEnabled()) {
+							this.logger.debug("Discarding polled records, container stopped: " + records.count());
+						}
+						return;
+					}
 					if (this.consumerPaused && !isPaused()) {
 						if (this.logger.isDebugEnabled()) {
 							this.logger.debug("Resuming consumption from: " + this.consumer.paused());
@@ -806,6 +820,12 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			}
 			this.consumer.close();
 			this.logger.info("Consumer stopped");
+		}
+
+		void wakeIfNecessary() {
+			if (this.polling.getAndSet(false)) {
+				this.consumer.wakeup();
+			}
 		}
 
 		/**
