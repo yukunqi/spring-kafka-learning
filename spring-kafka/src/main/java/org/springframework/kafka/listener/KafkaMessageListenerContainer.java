@@ -35,6 +35,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -317,7 +318,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
 		if (isRunning()) {
 			this.listenerConsumerFuture.addCallback(new StopCallback(callback));
 			setRunning(false);
-			this.listenerConsumer.consumer.wakeup();
+			this.listenerConsumer.wakeIfNecessary();
 		}
 	}
 
@@ -468,6 +469,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
 		private final RecordInterceptor<K, V> recordInterceptor = getRecordInterceptor();
 
 		private Map<TopicPartition, OffsetMetadata> definedPartitions;
+
+		private final AtomicBoolean polling = new AtomicBoolean();
 
 		private volatile Collection<TopicPartition> assignedPartitions;
 
@@ -740,8 +743,19 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
 			}
 			processSeeks();
 			checkPaused();
-			ConsumerRecords<K, V> records = this.consumer.poll(this.pollTimeout);
 			this.lastPoll = System.currentTimeMillis();
+			this.polling.set(true);
+			ConsumerRecords<K, V> records = this.consumer.poll(this.pollTimeout);
+			if (!this.polling.compareAndSet(true, false)) {
+				/*
+				 * There is a small race condition where wakeIfNecessary was called between
+				 * exiting the poll and before we reset the boolean.
+				 */
+				if (records.count() > 0 && this.logger.isDebugEnabled()) {
+					this.logger.debug("Discarding polled records, container stopped: " + records.count());
+				}
+				return;
+			}
 			checkResumed();
 			debugRecords(records);
 			if (records != null && records.count() > 0) {
@@ -752,6 +766,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
 			}
 			else {
 				checkIdle();
+			}
+		}
+
+		void wakeIfNecessary() {
+			if (this.polling.getAndSet(false)) {
+				this.consumer.wakeup();
 			}
 		}
 

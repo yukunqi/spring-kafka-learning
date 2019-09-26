@@ -101,7 +101,6 @@ public class ContainerStoppingErrorHandlerRecordModeTests {
 				Collections.singletonMap(new TopicPartition("foo", 0), new OffsetAndMetadata(2L)));
 		inOrder.verify(this.consumer).commitSync(
 				Collections.singletonMap(new TopicPartition("foo", 1), new OffsetAndMetadata(1L)));
-		inOrder.verify(this.consumer).wakeup();
 		inOrder.verify(this.consumer).unsubscribe();
 		inOrder.verify(this.consumer).close();
 		inOrder.verifyNoMoreInteractions();
