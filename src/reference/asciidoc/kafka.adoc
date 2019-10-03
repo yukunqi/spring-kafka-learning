@@ -2866,6 +2866,8 @@ This error handler does not support recovery, because the framework cannot know 
 After seeking, an exception that wraps the `ListenerExecutionFailedException` is thrown.
 This is to cause the transaction to roll back (if transactions are enabled).
 
+IMPORTANT: If the recoverer fails (throws an exception), the record will be included in the seeks and recovery will be attempted again during the next delivery.
+
 ===== Container Stopping Error Handlers
 
 The `ContainerStoppingErrorHandler` (used with record listeners) stops the container if the listener throws an exception.
@@ -2915,6 +2917,8 @@ See also <<dead-letters>>.
 Starting with version 2.2.5, the `DefaultAfterRollbackProcessor` can be invoked in a new transaction (started after the failed transaction rolls back).
 Then, if you are using the `DeadLetterPublishingRecoverer` to publish a failed record, the processor will send the recovered record's offset in the original topic/partition to the transaction.
 To enable this feature, set the `processInTransaction` and `kafkaTemplate` properties on the `DefaultAfterRollbackProcessor`.
+
+IMPORTANT: If the recoverer fails (throws an exception), the record will be included in the seeks and recovery will be attempted again during the next delivery.
 
 [[dead-letters]]
 ===== Publishing Dead-letter Records
