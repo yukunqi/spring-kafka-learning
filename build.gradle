@@ -82,9 +82,9 @@ subprojects { subproject ->
 		log4jVersion = '2.11.2'
 		mockitoVersion = '2.26.0'
 		scalaVersion = '2.11'
-		springDataCommonsVersion = '2.1.11.RELEASE'
+		springDataCommonsVersion = '2.1.12.BUILD-SNAPSHOT'
 		springRetryVersion = '1.2.4.RELEASE'
-		springVersion = '5.1.10.RELEASE'
+		springVersion = '5.1.11.BUILD-SNAPSHOT'
 
 		idPrefix = 'kafka'
 
@@ -93,7 +93,7 @@ subprojects { subproject ->
 	eclipse.project.natures += 'org.springframework.ide.eclipse.core.springnature'
 
 	jacoco {
-		toolVersion = '0.8.3'
+		toolVersion = '0.8.4'
 	}
 
 	// dependencies that are common across all java projects
