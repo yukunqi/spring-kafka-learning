@@ -104,6 +104,7 @@ public class KafkaTemplateTransactionTests {
 	public void testLocalTransaction() throws Exception {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		senderProps.put(ProducerConfig.RETRIES_CONFIG, 1);
+		senderProps.put(ProducerConfig.CLIENT_ID_CONFIG, "customClientId");
 		DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		pf.setKeySerializer(new StringSerializer());
 		pf.setTransactionIdPrefix("my.transaction.");

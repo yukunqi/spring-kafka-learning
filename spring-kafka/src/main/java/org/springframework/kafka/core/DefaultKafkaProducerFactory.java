@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2018 the original author or authors.
+ * Copyright 2016-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -86,6 +86,8 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	private final Map<String, CloseSafeProducer<K, V>> consumerProducers = new HashMap<>();
 
+	private final AtomicInteger clientIdCounter = new AtomicInteger();
+
 	private volatile CloseSafeProducer<K, V> producer;
 
 	private Serializer<K> keySerializer;
@@ -100,6 +102,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	private boolean producerPerConsumerPartition = true;
 
+	private String clientIdPrefix;
 	/**
 	 * Construct a factory with the provided configuration.
 	 * @param configs the configuration.
@@ -110,9 +113,13 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	public DefaultKafkaProducerFactory(Map<String, Object> configs, Serializer<K> keySerializer,
 			Serializer<V> valueSerializer) {
+
 		this.configs = new HashMap<>(configs);
 		this.keySerializer = keySerializer;
 		this.valueSerializer = valueSerializer;
+		if (configs.get(ProducerConfig.CLIENT_ID_CONFIG) instanceof String) {
+			this.clientIdPrefix = (String) configs.get(ProducerConfig.CLIENT_ID_CONFIG);
+		}
 	}
 
 	public void setKeySerializer(Serializer<K> keySerializer) {
@@ -256,7 +263,15 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	 * @return the producer.
 	 */
 	protected Producer<K, V> createKafkaProducer() {
-		return new KafkaProducer<K, V>(this.configs, this.keySerializer, this.valueSerializer);
+		if (this.clientIdPrefix == null) {
+			return new KafkaProducer<K, V>(this.configs, this.keySerializer, this.valueSerializer);
+		}
+		else {
+			Map<String, Object> newConfigs = new HashMap<>(this.configs);
+			newConfigs.put(ProducerConfig.CLIENT_ID_CONFIG,
+					this.clientIdPrefix + "-" + this.clientIdCounter.incrementAndGet());
+			return new KafkaProducer<>(newConfigs, this.keySerializer, this.valueSerializer);
+		}
 	}
 
 	Producer<K, V> createTransactionalProducerForPartition() {
@@ -298,6 +313,10 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		Producer<K, V> producer;
 		Map<String, Object> configs = new HashMap<>(this.configs);
 		configs.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, this.transactionIdPrefix + suffix);
+		if (this.clientIdPrefix != null) {
+			newProducerConfigs.put(ProducerConfig.CLIENT_ID_CONFIG,
+					this.clientIdPrefix + "-" + this.clientIdCounter.incrementAndGet());
+		}
 		producer = new KafkaProducer<K, V>(configs, this.keySerializer, this.valueSerializer);
 		producer.initTransactions();
 		return new CloseSafeProducer<K, V>(producer, this.cache,
