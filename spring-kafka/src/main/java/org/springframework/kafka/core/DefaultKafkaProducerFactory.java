@@ -314,7 +314,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		Map<String, Object> configs = new HashMap<>(this.configs);
 		configs.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, this.transactionIdPrefix + suffix);
 		if (this.clientIdPrefix != null) {
-			newProducerConfigs.put(ProducerConfig.CLIENT_ID_CONFIG,
+			configs.put(ProducerConfig.CLIENT_ID_CONFIG,
 					this.clientIdPrefix + "-" + this.clientIdCounter.incrementAndGet());
 		}
 		producer = new KafkaProducer<K, V>(configs, this.keySerializer, this.valueSerializer);
