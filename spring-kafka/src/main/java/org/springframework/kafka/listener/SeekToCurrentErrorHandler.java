@@ -23,6 +23,7 @@ import java.util.Map;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.SerializationException;
 
 import org.springframework.kafka.KafkaException;
 
@@ -40,6 +41,13 @@ public class SeekToCurrentErrorHandler implements ContainerAwareErrorHandler {
 	@Override
 	public void handle(Exception thrownException, List<ConsumerRecord<?, ?>> records,
 			Consumer<?, ?> consumer, MessageListenerContainer container) {
+	
+		if (thrownException instanceof SerializationException) {
+			throw new IllegalStateException("This error handler cannot process 'SerializationException's directly, "
+					+ "please consider configuring an 'ErrorHandlingDeserializer2' in the value and/or key "
+					+ "deserializer", thrownException);
+		}
+
 		Map<TopicPartition, Long> offsets = new LinkedHashMap<>();
 		records.forEach(r ->
 			offsets.computeIfAbsent(new TopicPartition(r.topic(), r.partition()), k -> r.offset()));
