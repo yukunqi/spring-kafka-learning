@@ -28,6 +28,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.SerializationException;
 
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
@@ -119,6 +120,12 @@ public class SeekToCurrentErrorHandler implements ContainerAwareErrorHandler {
 	@Override
 	public void handle(Exception thrownException, List<ConsumerRecord<?, ?>> records,
 			Consumer<?, ?> consumer, MessageListenerContainer container) {
+
+		if (thrownException instanceof SerializationException) {
+			throw new IllegalStateException("This error handler cannot process 'SerializationException's directly, "
+					+ "please consider configuring an 'ErrorHandlingDeserializer2' in the value and/or key "
+					+ "deserializer", thrownException);
+		}
 
 		if (!SeekUtils.doSeeks(records, consumer, thrownException, true, this.failureTracker::skip, LOGGER)) {
 			throw new KafkaException("Seek to current after exception", thrownException);
