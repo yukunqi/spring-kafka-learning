@@ -41,7 +41,7 @@ public class SeekToCurrentErrorHandler implements ContainerAwareErrorHandler {
 	@Override
 	public void handle(Exception thrownException, List<ConsumerRecord<?, ?>> records,
 			Consumer<?, ?> consumer, MessageListenerContainer container) {
-	
+
 		if (thrownException instanceof SerializationException) {
 			throw new IllegalStateException("This error handler cannot process 'SerializationException's directly, "
 					+ "please consider configuring an 'ErrorHandlingDeserializer2' in the value and/or key "
@@ -50,7 +50,7 @@ public class SeekToCurrentErrorHandler implements ContainerAwareErrorHandler {
 
 		Map<TopicPartition, Long> offsets = new LinkedHashMap<>();
 		records.forEach(r ->
-			offsets.computeIfAbsent(new TopicPartition(r.topic(), r.partition()), k -> r.offset()));
+				offsets.computeIfAbsent(new TopicPartition(r.topic(), r.partition()), k -> r.offset()));
 		offsets.forEach(consumer::seek);
 		throw new KafkaException("Seek to current after exception", thrownException);
 	}
