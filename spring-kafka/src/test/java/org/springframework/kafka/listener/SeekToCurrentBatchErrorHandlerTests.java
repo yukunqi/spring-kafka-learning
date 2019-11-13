@@ -18,6 +18,7 @@ package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.inOrder;
@@ -34,6 +35,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
@@ -114,6 +116,45 @@ public class SeekToCurrentBatchErrorHandlerTests {
 		inOrder.verify(this.producer).commitTransaction();
 		assertThat(this.config.ehException).isInstanceOf(ListenerExecutionFailedException.class);
 		assertThat(((ListenerExecutionFailedException) this.config.ehException).getGroupId()).isEqualTo(CONTAINER_ID);
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	public void verifyCorrectContainer() throws InterruptedException {
+		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
+		final Consumer consumer = mock(Consumer.class);
+		AtomicBoolean first = new AtomicBoolean(true);
+		willAnswer(invocation -> {
+			if (first.getAndSet(false)) {
+				throw new IllegalStateException("intentional");
+			}
+			Thread.sleep(50);
+			return new ConsumerRecords(Collections.emptyMap());
+		}).given(consumer).poll(any());
+		given(consumerFactory.createConsumer(anyString(), anyString(), anyString(), any()))
+						.willReturn(consumer);
+		ContainerProperties containerProperties = new ContainerProperties("foo");
+		containerProperties.setGroupId("grp");
+		containerProperties.setMessageListener((BatchMessageListener) record -> { });
+		containerProperties.setMissingTopicsFatal(false);
+		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer<>(consumerFactory,
+				containerProperties);
+		AtomicReference<MessageListenerContainer> parent = new AtomicReference<>();
+		CountDownLatch latch = new CountDownLatch(1);
+		container.setBatchErrorHandler(new ContainerAwareBatchErrorHandler() {
+
+			@Override
+			public void handle(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
+					MessageListenerContainer container) {
+
+				parent.set(container);
+				latch.countDown();
+			}
+		});
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+		assertThat(parent.get()).isSameAs(container);
 	}
 
 	@Configuration

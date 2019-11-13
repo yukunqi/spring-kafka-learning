@@ -877,7 +877,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
 				}
 				else if (this.isBatchListener && this.batchErrorHandler != null) {
 					this.batchErrorHandler.handle(e, new ConsumerRecords<K, V>(Collections.emptyMap()), this.consumer,
-							KafkaMessageListenerContainer.this);
+							KafkaMessageListenerContainer.this.container);
 				}
 				else {
 					this.logger.error("Consumer exception", e);
