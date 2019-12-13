@@ -18,9 +18,11 @@ package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
@@ -30,6 +32,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.common.errors.GroupAuthorizationException;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.core.ConsumerFactory;
@@ -69,6 +72,35 @@ public class ConcurrentMessageListenerContainerMockTests {
 		container.start();
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(errorContainer.get()).isSameAs(container);
+		container.stop();
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	void testConsumerExitWhenNotAuthorized() throws InterruptedException {
+		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
+		final Consumer consumer = mock(Consumer.class);
+		willAnswer(invocation -> {
+			Thread.sleep(100);
+			throw new GroupAuthorizationException("grp");
+		}).given(consumer).poll(any());
+		CountDownLatch latch = new CountDownLatch(1);
+		willAnswer(invocation -> {
+			latch.countDown();
+			return null;
+		}).given(consumer).close();
+		given(consumerFactory.createConsumer(eq("grp"), eq(""), eq("-0"), any()))
+			.willReturn(consumer);
+		ContainerProperties containerProperties = new ContainerProperties("foo");
+		containerProperties.setGroupId("grp");
+		containerProperties.setMessageListener((MessageListener) record -> { });
+		containerProperties.setMissingTopicsFatal(false);
+		containerProperties.setShutdownTimeout(10);
+		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer<>(consumerFactory,
+				containerProperties);
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		verify(consumer).close();
 		container.stop();
 	}
 
