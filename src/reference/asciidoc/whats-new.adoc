@@ -133,6 +133,8 @@ Also, an overloaded `sendAndReceive` method is now provided that allows specifyi
 ==== AggregatingReplyingKafkaTemplate
 
 Extends the `ReplyingKafkaTemplate` by aggregating replies from multiple receivers.
+The `releaseStrategy` is a `BiConsumer`.
+It is called after a timeout (as well as when records arrive); the second parameter is `true` in the case of a call after a timeout.
 See <<aggregating-request-reply>> for more information.
 
 ==== Transaction Changes
