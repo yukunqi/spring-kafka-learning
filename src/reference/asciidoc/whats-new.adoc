@@ -73,7 +73,10 @@ Transactional batch listeners can now support zombie fencing.
 See <<transactions>> for more information.
 
 The listener container factory can now be configured with a `ContainerCustomizer` to further configure each container after it has been created and configured.
-See <<container-factory>> for more information.
+See <<container-factory>> for more information
+
+The `ContainerProperties` provides an `authorizationExceptionRetryInterval` option to let the listener container to retry after any `AuthorizationException` is thrown by the `KafkaConsumer`.
+See its JavaDocs and <<kafka-container>> for more information.
 
 ==== ErrorHandler Changes
 
