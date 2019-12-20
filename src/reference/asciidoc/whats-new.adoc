@@ -78,94 +78,13 @@ See <<container-factory>> for more information
 The `ContainerProperties` provides an `authorizationExceptionRetryInterval` option to let the listener container to retry after any `AuthorizationException` is thrown by the `KafkaConsumer`.
 See its JavaDocs and <<kafka-container>> for more information.
 
-==== ErrorHandler Changes
+==== @KafkaListener
 
-The `SeekToCurrentErrorHandler` now treats certain exceptions as fatal and disables retry for those, invoking the recoverer on first failure.
+The `@KafkaListener` annotation has a new property `splitIterables`; default true.
+When a replying listener returns an `Iterable` this property controls whether the return result is sent as a single record or a record for each element is sent.
+See <<annotation-send-to>> for more information.
 
-The `SeekToCurrentErrorHandler` and `SeekToCurrentBatchErrorHandler` can now be configured to apply a `BackOff` (thread sleep) between delivery attempts.
-
-Starting with version 2.3.2, recovered records' offsets will be committed when the error handler returns after recovering a failed record.
-
-See <<seek-to-current>> for more information.
-
-The `DeadLetterPublishingRecoverer`, when used in conjunction with an `ErrorHandlingDeserializer2`, now sets the payload of the message sent to the dead-letter topic, to the original value that could not be deserialized.
-Previously, it was `null` and user code needed to extract the `DeserializationException` from the message headers.
-See <<dead-letters>> for more information.
-
-==== TopicBuilder
-
-A new class `TopicBuilder` is provided for more convenient creation of `NewTopic` `@Bean` s for automatic topic provisioning.
-See <<configuring-topics>> for more information.
-
-==== Kafka Streams Changes
-
-You can now perform additional configuration of the `StreamsBuilderFactoryBean` created by `@EnableKafkaStreams`.
-See <<streams-config, Streams Configuration>> for more information.
-
-A `RecoveringDeserializationExceptionHandler` is now provided which allows records with deserialization errors to be recovered.
-It can be used in conjunction with a `DeadLetterPublishingRecoverer` to send these records to a dead-letter topic.
-See <<streams-deser-recovery>> for more information.
-
-The `HeaderEnricher` transformer has been provided, using SpEL to generate the header values.
-See <<streams-header-enricher>> for more information.
-
-The `MessagingTransformer` has been provided.
-This allows a Kafka streams topology to interact with a spring-messaging component, such as a Spring Integration flow.
-See <<streams-messaging>> and <<streams-integration>> for more information.
-
-==== JSON Component Changes
-
-Now all the JSON-aware components are configured by default with a Jackson `ObjectMapper` produced by the `JacksonUtils.enhancedObjectMapper()`.
-The `JsonDeserializer` now provides `TypeReference`-based constructors for better handling of target generic container types.
-Also a `JacksonMimeTypeModule` has been introduced for serialization of `org.springframework.util.MimeType` to plain string.
-See its JavaDocs and <<serdes>> for more information.
-
-A `ByteArrayJsonMessageConverter` has been provided as well as a new super class for all Json converters, `JsonMessageConverter`.
-Also, a `StringOrBytesSerializer` is now available; it can serialize `byte[]`, `Bytes` and `String` values in `ProducerRecord` s.
-See <<messaging-message-conversion>> for more information.
-
-The `JsonSerializer`, `JsonDeserializer` and `JsonSerde` now have fluent APIs to make programmatic configuration simpler.
-See the javadocs, <<serdes>>, and <<serde>> for more informaion.
-
-==== ReplyingKafkaTemplate
-
-When a reply times out, the future is completed exceptionally with a `KafkaReplyTimeoutException` instead of a `KafkaException`.
-
-Also, an overloaded `sendAndReceive` method is now provided that allows specifying the reply timeout on a per message basis.
-
-==== AggregatingReplyingKafkaTemplate
-
-Extends the `ReplyingKafkaTemplate` by aggregating replies from multiple receivers.
-The `releaseStrategy` is a `BiConsumer`.
-It is called after a timeout (as well as when records arrive); the second parameter is `true` in the case of a call after a timeout.
-See <<aggregating-request-reply>> for more information.
-
-==== Transaction Changes
-
-You can now override the producer factory's `transactionIdPrefix` on the `KafkaTemplate` and `KafkaTransactionManager`.
-See <<transaction-id-prefix>> for more information.
-
-==== New Delegating Serializer/Deserializer
-
-The framework now provides a delegating `Serializer` and `Deserializer`, utilizing a header to enable producing and consuming records with multiple key/value types.
-See <<delegating-serialization>> for more information.
-
-==== New Retrying Deserializer
-
-The framework now provides a delegating `RetryingDeserializer`, to retry serialization when transient errors such as network problems might occur.
-See <<retrying-deserialization>> for more information.
-
-==== New function for recovering from deserializing errors
-
-`ErrorHandlingDeserializer2` now uses a POJO (`FailedDeserializationInfo`) for passing all the contextual information around a deserialization error.
-This enables the code to access to extra information that was missing in the old `BiFunction<byte[], Headers, T> failedDeserializationFunction`.
-
-==== EmbeddedKafkaBroker Changes
-
-You can now override the default broker list property name in the annotation.
-See <<kafka-testing-embeddedkafka-annotation>> for more information.
-
-==== ReplyingKafkaTemplate Changes
+=== Migration Guide
 
 You can now customize the header names for correlation, reply topic and reply partition.
 See <<replying-template>> for more information.
