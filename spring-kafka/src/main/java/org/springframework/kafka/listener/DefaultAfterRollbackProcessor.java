@@ -161,7 +161,7 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor i
 	 * if a record is skipped and recovered, we will send its offset to the transaction.
 	 * Requires a {@link KafkaTemplate}.
 	 * @param commitRecovered true to process in a transaction.
-	 * @since 2.2.5
+	 * @since 2.3
 	 * @see #isProcessInTransaction()
 	 * @see #process(List, Consumer, Exception, boolean)
 	 * @see #setKafkaTemplate(KafkaTemplate)
@@ -169,6 +169,20 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor i
 	@Override
 	public void setCommitRecovered(boolean commitRecovered) { // NOSONAR enhanced javadoc
 		super.setCommitRecovered(commitRecovered);
+	}
+
+	/**
+	 * Set to true to run the {@link #process(List, Consumer, Exception, boolean)}
+	 * method in a transaction. Requires a {@link KafkaTemplate}.
+	 * @param processInTransaction true to process in a transaction.
+	 * @since 2.2.5
+	 * @see #process(List, Consumer, Exception, boolean)
+	 * @see #setKafkaTemplate(KafkaTemplate)
+	 * @deprecated in favor of {@link #setCommitRecovered(boolean)}.
+	 */
+	@Deprecated
+	public void setProcessInTransaction(boolean processInTransaction) {
+		setCommitRecovered(processInTransaction);
 	}
 
 	/**
