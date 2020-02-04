@@ -343,7 +343,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 		endpoint.setupListenerContainer(instance, this.messageConverter);
 		initializeContainer(instance, endpoint);
-
+		customizeContainer(instance);
 		return instance;
 	}
 
