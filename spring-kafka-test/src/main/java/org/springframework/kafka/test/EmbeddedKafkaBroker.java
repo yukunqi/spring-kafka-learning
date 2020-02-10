@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -80,6 +80,7 @@ import kafka.zookeeper.ZooKeeperClient;
  * @author Kamill Sokol
  * @author Elliot Kennedy
  * @author Nakul Mishra
+ * @author Pawel Lozinski
  *
  * @since 2.2
  */
@@ -103,9 +104,9 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 
 	private static final Duration DEFAULT_ADMIN_TIMEOUT = Duration.ofSeconds(10);
 
-	private static final int ZK_CONNECTION_TIMEOUT = 6000;
+	public static final int DEFAULT_ZK_CONNECTION_TIMEOUT = 6000;
 
-	private static final int ZK_SESSION_TIMEOUT = 6000;
+	public static final int DEFAULT_ZK_SESSION_TIMEOUT = 6000;
 
 	private final int count;
 
@@ -128,6 +129,10 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	private int[] kafkaPorts;
 
 	private Duration adminTimeout = DEFAULT_ADMIN_TIMEOUT;
+
+	private int zkConnectionTimeout = DEFAULT_ZK_CONNECTION_TIMEOUT;
+
+	private int zkSessionTimeout = DEFAULT_ZK_SESSION_TIMEOUT;
 
 	private String brokerListProperty;
 
@@ -254,6 +259,28 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 		this.zkPort = zkPort;
 	}
 
+	/**
+	 * Set connection timeout for the client to the embedded Zookeeper.
+	 * @param zkConnectionTimeout the connection timeout,
+	 * @return the {@link EmbeddedKafkaBroker}.
+	 * @since 2.4
+	 */
+	public EmbeddedKafkaBroker zkConnectionTimeout(int zkConnectionTimeout) {
+		this.zkConnectionTimeout = zkConnectionTimeout;
+		return this;
+	}
+
+	/**
+	 * Set session timeout for the client to the embedded Zookeeper.
+	 * @param zkSessionTimeout the session timeout.
+	 * @return the {@link EmbeddedKafkaBroker}.
+	 * @since 2.4
+	 */
+	public EmbeddedKafkaBroker zkSessionTimeout(int zkSessionTimeout) {
+		this.zkSessionTimeout = zkSessionTimeout;
+		return this;
+	}
+
 	@Override
 	public void afterPropertiesSet() {
 		try {
@@ -340,8 +367,8 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 		doWithAdmin(admin -> {
 			createTopics(admin,
 					topicsToCreate.stream()
-							.map(t -> new NewTopic(t, this.partitionsPerTopic, (short) this.count))
-							.collect(Collectors.toList()));
+						.map(t -> new NewTopic(t, this.partitionsPerTopic, (short) this.count))
+						.collect(Collectors.toList()));
 		});
 	}
 
@@ -441,7 +468,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	@Deprecated
 	public synchronized ZkClient getZkClient() {
 		if (this.zkClient == null) {
-			this.zkClient = new ZkClient(this.zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT,
+			this.zkClient = new ZkClient(this.zkConnect, this.zkSessionTimeout, this.zkConnectionTimeout,
 					ZKStringSerializer$.MODULE$);
 		}
 		return this.zkClient;
@@ -454,7 +481,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	 */
 	public synchronized ZooKeeperClient getZooKeeperClient() {
 		if (this.zooKeeperClient == null) {
-			this.zooKeeperClient = new ZooKeeperClient(this.zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT,
+			this.zooKeeperClient = new ZooKeeperClient(this.zkConnect, zkSessionTimeout, zkConnectionTimeout,
 					1, Time.SYSTEM, "embeddedKafkaZK", "embeddedKafkaZK");
 		}
 		return this.zooKeeperClient;
