@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2017 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -92,16 +92,20 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	 * this container.
 	 */
 	public List<KafkaMessageListenerContainer<K, V>> getContainers() {
-		return Collections.unmodifiableList(this.containers);
+		synchronized (this.lifecycleMonitor) {
+			return Collections.unmodifiableList(new ArrayList<>(this.containers));
+		}
 	}
 
 	@Override
 	public Map<String, Map<MetricName, ? extends Metric>> metrics() {
-		Map<String, Map<MetricName, ? extends Metric>> metrics = new HashMap<>();
-		for (KafkaMessageListenerContainer<K, V> container : this.containers) {
-			metrics.putAll(container.metrics());
+		synchronized (this.lifecycleMonitor) {
+			Map<String, Map<MetricName, ? extends Metric>> metrics = new HashMap<>();
+			for (KafkaMessageListenerContainer<K, V> container : this.containers) {
+				metrics.putAll(container.metrics());
+			}
+			return Collections.unmodifiableMap(metrics);
 		}
-		return Collections.unmodifiableMap(metrics);
 	}
 
 	/*
