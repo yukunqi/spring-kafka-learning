@@ -361,6 +361,8 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 
 		private boolean taskSchedulerExplicitlySet;
 
+		private Producer<?, ?> producer;
+
 		private volatile long lastPoll = System.currentTimeMillis();
 
 		@SuppressWarnings("unchecked")
@@ -776,7 +778,10 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 			if (ListenerConsumer.this.logger.isDebugEnabled()) {
 				ListenerConsumer.this.logger.debug("Committing: " + commits);
 			}
-			if (this.containerProperties.isSyncCommits()) {
+			if (this.producer != null) {
+				this.producer.sendOffsetsToTransaction(commits, this.consumerGroupId);
+			}
+			else if (this.containerProperties.isSyncCommits()) {
 				ListenerConsumer.this.consumer.commitSync(commits);
 			}
 			else {
@@ -821,7 +826,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 						Producer producer = null;
 						if (ListenerConsumer.this.kafkaTxManager != null) {
 							producer = ((KafkaResourceHolder) TransactionSynchronizationManager
-									.getResource(ListenerConsumer.this.kafkaTxManager.getProducerFactory())).getProducer();
+									.getResource(ListenerConsumer.this.kafkaTxManager.getProducerFactory()))
+										.getProducer(); // NOSONAR nullable
+							ListenerConsumer.this.producer = producer;
 						}
 						RuntimeException aborted = doInvokeBatchListener(records, recordList, producer);
 						if (aborted != null) {
@@ -931,7 +938,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 							Producer producer = null;
 							if (ListenerConsumer.this.kafkaTxManager != null) {
 								producer = ((KafkaResourceHolder) TransactionSynchronizationManager
-										.getResource(ListenerConsumer.this.kafkaTxManager.getProducerFactory())).getProducer();
+										.getResource(ListenerConsumer.this.kafkaTxManager.getProducerFactory()))
+												.getProducer(); // NOSONAR
+								ListenerConsumer.this.producer = producer;
 							}
 							RuntimeException aborted = doInvokeRecordListener(record, producer);
 							if (aborted != null) {
@@ -987,7 +996,9 @@ public class KafkaMessageListenerContainer<K, V> extends AbstractMessageListener
 				else {
 					this.listener.onMessage(record);
 				}
-				ackCurrent(record, producer);
+				if (!this.isManualImmediateAck) {
+					ackCurrent(record, producer);
+				}
 			}
 			catch (RuntimeException e) {
 				if (this.containerProperties.isAckOnError() && !this.autoCommit && producer == null) {
