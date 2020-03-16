@@ -598,6 +598,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private ConsumerRecords<K, V> lastBatch;
 
+		private Producer<?, ?> producer;
+
 		private volatile boolean consumerPaused;
 
 		private volatile Collection<TopicPartition> assignedPartitions;
@@ -988,7 +990,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.lastPoll = System.currentTimeMillis();
 			this.polling.set(true);
 			ConsumerRecords<K, V> records = doPoll();
-			if (!this.polling.compareAndSet(true, false)) {
+			if (!this.polling.compareAndSet(true, false) && records != null) {
 				/*
 				 * There is a small race condition where wakeIfNecessary was called between
 				 * exiting the poll and before we reset the boolean.
@@ -1241,7 +1243,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					new TopicPartition(record.topic(), record.partition()),
 					new OffsetAndMetadata(record.offset() + 1));
 			this.commitLogger.log(() -> "Committing: " + commits);
-			if (this.syncCommits) {
+			if (this.producer != null) {
+				this.producer.sendOffsetsToTransaction(commits, this.consumerGroupId);
+			}
+			else if (this.syncCommits) {
 				this.consumer.commitSync(commits, this.syncCommitTimeout);
 			}
 			else {
@@ -1291,6 +1296,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 							producer = ((KafkaResourceHolder) TransactionSynchronizationManager
 									.getResource(ListenerConsumer.this.kafkaTxManager.getProducerFactory()))
 										.getProducer(); // NOSONAR nullable
+							ListenerConsumer.this.producer = producer;
 						}
 						RuntimeException aborted = doInvokeBatchListener(records, recordList, producer);
 						if (aborted != null) {
@@ -1541,6 +1547,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 								producer = ((KafkaResourceHolder) TransactionSynchronizationManager
 										.getResource(ListenerConsumer.this.kafkaTxManager.getProducerFactory()))
 												.getProducer(); // NOSONAR
+								ListenerConsumer.this.producer = producer;
 							}
 							RuntimeException aborted = doInvokeRecordListener(record, producer, iterator);
 							if (aborted != null) {
@@ -1714,7 +1721,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				checkDeser(record, ErrorHandlingDeserializer2.KEY_DESERIALIZER_EXCEPTION_HEADER);
 			}
 			doInvokeOnMessage(record);
-			if (this.nackSleep < 0) {
+			if (this.nackSleep < 0 && !this.isManualImmediateAck) {
 				ackCurrent(record, producer);
 			}
 		}
