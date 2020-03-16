@@ -492,6 +492,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
 
 		private long lastAlertAt = this.lastReceive;
 
+		private Producer<?, ?> producer;
+
 		private volatile long lastPoll = System.currentTimeMillis();
 
 		@SuppressWarnings(UNCHECKED)
@@ -752,7 +754,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
 			checkPaused();
 			this.polling.set(true);
 			ConsumerRecords<K, V> records = this.consumer.poll(this.pollTimeout);
-			if (!this.polling.compareAndSet(true, false)) {
+			if (!this.polling.compareAndSet(true, false) && records != null) {
 				/*
 				 * There is a small race condition where wakeIfNecessary was called between
 				 * exiting the poll and before we reset the boolean.
@@ -949,7 +951,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
 					new TopicPartition(record.topic(), record.partition()),
 					new OffsetAndMetadata(record.offset() + 1));
 			this.commitLogger.log(() -> "Committing: " + commits);
-			if (this.containerProperties.isSyncCommits()) {
+			if (this.producer != null) {
+				this.producer.sendOffsetsToTransaction(commits, this.consumerGroupId);
+			}
+			else if (this.containerProperties.isSyncCommits()) {
 				this.consumer.commitSync(commits);
 			}
 			else {
@@ -994,7 +999,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
 						if (ListenerConsumer.this.kafkaTxManager != null) {
 							producer = ((KafkaResourceHolder) TransactionSynchronizationManager
 									.getResource(ListenerConsumer.this.kafkaTxManager.getProducerFactory()))
-									.getProducer(); // NOSONAR nullable
+										.getProducer(); // NOSONAR nullable
+							ListenerConsumer.this.producer = producer;
 						}
 						RuntimeException aborted = doInvokeBatchListener(records, recordList, producer);
 						if (aborted != null) {
@@ -1179,7 +1185,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
 							if (ListenerConsumer.this.kafkaTxManager != null) {
 								producer = ((KafkaResourceHolder) TransactionSynchronizationManager
 										.getResource(ListenerConsumer.this.kafkaTxManager.getProducerFactory()))
-										.getProducer(); // NOSONAR
+												.getProducer(); // NOSONAR
+								ListenerConsumer.this.producer = producer;
 							}
 							RuntimeException aborted = doInvokeRecordListener(record, producer, iterator);
 							if (aborted != null) {
@@ -1297,7 +1304,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
 				checkDeser(record, ErrorHandlingDeserializer2.KEY_DESERIALIZER_EXCEPTION_HEADER);
 			}
 			doInvokeOnMessage(record);
-			ackCurrent(record, producer);
+			if (!this.isManualImmediateAck) {
+				ackCurrent(record, producer);
+			}
 		}
 
 		private void doInvokeOnMessage(final ConsumerRecord<K, V> recordArg) {
