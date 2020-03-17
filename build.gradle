@@ -81,7 +81,7 @@ subprojects { subproject ->
 		jacksonVersion = '2.8.11'
 		jacksonDataBindVersion = '2.8.11.3'
 		junitVersion = '4.12'
-		kafkaVersion = '0.11.0.2'
+		kafkaVersion = '0.11.0.3'
 		log4jVersion = '1.2.17'
 		mockitoVersion = '1.10.19'
 		scalaVersion = '2.11'
