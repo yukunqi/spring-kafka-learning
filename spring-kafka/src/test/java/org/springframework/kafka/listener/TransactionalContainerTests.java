@@ -79,6 +79,7 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.AbstractPlatformTransactionManager;
 import org.springframework.transaction.support.DefaultTransactionStatus;
+import org.springframework.util.concurrent.SettableListenableFuture;
 
 /**
  * @author Gary Russell
@@ -145,6 +146,7 @@ public class TransactionalContainerTests {
 		ConsumerFactory cf = mock(ConsumerFactory.class);
 		willReturn(consumer).given(cf).createConsumer("group", null);
 		Producer producer = mock(Producer.class);
+		given(producer.send(any(), any())).willReturn(new SettableListenableFuture<>());
 		final CountDownLatch closeLatch = new CountDownLatch(2);
 		willAnswer(i -> {
 			closeLatch.countDown();
@@ -375,6 +377,7 @@ public class TransactionalContainerTests {
 		ConsumerFactory cf = mock(ConsumerFactory.class);
 		willReturn(consumer).given(cf).createConsumer("group", null);
 		Producer producer = mock(Producer.class);
+		given(producer.send(any(), any())).willReturn(new SettableListenableFuture<>());
 
 		final CountDownLatch closeLatch = new CountDownLatch(1);
 

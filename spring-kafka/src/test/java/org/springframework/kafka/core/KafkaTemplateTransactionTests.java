@@ -74,6 +74,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.AbstractPlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.util.concurrent.SettableListenableFuture;
 
 import kafka.server.KafkaConfig;
 
@@ -195,7 +196,7 @@ public class KafkaTemplateTransactionTests {
 		ProducerFactory producerFactory = ctx.getBean(ProducerFactory.class);
 		verify(producerFactory, times(2)).createProducer();
 		Producer producer1 = ctx.getBean("producer1", Producer.class);
-		Producer producer2 = ctx.getBean("producer1", Producer.class);
+		Producer producer2 = ctx.getBean("producer2", Producer.class);
 		InOrder inOrder = inOrder(producer1, producer2);
 		inOrder.verify(producer1).beginTransaction();
 		inOrder.verify(producer1).send(eq(new ProducerRecord("foo", "bar")), any(Callback.class));
@@ -344,8 +345,10 @@ public class KafkaTemplateTransactionTests {
 	public void testExcecuteInTransactionNewInnerTx() {
 		@SuppressWarnings("unchecked")
 		Producer<Object, Object> producer1 = mock(Producer.class);
+		given(producer1.send(any(), any())).willReturn(new SettableListenableFuture<>());
 		@SuppressWarnings("unchecked")
 		Producer<Object, Object> producer2 = mock(Producer.class);
+		given(producer2.send(any(), any())).willReturn(new SettableListenableFuture<>());
 		producer1.initTransactions();
 		AtomicBoolean first = new AtomicBoolean(true);
 
@@ -396,6 +399,22 @@ public class KafkaTemplateTransactionTests {
 	@EnableTransactionManagement
 	public static class DeclarativeConfig {
 
+		@SuppressWarnings({ "rawtypes", "unchecked" })
+		@Bean
+		public Producer producer1() {
+			Producer mock = mock(Producer.class);
+			given(mock.send(any(), any())).willReturn(new SettableListenableFuture<>());
+			return mock;
+		}
+
+		@SuppressWarnings({ "rawtypes", "unchecked" })
+		@Bean
+		public Producer producer2() {
+			Producer mock = mock(Producer.class);
+			given(mock.send(any(), any())).willReturn(new SettableListenableFuture<>());
+			return mock;
+		}
+
 		@SuppressWarnings("rawtypes")
 		@Bean
 		public ProducerFactory pf() {
@@ -403,18 +422,6 @@ public class KafkaTemplateTransactionTests {
 			given(pf.transactionCapable()).willReturn(true);
 			given(pf.createProducer()).willReturn(producer1(), producer2());
 			return pf;
-		}
-
-		@SuppressWarnings("rawtypes")
-		@Bean
-		public Producer producer1() {
-			return mock(Producer.class);
-		}
-
-		@SuppressWarnings("rawtypes")
-		@Bean
-		public Producer producer2() {
-			return producer1();
 		}
 
 		@SuppressWarnings({ "rawtypes", "unchecked" })

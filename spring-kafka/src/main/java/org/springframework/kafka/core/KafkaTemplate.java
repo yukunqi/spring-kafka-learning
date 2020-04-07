@@ -18,6 +18,8 @@ package org.springframework.kafka.core;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
@@ -32,6 +34,7 @@ import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 
+import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.support.LoggingProducerListener;
 import org.springframework.kafka.support.ProducerListener;
 import org.springframework.kafka.support.SendResult;
@@ -365,7 +368,8 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 			this.logger.trace("Sending: " + producerRecord);
 		}
 		final SettableListenableFuture<SendResult<K, V>> future = new SettableListenableFuture<>();
-		producer.send(producerRecord, new Callback() {
+		Future<RecordMetadata> sendFuture =
+				producer.send(producerRecord, new Callback() {
 
 			@Override
 			public void onCompletion(RecordMetadata metadata, Exception exception) {
@@ -397,6 +401,19 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 			}
 
 		});
+		// May be an immediate failure
+		if (sendFuture.isDone()) {
+			try {
+				sendFuture.get();
+			}
+			catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				throw new KafkaException("Interrupted", e);
+			}
+			catch (ExecutionException e) {
+				throw new KafkaException("Send failed", e.getCause()); // NOSONAR, stack trace
+			}
+		}
 		if (this.autoFlush) {
 			flush();
 		}
