@@ -19,18 +19,22 @@ package org.springframework.kafka.core;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.core.log.LogAccessor;
+import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.LoggingProducerListener;
@@ -409,7 +413,21 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 		final Producer<K, V> producer = getTheProducer();
 		this.logger.trace(() -> "Sending: " + producerRecord);
 		final SettableListenableFuture<SendResult<K, V>> future = new SettableListenableFuture<>();
-		producer.send(producerRecord, buildCallback(producerRecord, producer, future));
+		Future<RecordMetadata> sendFuture =
+				producer.send(producerRecord, buildCallback(producerRecord, producer, future));
+		// May be an immediate failure
+		if (sendFuture.isDone()) {
+			try {
+				sendFuture.get();
+			}
+			catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				throw new KafkaException("Interrupted", e);
+			}
+			catch (ExecutionException e) {
+				throw new KafkaException("Send failed", e.getCause()); // NOSONAR, stack trace
+			}
+		}
 		if (this.autoFlush) {
 			flush();
 		}
