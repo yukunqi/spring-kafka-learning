@@ -283,7 +283,8 @@ public class KafkaTemplateTransactionTests {
 
 			@Override
 			public Producer<String, String> createProducer() {
-				CloseSafeProducer<String, String> closeSafeProducer = new CloseSafeProducer<>(producer, getCache());
+				CloseSafeProducer<String, String> closeSafeProducer = new CloseSafeProducer<>(producer, getCache(),
+						null, (int) ProducerFactoryUtils.DEFAULT_CLOSE_TIMEOUT);
 				return closeSafeProducer;
 			}
 
@@ -320,12 +321,15 @@ public class KafkaTemplateTransactionTests {
 			public Producer<String, String> createProducer() {
 				BlockingQueue<CloseSafeProducer<String, String>> cache = new LinkedBlockingQueue<>(1);
 				try {
-					cache.put(new CloseSafeProducer<>(mock(Producer.class)));
+					cache.put(new CloseSafeProducer<>(mock(Producer.class), null,
+							null, (int) ProducerFactoryUtils.DEFAULT_CLOSE_TIMEOUT));
 				}
 				catch (@SuppressWarnings("unused") InterruptedException e) {
 					Thread.currentThread().interrupt();
 				}
-				CloseSafeProducer<String, String> closeSafeProducer = new CloseSafeProducer<>(producer, cache);
+				CloseSafeProducer<String, String> closeSafeProducer =
+						new CloseSafeProducer<>(producer, cache, null,
+								(int) ProducerFactoryUtils.DEFAULT_CLOSE_TIMEOUT);
 				return closeSafeProducer;
 			}
 

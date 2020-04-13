@@ -22,14 +22,18 @@ import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import java.util.HashMap;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.KafkaException;
+import org.apache.kafka.common.errors.OutOfOrderSequenceException;
 import org.junit.Test;
 import org.mockito.InOrder;
 
@@ -58,9 +62,9 @@ public class DefaultKafkaProducerFactoryTests {
 				producer.initTransactions();
 				BlockingQueue<Producer> cache = getCache();
 				Producer cached = cache.poll();
-				return cached == null ? new CloseSafeProducer(producer, cache) : cached;
+				return cached == null ? new CloseSafeProducer(producer, cache, null,
+						(int) ProducerFactoryUtils.DEFAULT_CLOSE_TIMEOUT) : cached;
 			}
-
 		};
 		pf.setTransactionIdPrefix("foo");
 
@@ -100,6 +104,36 @@ public class DefaultKafkaProducerFactoryTests {
 		inOrder.verify(producer).close(ProducerFactoryUtils.DEFAULT_CLOSE_TIMEOUT, TimeUnit.MILLISECONDS);
 		inOrder.verifyNoMoreInteractions();
 		pf.destroy();
+	}
+
+	@Test
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	public void testUnknownProducerIdException() {
+		final Producer producer1 = mock(Producer.class);
+		willAnswer(inv -> {
+			((Callback) inv.getArguments()[1]).onCompletion(null, new OutOfOrderSequenceException("test"));
+			return null;
+		}).given(producer1).send(any(), any());
+		final Producer producer2 = mock(Producer.class);
+		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
+
+			private final AtomicBoolean first = new AtomicBoolean(true);
+
+			@Override
+			protected Producer createKafkaProducer() {
+				return this.first.getAndSet(false) ? producer1 : producer2;
+			}
+
+		};
+		pf.setPhysicalCloseTimeout((int) ProducerFactoryUtils.DEFAULT_CLOSE_TIMEOUT);
+		final Producer aProducer = pf.createProducer();
+		assertThat(aProducer).isNotNull();
+		aProducer.send(null, (meta, ex) -> { });
+		aProducer.close(ProducerFactoryUtils.DEFAULT_CLOSE_TIMEOUT, TimeUnit.MILLISECONDS);
+		assertThat(KafkaTestUtils.getPropertyValue(pf, "producer")).isNull();
+		verify(producer1).close(ProducerFactoryUtils.DEFAULT_CLOSE_TIMEOUT, TimeUnit.MILLISECONDS);
+		Producer bProducer = pf.createProducer();
+		assertThat(bProducer).isNotSameAs(aProducer);
 	}
 
 }
