@@ -54,6 +54,7 @@ import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.AuthorizationException;
+import org.apache.kafka.common.errors.FencedInstanceIdException;
 import org.apache.kafka.common.errors.ProducerFencedException;
 import org.apache.kafka.common.errors.WakeupException;
 
@@ -97,6 +98,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
+import org.springframework.util.StringUtils;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.ListenableFutureCallback;
 
@@ -611,6 +613,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		@SuppressWarnings(UNCHECKED)
 		ListenerConsumer(GenericMessageListener<?> listener, ListenerType listenerType) {
 			Properties consumerProperties = new Properties(this.containerProperties.getKafkaConsumerProperties());
+			checkGroupInstance(consumerProperties, KafkaMessageListenerContainer.this.consumerFactory);
 			this.autoCommit = determineAutoCommit(consumerProperties);
 			this.consumer =
 					KafkaMessageListenerContainer.this.consumerFactory.createConsumer(
@@ -687,6 +690,23 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			this.maxPollInterval = obtainMaxPollInterval(consumerProperties);
 			this.micrometerHolder = obtainMicrometerHolder();
+		}
+
+		private void checkGroupInstance(Properties properties, ConsumerFactory<K, V> consumerFactory) {
+			String groupInstance = properties.getProperty(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG);
+			if (!StringUtils.hasText(groupInstance)) {
+				Object factoryConfig = consumerFactory.getConfigurationProperties()
+						.get(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG);
+				if (factoryConfig instanceof String) {
+					groupInstance = (String) factoryConfig;
+				}
+			}
+			if (StringUtils.hasText(KafkaMessageListenerContainer.this.clientIdSuffix)
+					&& StringUtils.hasText(groupInstance)) {
+
+				properties.setProperty(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG,
+						groupInstance + KafkaMessageListenerContainer.this.clientIdSuffix);
+			}
 		}
 
 		private boolean determineCommitCurrent(Properties consumerProperties) {
@@ -951,6 +971,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						sleepFor(this.authorizationExceptionRetryInterval);
 					}
 				}
+				catch (FencedInstanceIdException fie) {
+					this.fatalError = true;
+					ListenerConsumer.this.logger.error(fie, "'" + ConsumerConfig.GROUP_INSTANCE_ID_CONFIG
+							+ "' has been fenced");
+					break;
+				}
 				catch (Exception e) {
 					handleConsumerException(e);
 				}
@@ -1144,7 +1170,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			else {
 				this.logger.error("Fatal consumer exception; stopping container");
-				KafkaMessageListenerContainer.this.stop();
+				KafkaMessageListenerContainer.this.stop(false);
 			}
 			this.monitorTask.cancel(true);
 			if (!this.taskSchedulerExplicitlySet) {
@@ -1306,8 +1332,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					}
 				});
 			}
-			catch (ProducerFencedException e) {
-				this.logger.error(e, "Producer fenced during transaction");
+			catch (ProducerFencedException | FencedInstanceIdException e) {
+				this.logger.error(e, "Producer or '"
+						+ ConsumerConfig.GROUP_INSTANCE_ID_CONFIG
+						+ "' fenced during transaction");
 			}
 			catch (RuntimeException e) {
 				this.logger.error(e, "Transaction rolled back");
@@ -1558,8 +1586,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 					});
 				}
-				catch (ProducerFencedException e) {
-					this.logger.error(e, "Producer fenced during transaction");
+				catch (ProducerFencedException | FencedInstanceIdException e) {
+					this.logger.error(e, "Producer or 'group.instance.id' fenced during transaction");
 					break;
 				}
 				catch (RuntimeException e) {
