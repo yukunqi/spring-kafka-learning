@@ -78,6 +78,9 @@ See <<container-factory>> for more information
 The `ContainerProperties` provides an `authorizationExceptionRetryInterval` option to let the listener container to retry after any `AuthorizationException` is thrown by the `KafkaConsumer`.
 See its JavaDocs and <<kafka-container>> for more information.
 
+Static group membership is now supported.
+See <<message-listener-container>> for more information.
+
 ==== @KafkaListener
 
 The `@KafkaListener` annotation has a new property `splitIterables`; default true.
