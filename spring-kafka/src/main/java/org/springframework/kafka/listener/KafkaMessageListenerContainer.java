@@ -1755,8 +1755,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
 						commitPendingAcks();
 					}
 					catch (Exception e) {
-						ListenerConsumer.this.logger.error(e, () -> "Fatal commit error after revocation "
-								+ partitions);
+						ListenerConsumer.this.logger.error("Fatal commit error after revocation " + partitions, e);
 					}
 					if (this.consumerAwareListener != null) {
 						this.consumerAwareListener.onPartitionsRevokedAfterCommit(ListenerConsumer.this.consumer,
