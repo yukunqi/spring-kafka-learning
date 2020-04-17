@@ -2761,7 +2761,8 @@ public class KafkaMessageListenerContainerTests {
 		records.put(topicPartition0, Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
 				new ConsumerRecord<>("foo", 0, 1L, 1, "bar")));
-		records.put(new TopicPartition("foo", 1), Arrays.asList(
+		TopicPartition topicPartition1 = new TopicPartition("foo", 1);
+		records.put(topicPartition1, Arrays.asList(
 				new ConsumerRecord<>("foo", 1, 0L, 1, "foo"),
 				new ConsumerRecord<>("foo", 1, 1L, 1, "bar")));
 		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
@@ -2779,7 +2780,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 			else if (call == 1) {
 				rebal.get().onPartitionsRevoked(Collections.singletonList(topicPartition0));
-				rebal.get().onPartitionsAssigned(Collections.emptyList());
+				rebal.get().onPartitionsAssigned(Collections.singletonList(topicPartition1));
 			}
 			latch.countDown();
 			return first.getAndSet(false) ? consumerRecords : emptyRecords;
@@ -2789,11 +2790,10 @@ public class KafkaMessageListenerContainerTests {
 			return null;
 		}).given(consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
 		List<Map<TopicPartition, OffsetAndMetadata>> commits = new ArrayList<>();
-		AtomicBoolean firstCommit = new AtomicBoolean(true);
 		AtomicInteger commitCount = new AtomicInteger();
 		willAnswer(invoc -> {
 			commits.add(invoc.getArgument(0, Map.class));
-			if (!firstCommit.getAndSet(false)) {
+			if (commitCount.incrementAndGet() == 2) {
 				throw new CommitFailedException();
 			}
 			return null;
@@ -2804,7 +2804,8 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setClientId("clientId");
 		containerProps.setIdleEventInterval(100L);
 		AtomicReference<Acknowledgment> acknowledgment = new AtomicReference<>();
-		class AckListener implements AcknowledgingMessageListener {
+		AtomicBoolean consumerSeekAwareCalled = new AtomicBoolean();
+		class AckListener implements AcknowledgingMessageListener, ConsumerSeekAware {
 			// not a lambda https://bugs.openjdk.java.net/browse/JDK-8074381
 
 			@Override
@@ -2815,6 +2816,12 @@ public class KafkaMessageListenerContainerTests {
 			@Override
 			public void onMessage(Object data) {
 			}
+
+			@Override
+			public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+				consumerSeekAwareCalled.set(true);
+			}
+
 
 		}
 		containerProps.setMessageListener(new AckListener());
@@ -2837,6 +2844,7 @@ public class KafkaMessageListenerContainerTests {
 		container.start();
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(container.getAssignedPartitions()).hasSize(1);
+		assertThat(consumerSeekAwareCalled.get()).isTrue();
 		container.stop();
 	}
 
