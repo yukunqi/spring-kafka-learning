@@ -46,6 +46,7 @@ import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
+import org.apache.kafka.common.utils.Exit;
 import org.apache.kafka.common.utils.Time;
 
 import org.springframework.beans.factory.DisposableBean;
@@ -202,6 +203,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 
 	@Override
 	public void afterPropertiesSet() {
+		overrideExitMethods();
 		this.zookeeper = new EmbeddedZookeeper();
 		int zkConnectionTimeout = 6000; // NOSONAR magic #
 		int zkSessionTimeout = 6000; // NOSONAR magic #
@@ -233,6 +235,26 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 		}
 		System.setProperty(this.brokerListProperty, getBrokersAsString());
 		System.setProperty(SPRING_EMBEDDED_ZOOKEEPER_CONNECT, getZookeeperConnectionString());
+	}
+
+	private void overrideExitMethods() {
+		String exitMsg = "Exit.%s(%d, %s) called";
+		Exit.setExitProcedure((statusCode, message) -> {
+			if (logger.isDebugEnabled()) {
+				logger.debug(new RuntimeException(), String.format(exitMsg, "exit", statusCode, message));
+			}
+			else {
+				logger.warn(String.format(exitMsg, "exit", statusCode, message));
+			}
+		});
+		Exit.setHaltProcedure((statusCode, message) -> {
+			if (logger.isDebugEnabled()) {
+				logger.debug(new RuntimeException(), String.format(exitMsg, "halt", statusCode, message));
+			}
+			else {
+				logger.warn(String.format(exitMsg, "halt", statusCode, message));
+			}
+		});
 	}
 
 	private Properties createBrokerProperties(int i) {
