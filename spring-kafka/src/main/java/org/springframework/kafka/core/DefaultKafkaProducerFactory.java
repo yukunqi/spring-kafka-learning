@@ -126,6 +126,10 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	private final ThreadLocal<CloseSafeProducer<K, V>> threadBoundProducers = new ThreadLocal<>();
 
+	private final ThreadLocal<Integer> threadBoundProducerEpochs = new ThreadLocal<>();
+
+	private final AtomicInteger epoch = new AtomicInteger();
+
 	private final AtomicInteger clientIdCounter = new AtomicInteger();
 
 	private Supplier<Serializer<K>> keySerializerSupplier;
@@ -331,6 +335,7 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 					(k, v) -> v.getDelegate().close(this.physicalCloseTimeout));
 			this.consumerProducers.clear();
 		}
+		this.epoch.incrementAndGet();
 	}
 
 	@Override
@@ -382,10 +387,18 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		}
 		if (this.producerPerThread) {
 			CloseSafeProducer<K, V> tlProducer = this.threadBoundProducers.get();
+			if (this.threadBoundProducerEpochs.get() == null) {
+				this.threadBoundProducerEpochs.set(this.epoch.get());
+			}
+			if (tlProducer != null && this.epoch.get() != this.threadBoundProducerEpochs.get()) {
+				closeThreadBoundProducer();
+				tlProducer = null;
+			}
 			if (tlProducer == null) {
 				tlProducer = new CloseSafeProducer<>(createKafkaProducer(), this::removeProducer,
 						this.physicalCloseTimeout);
 				this.threadBoundProducers.set(tlProducer);
+				this.threadBoundProducerEpochs.set(this.epoch.get());
 			}
 			return tlProducer;
 		}
