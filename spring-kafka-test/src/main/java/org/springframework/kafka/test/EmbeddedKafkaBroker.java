@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -241,7 +241,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 		String exitMsg = "Exit.%s(%d, %s) called";
 		Exit.setExitProcedure((statusCode, message) -> {
 			if (logger.isDebugEnabled()) {
-				logger.debug(new RuntimeException(), String.format(exitMsg, "exit", statusCode, message));
+				logger.debug(String.format(exitMsg, "exit", statusCode, message), new RuntimeException());
 			}
 			else {
 				logger.warn(String.format(exitMsg, "exit", statusCode, message));
@@ -249,7 +249,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 		});
 		Exit.setHaltProcedure((statusCode, message) -> {
 			if (logger.isDebugEnabled()) {
-				logger.debug(new RuntimeException(), String.format(exitMsg, "halt", statusCode, message));
+				logger.debug(String.format(exitMsg, "halt", statusCode, message), new RuntimeException());
 			}
 			else {
 				logger.warn(String.format(exitMsg, "halt", statusCode, message));
