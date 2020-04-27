@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2018 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,6 +37,8 @@ import javax.net.ServerSocketFactory;
 
 import org.I0Itec.zkclient.ZkClient;
 import org.I0Itec.zkclient.exception.ZkInterruptedException;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.common.Node;
@@ -45,6 +47,7 @@ import org.apache.kafka.common.protocol.Errors;
 import org.apache.kafka.common.protocol.SecurityProtocol;
 import org.apache.kafka.common.requests.MetadataResponse;
 import org.apache.kafka.common.utils.AppInfoParser;
+import org.apache.kafka.common.utils.Exit;
 import org.apache.kafka.common.utils.Time;
 import org.junit.rules.ExternalResource;
 
@@ -80,6 +83,8 @@ import scala.collection.Set;
  * @author Elliot Kennedy
  */
 public class KafkaEmbedded extends ExternalResource implements KafkaRule, InitializingBean, DisposableBean {
+
+	private static final Log logger = LogFactory.getLog(KafkaEmbedded.class);
 
 	public static final String BEAN_NAME = "kafkaEmbedded";
 
@@ -173,6 +178,7 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 
 	@Override
 	public void before() throws Exception { //NOSONAR
+		overrideExitMethods();
 		startZookeeper();
 		int zkConnectionTimeout = 6000;
 		int zkSessionTimeout = 6000;
@@ -226,11 +232,11 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 						boolean.class, boolean.class, int.class, boolean.class, int.class, boolean.class,
 						int.class, scala.Option.class, int.class);
 				return (Properties) method.invoke(null, i, this.zkConnect, this.controlledShutdown,
-					true, port,
-					scala.Option.<SecurityProtocol>apply(null),
-					scala.Option.<File>apply(null),
-					scala.Option.<Properties>apply(null),
-					true, false, 0, false, 0, false, 0, scala.Option.<String>apply(null), 1);
+						true, port,
+						scala.Option.<SecurityProtocol>apply(null),
+						scala.Option.<File>apply(null),
+						scala.Option.<Properties>apply(null),
+						true, false, 0, false, 0, false, 0, scala.Option.<String>apply(null), 1);
 			}
 			catch (NoSuchMethodException | IllegalAccessException | IllegalArgumentException
 					| InvocationTargetException e) {
@@ -499,6 +505,36 @@ public class KafkaEmbedded extends ExternalResource implements KafkaRule, Initia
 		assertThat(consumerLatch.await(30, TimeUnit.SECONDS))
 				.as("Failed to be assigned partitions from the embedded topics")
 				.isTrue();
+	}
+
+	private void overrideExitMethods() {
+		final String exitMsg = "Exit.%s(%d, %s) called";
+		Exit.setExitProcedure(
+				new Exit.Procedure() {
+
+					@Override
+					public void execute(int statusCode, String message) {
+						if (logger.isDebugEnabled()) {
+							logger.debug(String.format(exitMsg, "exit", statusCode, message), new RuntimeException());
+						}
+						else {
+							logger.warn(String.format(exitMsg, "exit", statusCode, message));
+						}
+					}
+				});
+		Exit.setHaltProcedure(
+				new Exit.Procedure() {
+
+					@Override
+					public void execute(int statusCode, String message) {
+						if (logger.isDebugEnabled()) {
+							logger.debug(String.format(exitMsg, "halt", statusCode, message), new RuntimeException());
+						}
+						else {
+							logger.warn(String.format(exitMsg, "halt", statusCode, message));
+						}
+					}
+				});
 	}
 
 }
