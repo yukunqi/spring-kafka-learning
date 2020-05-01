@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
@@ -2310,23 +2311,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				ListenerConsumer.this.assignedPartitions.addAll(partitions);
 				if (ListenerConsumer.this.commitCurrentOnAssignment) {
-					// Commit initial positions - this is generally redundant but
-					// it protects us from the case when another consumer starts
-					// and rebalance would cause it to reset at the end
-					// see https://github.com/spring-projects/spring-kafka/issues/110
-					Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = new HashMap<>();
-					for (TopicPartition partition : partitions) {
-						try {
-							offsetsToCommit.put(partition,
-									new OffsetAndMetadata(ListenerConsumer.this.consumer.position(partition)));
-						}
-						catch (NoOffsetForPartitionException e) {
-							ListenerConsumer.this.fatalError = true;
-							ListenerConsumer.this.logger.error(e, "No offset and no reset policy");
-							return;
-						}
-					}
-					commitCurrentOffsets(offsetsToCommit);
+					collectAndCommitIfNecessary(partitions);
 				}
 				if (ListenerConsumer.this.genericListener instanceof ConsumerSeekAware) {
 					seekPartitions(partitions, false);
@@ -2336,6 +2321,32 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				else {
 					this.userListener.onPartitionsAssigned(partitions);
+				}
+			}
+
+			private void collectAndCommitIfNecessary(Collection<TopicPartition> partitions) {
+				// Commit initial positions - this is generally redundant but
+				// it protects us from the case when another consumer starts
+				// and rebalance would cause it to reset at the end
+				// see https://github.com/spring-projects/spring-kafka/issues/110
+				Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = new HashMap<>();
+				Map<TopicPartition, OffsetAndMetadata> committed =
+						ListenerConsumer.this.consumer.committed(new HashSet<>(partitions));
+				for (TopicPartition partition : partitions) {
+					try {
+						if (committed.get(partition) == null) { // no existing commit for this group
+							offsetsToCommit.put(partition,
+									new OffsetAndMetadata(ListenerConsumer.this.consumer.position(partition)));
+						}
+					}
+					catch (NoOffsetForPartitionException e) {
+						ListenerConsumer.this.fatalError = true;
+						ListenerConsumer.this.logger.error(e, "No offset and no reset policy");
+						return;
+					}
+				}
+				if (offsetsToCommit.size() > 0) {
+					commitCurrentOffsets(offsetsToCommit);
 				}
 			}
 
