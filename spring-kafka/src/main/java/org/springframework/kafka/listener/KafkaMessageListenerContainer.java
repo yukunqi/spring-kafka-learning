@@ -22,7 +22,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -2326,8 +2325,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				// and rebalance would cause it to reset at the end
 				// see https://github.com/spring-projects/spring-kafka/issues/110
 				Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = new HashMap<>();
-				Map<TopicPartition, OffsetAndMetadata> committed =
-						ListenerConsumer.this.consumer.committed(new HashSet<>(partitions));
+				Map<TopicPartition, OffsetAndMetadata> committed = new HashMap<>();
+				partitions.forEach(tp -> committed.put(tp, ListenerConsumer.this.consumer.committed(tp)));
 				for (TopicPartition partition : partitions) {
 					try {
 						if (committed.get(partition) == null) { // no existing commit for this group

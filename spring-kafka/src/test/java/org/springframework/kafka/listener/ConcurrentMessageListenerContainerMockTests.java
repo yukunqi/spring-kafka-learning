@@ -531,12 +531,12 @@ public class ConcurrentMessageListenerContainerMockTests {
 			return null;
 		}).given(consumer).subscribe(any(Collection.class), any());
 		if (committed) {
-			given(consumer.committed(Collections.singleton(tp0)))
-					.willReturn(Collections.singletonMap(tp0, new OffsetAndMetadata(0L)));
+			given(consumer.committed(tp0))
+					.willReturn(new OffsetAndMetadata(0L));
 		}
 		else {
-			given(consumer.committed(Collections.singleton(tp0)))
-					.willReturn(Collections.singletonMap(tp0, null));
+			given(consumer.committed(tp0))
+					.willReturn(null);
 		}
 		ConsumerFactory cf = mock(ConsumerFactory.class);
 		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
