@@ -16,8 +16,9 @@
 
 package org.springframework.kafka.test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -212,6 +214,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 		this.zookeeperClient = new ZkClient(this.zkConnect, zkSessionTimeout, zkConnectionTimeout,
 				ZKStringSerializer$.MODULE$);
 		this.kafkaServers.clear();
+		boolean userLogDir = this.brokerProperties.get(KafkaConfig.LogDirProp()) != null && this.count == 1;
 		for (int i = 0; i < this.count; i++) {
 			Properties brokerConfigProperties = createBrokerProperties(i);
 			brokerConfigProperties.setProperty(KafkaConfig.ReplicaSocketTimeoutMsProp(), "1000");
@@ -221,6 +224,9 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 					String.valueOf(Long.MAX_VALUE));
 			if (this.brokerProperties != null) {
 				this.brokerProperties.forEach(brokerConfigProperties::put);
+			}
+			if (!userLogDir) {
+				logDir(brokerConfigProperties);
 			}
 			KafkaServer server = TestUtils.createServer(new KafkaConfig(brokerConfigProperties), Time.SYSTEM);
 			this.kafkaServers.add(server);
@@ -235,6 +241,16 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 		}
 		System.setProperty(this.brokerListProperty, getBrokersAsString());
 		System.setProperty(SPRING_EMBEDDED_ZOOKEEPER_CONNECT, getZookeeperConnectionString());
+	}
+
+	private void logDir(Properties brokerConfigProperties) {
+		try {
+			brokerConfigProperties.put(KafkaConfig.LogDirProp(),
+					Files.createTempDirectory("spring.kafka." + UUID.randomUUID()).toString());
+		}
+		catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
 	}
 
 	private void overrideExitMethods() {
@@ -478,11 +494,12 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	 * @param topics the topics.
 	 */
 	public void consumeFromEmbeddedTopics(Consumer<?, ?> consumer, String... topics) {
-		HashSet<String> diff = new HashSet<>(Arrays.asList(topics));
-		diff.removeAll(new HashSet<>(this.topics));
-		assertThat(this.topics)
-				.as("topic(s):'" + diff + "' are not in embedded topic list")
-				.containsAll(new HashSet<>(Arrays.asList(topics)));
+		List<String> notEmbedded = Arrays.stream(topics)
+				.filter(topic -> !this.topics.contains(topic))
+				.collect(Collectors.toList());
+		if (notEmbedded.size() > 0) {
+			throw new IllegalStateException("topic(s):'" + notEmbedded + "' are not in embedded topic list");
+		}
 		final AtomicBoolean assigned = new AtomicBoolean();
 		consumer.subscribe(Arrays.asList(topics), new ConsumerRebalanceListener() {
 
@@ -516,9 +533,9 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 			}
 			consumer.seekToBeginning(records.partitions());
 		}
-		assertThat(assigned.get())
-				.as("Failed to be assigned partitions from the embedded topics")
-				.isTrue();
+		if (!assigned.get()) {
+			throw new IllegalStateException("Failed to be assigned partitions from the embedded topics");
+		}
 		logger.debug("Subscription Initiated");
 	}
 
