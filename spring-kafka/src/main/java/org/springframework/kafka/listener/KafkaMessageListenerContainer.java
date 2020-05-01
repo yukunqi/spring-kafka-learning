@@ -625,7 +625,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.transactionTemplate = determineTransactionTemplate();
 			this.genericListener = listener;
 			this.consumerSeekAwareListener = checkConsumerSeekAware(listener);
-			this.commitCurrentOnAssignment = determineCommitCurrent(consumerProperties);
+			this.commitCurrentOnAssignment = determineCommitCurrent(consumerProperties,
+					KafkaMessageListenerContainer.this.consumerFactory.getConfigurationProperties());
 			subscribeOrAssignTopics(this.consumer);
 			GenericErrorHandler<?> errHandler = KafkaMessageListenerContainer.this.getGenericErrorHandler();
 			if (listener instanceof BatchMessageListener) {
@@ -709,7 +710,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private boolean determineCommitCurrent(Properties consumerProperties) {
+		private boolean determineCommitCurrent(Properties consumerProperties, Map<String, Object> factoryConfigs) {
 			if (AssignmentCommitOption.NEVER.equals(this.autoCommitOption)) {
 				return false;
 			}
@@ -717,10 +718,16 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				return true;
 			}
 			String autoOffsetReset = consumerProperties.getProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG);
-			return !this.autoCommit
-					&& (autoOffsetReset == null || autoOffsetReset.equals("latest"))
-					&& (AssignmentCommitOption.LATEST_ONLY.equals(this.autoCommitOption)
-							|| AssignmentCommitOption.LATEST_ONLY_NO_TX.equals(this.autoCommitOption));
+			if (autoOffsetReset == null) {
+				Object config = factoryConfigs.get(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG);
+				if (config instanceof String) {
+					autoOffsetReset = (String) config;
+				}
+			}
+			boolean resetLatest = autoOffsetReset == null || autoOffsetReset.equals("latest");
+			boolean latestOnlyOption = AssignmentCommitOption.LATEST_ONLY.equals(this.autoCommitOption)
+					|| AssignmentCommitOption.LATEST_ONLY_NO_TX.equals(this.autoCommitOption);
+			return !this.autoCommit && resetLatest && latestOnlyOption;
 		}
 
 		private long obtainMaxPollInterval(Properties consumerProperties) {

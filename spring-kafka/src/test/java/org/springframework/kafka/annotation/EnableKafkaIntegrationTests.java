@@ -53,6 +53,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -1812,15 +1813,16 @@ public class EnableKafkaIntegrationTests {
 				@Header(KafkaHeaders.RECEIVED_PARTITION_ID) List<Integer> partitions,
 				@Header(KafkaHeaders.RECEIVED_TOPIC) List<String> topics,
 				Consumer<?, ?> consumer) {
+
 			for (int i = 0; i < topics.size(); i++) {
 				this.latch17.countDown();
 				String topic = topics.get(i);
-				if ("annotated26".equals(topic) && consumer.committed(
-						new org.apache.kafka.common.TopicPartition(topic, partitions.get(i))).offset() == 1) {
+				OffsetAndMetadata committed = consumer.committed(
+						new org.apache.kafka.common.TopicPartition(topic, partitions.get(i)));
+				if ("annotated26".equals(topic) && committed.offset() == 1) {
 					this.latch18.countDown();
 				}
-				else if ("annotated27".equals(topic) && consumer.committed(
-						new org.apache.kafka.common.TopicPartition(topic, partitions.get(i))).offset() == 3) {
+				else if ("annotated27".equals(topic) && committed.offset() == 3) {
 					this.latch18.countDown();
 				}
 			}
