@@ -87,7 +87,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 		}).given(consumer).poll(any());
 		given(consumerFactory.createConsumer(anyString(), anyString(), anyString(),
 				eq(KafkaTestUtils.defaultPropertyOverrides())))
-						.willReturn(consumer);
+				.willReturn(consumer);
 		ContainerProperties containerProperties = new ContainerProperties("foo");
 		containerProperties.setGroupId("grp");
 		containerProperties.setMessageListener((MessageListener) record -> { });
@@ -133,7 +133,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 			return new ConsumerRecords<>(Collections.emptyMap());
 		}).given(consumer).poll(any());
 		given(consumerFactory.createConsumer("grp", "", "-0", KafkaTestUtils.defaultPropertyOverrides()))
-			.willReturn(consumer);
+				.willReturn(consumer);
 		ContainerProperties containerProperties = new ContainerProperties("foo");
 		containerProperties.setGroupId("grp");
 		containerProperties.setMessageListener((MessageListener) record -> { });
@@ -167,7 +167,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 			return null;
 		}).given(consumer).close();
 		given(consumerFactory.createConsumer("grp", "", "-0", KafkaTestUtils.defaultPropertyOverrides()))
-			.willReturn(consumer);
+				.willReturn(consumer);
 		ContainerProperties containerProperties = new ContainerProperties("foo");
 		containerProperties.setGroupId("grp");
 		containerProperties.setMessageListener((MessageListener) record -> { });
@@ -200,7 +200,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 		List<TopicPartition> assignments = Arrays.asList(tp0, tp1, tp2, tp3);
 		willAnswer(invocation -> {
 			((ConsumerRebalanceListener) invocation.getArgument(1))
-				.onPartitionsAssigned(assignments);
+					.onPartitionsAssigned(assignments);
 			return null;
 		}).given(consumer).subscribe(any(Collection.class), any());
 		given(consumer.position(any())).willReturn(100L);
@@ -209,7 +209,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 		given(consumer.endOffsets(any())).willReturn(assignments.stream()
 				.collect(Collectors.toMap(tp -> tp, tp -> 200L)));
 		given(consumerFactory.createConsumer("grp", "", "-0", KafkaTestUtils.defaultPropertyOverrides()))
-			.willReturn(consumer);
+				.willReturn(consumer);
 		ContainerProperties containerProperties = new ContainerProperties("foo");
 		containerProperties.setGroupId("grp");
 		containerProperties.setMessageListener(listener);
@@ -254,7 +254,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 		}).given(consumer).poll(any());
 		willAnswer(invocation -> {
 			((ConsumerRebalanceListener) invocation.getArgument(1))
-				.onPartitionsAssigned(assignments);
+					.onPartitionsAssigned(assignments);
 			return null;
 		}).given(consumer).subscribe(any(Collection.class), any());
 		given(consumer.position(any())).willReturn(100L);
@@ -263,7 +263,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 		given(consumer.endOffsets(any())).willReturn(assignments.stream()
 				.collect(Collectors.toMap(tp -> tp, tp -> 200L)));
 		given(consumerFactory.createConsumer("grp", "", "-0", KafkaTestUtils.defaultPropertyOverrides()))
-			.willReturn(consumer);
+				.willReturn(consumer);
 		ContainerProperties containerProperties = new ContainerProperties("foo");
 		containerProperties.setGroupId("grp");
 		containerProperties.setMessageListener(listener);
@@ -300,7 +300,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 		List<TopicPartition> assignments = Arrays.asList(tp0, tp1, tp2, tp3);
 		willAnswer(invocation -> {
 			((ConsumerRebalanceListener) invocation.getArgument(1))
-				.onPartitionsAssigned(assignments);
+					.onPartitionsAssigned(assignments);
 			return null;
 		}).given(consumer).subscribe(any(Collection.class), any());
 		given(consumer.position(any())).willReturn(100L);
@@ -314,7 +314,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 				.willReturn(assignments.stream()
 						.collect(Collectors.toMap(tp -> tp, tp -> new OffsetAndTimestamp(82L, 43L))));
 		given(consumerFactory.createConsumer("grp", "", "-0", KafkaTestUtils.defaultPropertyOverrides()))
-			.willReturn(consumer);
+				.willReturn(consumer);
 		ContainerProperties containerProperties = new ContainerProperties("foo");
 		containerProperties.setGroupId("grp");
 		containerProperties.setMessageListener(listener);
@@ -360,7 +360,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 		}).given(consumer).poll(any());
 		willAnswer(invocation -> {
 			((ConsumerRebalanceListener) invocation.getArgument(1))
-				.onPartitionsAssigned(assignments);
+					.onPartitionsAssigned(assignments);
 			return null;
 		}).given(consumer).subscribe(any(Collection.class), any());
 		given(consumer.position(any())).willReturn(100L);
@@ -372,10 +372,10 @@ public class ConcurrentMessageListenerContainerMockTests {
 				.willReturn(Collections.singletonMap(tp0, new OffsetAndTimestamp(73L, 42L)));
 		given(consumer.offsetsForTimes(any()))
 				.willReturn(assignments.stream()
-					.collect(Collectors.toMap(tp -> tp,
-							tp -> new OffsetAndTimestamp(tp.equals(tp0) ? 73L : 92L, 43L))));
+						.collect(Collectors.toMap(tp -> tp,
+								tp -> new OffsetAndTimestamp(tp.equals(tp0) ? 73L : 92L, 43L))));
 		given(consumerFactory.createConsumer("grp", "", "-0", KafkaTestUtils.defaultPropertyOverrides()))
-			.willReturn(consumer);
+				.willReturn(consumer);
 		ContainerProperties containerProperties = new ContainerProperties("foo");
 		containerProperties.setGroupId("grp");
 		containerProperties.setMessageListener(listener);
@@ -416,15 +416,15 @@ public class ConcurrentMessageListenerContainerMockTests {
 			Thread.sleep(10);
 			return first.getAndSet(false) ? records : empty;
 		}).given(consumer).poll(any());
-		List<TopicPartition> assignments = Arrays.asList(tp0);
+		List<TopicPartition> assignments = Collections.singletonList(tp0);
 		willAnswer(invocation -> {
 			((ConsumerRebalanceListener) invocation.getArgument(1))
-				.onPartitionsAssigned(assignments);
+					.onPartitionsAssigned(assignments);
 			return null;
 		}).given(consumer).subscribe(any(Collection.class), any());
 		given(consumer.position(any())).willReturn(0L);
 		given(consumerFactory.createConsumer("grp", "", "-0", KafkaTestUtils.defaultPropertyOverrides()))
-			.willReturn(consumer);
+				.willReturn(consumer);
 		ContainerProperties containerProperties = new ContainerProperties("foo");
 		containerProperties.setGroupId("grp");
 		containerProperties.setMessageListener((MessageListener) rec -> { });
@@ -479,10 +479,10 @@ public class ConcurrentMessageListenerContainerMockTests {
 			return records;
 		}).given(consumer).poll(any());
 		TopicPartition tp0 = new TopicPartition("foo", 0);
-		List<TopicPartition> assignments = Arrays.asList(tp0);
+		List<TopicPartition> assignments = Collections.singletonList(tp0);
 		willAnswer(invocation -> {
 			((ConsumerRebalanceListener) invocation.getArgument(1))
-				.onPartitionsAssigned(assignments);
+					.onPartitionsAssigned(assignments);
 			return null;
 		}).given(consumer).subscribe(any(Collection.class), any());
 		ConsumerFactory cf = mock(ConsumerFactory.class);
@@ -493,7 +493,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 		containerProperties.setGroupId("grp");
 		containerProperties.setMessageListener((MessageListener) rec -> { });
 		containerProperties.setMissingTopicsFatal(false);
-		containerProperties.setAssignmentCommitOption(AssignmentCommitOption.LATEST_ONLY);
+		containerProperties.setAssignmentCommitOption(ContainerProperties.AssignmentCommitOption.LATEST_ONLY);
 		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer(cf,
 				containerProperties);
 		container.start();
@@ -503,7 +503,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 
 	public static class TestMessageListener1 implements MessageListener<String, String>, ConsumerSeekAware {
 
-		private static ThreadLocal<ConsumerSeekCallback> callbacks = new ThreadLocal<>();
+		private static final ThreadLocal<ConsumerSeekCallback> callbacks = new ThreadLocal<>();
 
 		CountDownLatch latch = new CountDownLatch(1);
 
@@ -539,7 +539,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 
 	public static class TestMessageListener2 implements MessageListener<String, String>, ConsumerSeekAware {
 
-		private static ThreadLocal<ConsumerSeekCallback> callbacks = new ThreadLocal<>();
+		private static final ThreadLocal<ConsumerSeekCallback> callbacks = new ThreadLocal<>();
 
 		CountDownLatch latch = new CountDownLatch(1);
 
