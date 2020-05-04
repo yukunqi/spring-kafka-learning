@@ -61,6 +61,7 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.event.ConsumerFailedToStartEvent;
 import org.springframework.kafka.event.ConsumerStartedEvent;
 import org.springframework.kafka.event.ConsumerStartingEvent;
+import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
