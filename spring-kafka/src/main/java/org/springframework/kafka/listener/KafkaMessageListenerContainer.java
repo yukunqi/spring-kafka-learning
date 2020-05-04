@@ -2311,7 +2311,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				ListenerConsumer.this.assignedPartitions.addAll(partitions);
 				if (ListenerConsumer.this.commitCurrentOnAssignment) {
-					collectAndCommitIfNecessary(partitions);
+					if (!collectAndCommitIfNecessary(partitions)) {
+						return;
+					}
 				}
 				if (ListenerConsumer.this.genericListener instanceof ConsumerSeekAware) {
 					seekPartitions(partitions, false);
@@ -2324,7 +2326,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 
-			private void collectAndCommitIfNecessary(Collection<TopicPartition> partitions) {
+			private boolean collectAndCommitIfNecessary(Collection<TopicPartition> partitions) {
 				// Commit initial positions - this is generally redundant but
 				// it protects us from the case when another consumer starts
 				// and rebalance would cause it to reset at the end
@@ -2342,12 +2344,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					catch (NoOffsetForPartitionException e) {
 						ListenerConsumer.this.fatalError = true;
 						ListenerConsumer.this.logger.error(e, "No offset and no reset policy");
-						return;
+						return false;
 					}
 				}
 				if (offsetsToCommit.size() > 0) {
 					commitCurrentOffsets(offsetsToCommit);
 				}
+				return true;
 			}
 
 			private void commitCurrentOffsets(Map<TopicPartition, OffsetAndMetadata> offsetsToCommit) {
