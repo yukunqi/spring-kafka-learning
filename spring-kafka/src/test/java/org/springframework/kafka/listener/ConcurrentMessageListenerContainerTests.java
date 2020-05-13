@@ -28,6 +28,7 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -451,6 +452,7 @@ public class ConcurrentMessageListenerContainerTests {
 			latch.countDown();
 		});
 		containerProps.setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
+		containerProps.setClientId("myClientId");
 
 		ConcurrentMessageListenerContainer<Integer, String> container =
 				new ConcurrentMessageListenerContainer<>(cf, containerProps);
@@ -465,6 +467,9 @@ public class ConcurrentMessageListenerContainerTests {
 		template.flush();
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(bitSet.cardinality()).isEqualTo(8);
+		Set<String> clientIds = container.metrics().keySet();
+		assertThat(clientIds).hasSize(1);
+		assertThat(clientIds.iterator().next()).isEqualTo("myClientId-0");
 		container.stop();
 		this.logger.info("Stop MANUAL_IMMEDIATE with Existing");
 	}
@@ -481,10 +486,11 @@ public class ConcurrentMessageListenerContainerTests {
 			ConcurrentMessageListenerContainerTests.this.logger.info("paused start: " + message);
 			latch.countDown();
 		});
-
+		containerProps.setClientId("myClientId");
 		ConcurrentMessageListenerContainer<Integer, String> container =
 				new ConcurrentMessageListenerContainer<>(cf, containerProps);
 		container.setConcurrency(2);
+		container.setAlwaysClientIdSuffix(false);
 		container.setBeanName("testBatch");
 		container.pause();
 		container.start();
@@ -503,6 +509,11 @@ public class ConcurrentMessageListenerContainerTests {
 		container.resume();
 
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		Set<String> clientIds = container.metrics().keySet();
+		assertThat(clientIds).hasSize(2);
+		Iterator<String> iterator = clientIds.iterator();
+		assertThat(iterator.next()).startsWith("myClientId-");
+		assertThat(iterator.next()).startsWith("myClientId-");
 		container.stop();
 		this.logger.info("Stop paused start");
 	}
@@ -702,9 +713,11 @@ public class ConcurrentMessageListenerContainerTests {
 			}
 
 		});
+		containerProps.setClientId("myClientId");
 		ConcurrentMessageListenerContainer<Integer, String> container = new ConcurrentMessageListenerContainer<>(cf,
 				containerProps);
 		container.setConcurrency(1);
+		container.setAlwaysClientIdSuffix(false);
 		container.setBeanName("testAckOnErrorWithManualImmediate");
 		container.start();
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
@@ -717,6 +730,9 @@ public class ConcurrentMessageListenerContainerTests {
 		template.sendDefault(0, 1, "bar");
 		template.flush();
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		Set<String> clientIds = container.metrics().keySet();
+		assertThat(clientIds).hasSize(1);
+		assertThat(clientIds.iterator().next()).isEqualTo("myClientId");
 		container.stop();
 
 		Consumer<Integer, String> consumer = cf.createConsumer();
