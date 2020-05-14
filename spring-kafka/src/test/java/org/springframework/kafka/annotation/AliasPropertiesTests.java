@@ -33,6 +33,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.AliasFor;
+import org.springframework.kafka.annotation.AliasPropertiesTests.Config.ClassLevelListener;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
@@ -41,6 +42,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.stereotype.Component;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
@@ -59,10 +61,14 @@ public class AliasPropertiesTests {
 	@Autowired
 	private Config config;
 
+	@Autowired
+	private ClassLevelListener classLevel;
+
 	@Test
 	public void testAliasFor() throws Exception {
 		this.template.send("alias.tests", "foo");
 		assertThat(this.config.latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.classLevel.latch.await(10, TimeUnit.SECONDS)).isTrue();
 	}
 
 	@Configuration
@@ -112,17 +118,33 @@ public class AliasPropertiesTests {
 			return KafkaTestUtils.producerProps(embeddedKafka());
 		}
 
-		@MyListener("alias.tests")
+		@MyListener(id = "onMethod", value = "alias.tests")
 		public void listen1(String in) {
-			latch.countDown();
+			this.latch.countDown();
+		}
+
+		@Component
+		@MyListener(id = "onClass", value = "alias.tests")
+		public static class ClassLevelListener {
+
+			private final CountDownLatch latch = new CountDownLatch(1);
+
+			@KafkaHandler
+			void listen(String in) {
+				this.latch.countDown();
+			}
+
 		}
 
 	}
 
-	@Target(ElementType.METHOD)
+	@Target({ ElementType.METHOD, ElementType.TYPE })
 	@Retention(RetentionPolicy.RUNTIME)
 	@KafkaListener
 	public @interface MyListener {
+
+		@AliasFor(annotation = KafkaListener.class, attribute = "id")
+		String id() default "";
 
 		@AliasFor(annotation = KafkaListener.class, attribute = "topics")
 		String[] value();
