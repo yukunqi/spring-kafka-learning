@@ -19,6 +19,7 @@ package org.springframework.kafka.support.serializer;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.Deserializer;
 
@@ -40,16 +41,23 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 	/**
 	 * Name of the configuration property containing the serialization selector map with
 	 * format {@code selector:class,...}.
+	 * @deprecated Use {@link DelegatingSerializer#VALUE_SERIALIZATION_SELECTOR} or
+	 * {@link DelegatingSerializer#KEY_SERIALIZATION_SELECTOR}.
 	 */
+	@Deprecated
 	public static final String SERIALIZATION_SELECTOR_CONFIG = DelegatingSerializer.SERIALIZATION_SELECTOR_CONFIG;
 
 
 	private final Map<String, Deserializer<?>> delegates = new HashMap<>();
 
+
+	private boolean forKeys;
+
 	/**
 	 * Construct an instance that will be configured in {@link #configure(Map, boolean)}
-	 * with a consumer property
-	 * {@link #SERIALIZATION_SELECTOR_CONFIG}.
+	 * with consumer properties
+	 * {@link DelegatingSerializer#KEY_SERIALIZATION_SELECTOR_CONFIG} and
+	 * {@link DelegatingSerializer#VALUE_SERIALIZATION_SELECTOR_CONFIG}.
 	 */
 	public DelegatingDeserializer() {
 		super();
@@ -68,7 +76,9 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 	@SuppressWarnings("unchecked")
 	@Override
 	public void configure(Map<String, ?> configs, boolean isKey) {
-		Object value = configs.get(SERIALIZATION_SELECTOR_CONFIG);
+		this.forKeys = isKey;
+		String configKey = configKey();
+		Object value = configs.get(configKey);
 		if (value == null) {
 			return;
 		}
@@ -84,7 +94,7 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 					createInstanceAndConfigure(configs, isKey, this.delegates, selector, (String) deser);
 				}
 				else {
-					throw new IllegalStateException(SERIALIZATION_SELECTOR_CONFIG
+					throw new IllegalStateException(configKey
 							+ " map entries must be Serializers or class names, not " + value.getClass());
 				}
 			});
@@ -93,9 +103,14 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 			this.delegates.putAll(createDelegates((String) value, configs, isKey));
 		}
 		else {
-			throw new IllegalStateException(
-					SERIALIZATION_SELECTOR_CONFIG + " must be a map or String, not " + value.getClass());
+			throw new IllegalStateException(configKey + " must be a map or String, not " + value.getClass());
 		}
+	}
+
+	private String configKey() {
+		return this.forKeys
+				? DelegatingSerializer.KEY_SERIALIZATION_SELECTOR_CONFIG
+				: DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR_CONFIG;
 	}
 
 	protected static Map<String, Deserializer<?>> createDelegates(String mappings, Map<String, ?> configs,
@@ -152,9 +167,14 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 
 	@Override
 	public Object deserialize(String topic, Headers headers, byte[] data) {
-		byte[] value = headers.lastHeader(DelegatingSerializer.SERIALIZATION_SELECTOR).value();
+		byte[] value = null;
+		String selectorKey = selectorKey();
+		Header header = headers.lastHeader(selectorKey);
+		if (header != null) {
+			value = header.value();
+		}
 		if (value == null) {
-			throw new IllegalStateException("No '" + DelegatingSerializer.SERIALIZATION_SELECTOR + "' header present");
+			throw new IllegalStateException("No '" + selectorKey + "' header present");
 		}
 		String selector = new String(value).replaceAll("\"", "");
 		@SuppressWarnings("unchecked")
@@ -165,6 +185,12 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 		else {
 			return deserializer.deserialize(topic, headers, data);
 		}
+	}
+
+	private String selectorKey() {
+		return this.forKeys
+				? DelegatingSerializer.KEY_SERIALIZATION_SELECTOR
+				: DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR;
 	}
 
 	@Override
