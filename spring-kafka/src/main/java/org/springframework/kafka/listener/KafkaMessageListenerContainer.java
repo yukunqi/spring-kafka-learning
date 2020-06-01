@@ -51,6 +51,7 @@ import org.apache.kafka.clients.consumer.NoOffsetForPartitionException;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
+import org.apache.kafka.clients.consumer.RetriableCommitFailedException;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
@@ -1204,6 +1205,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		 * @param e the exception.
 		 */
 		protected void handleConsumerException(Exception e) {
+			if (e instanceof RetriableCommitFailedException) {
+				this.logger.error(e, "Commit retries exhausted");
+				return;
+			}
 			try {
 				if (!this.isBatchListener && this.errorHandler != null) {
 					this.errorHandler.handle(e, Collections.emptyList(), this.consumer,
@@ -1283,11 +1288,23 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.producer.sendOffsetsToTransaction(commits, this.consumerGroupId);
 			}
 			else if (this.syncCommits) {
-				this.consumer.commitSync(commits, this.syncCommitTimeout);
+				commitSync(commits);
 			}
 			else {
-				this.consumer.commitAsync(commits, this.commitCallback);
+				commitAsync(commits, 0);
 			}
+		}
+
+		private void commitAsync(Map<TopicPartition, OffsetAndMetadata> commits, int retries) {
+			this.consumer.commitAsync(commits, (offsetsAttempted, exception) -> {
+				if (exception instanceof RetriableCommitFailedException
+						&& retries < this.containerProperties.getCommitRetries()) {
+					commitAsync(commits, retries + 1);
+				}
+				else {
+					this.commitCallback.onComplete(offsetsAttempted, exception);
+				}
+			});
 		}
 
 		private void invokeListener(final ConsumerRecords<K, V> records) {
@@ -1851,10 +1868,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				if (producer == null) {
 					this.commitLogger.log(() -> "Committing: " + offsetsToCommit);
 					if (this.syncCommits) {
-						this.consumer.commitSync(offsetsToCommit, this.syncCommitTimeout);
+						commitSync(offsetsToCommit);
 					}
 					else {
-						this.consumer.commitAsync(offsetsToCommit, this.commitCallback);
+						commitAsync(offsetsToCommit, 0);
 					}
 				}
 				else {
@@ -2074,16 +2091,32 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.commitLogger.log(() -> "Committing: " + commits);
 				try {
 					if (this.syncCommits) {
-						this.consumer.commitSync(commits, this.syncCommitTimeout);
+						commitSync(commits);
 					}
 					else {
-						this.consumer.commitAsync(commits, this.commitCallback);
+						commitAsync(commits, 0);
 					}
 				}
 				catch (@SuppressWarnings(UNUSED) WakeupException e) {
 					// ignore - not polling
 					this.logger.debug("Woken up during commit");
 				}
+			}
+		}
+
+		private void commitSync(Map<TopicPartition, OffsetAndMetadata> commits) {
+			doCommitSync(commits, 0);
+		}
+
+		private void doCommitSync(Map<TopicPartition, OffsetAndMetadata> commits, int retries) {
+			try {
+				this.consumer.commitSync(commits, this.syncCommitTimeout);
+			}
+			catch (RetriableCommitFailedException e) {
+				if (retries >= this.containerProperties.getCommitRetries()) {
+					throw e;
+				}
+				doCommitSync(commits, retries + 1);
 			}
 		}
 
@@ -2353,6 +2386,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				return true;
 			}
 
+			@SuppressWarnings("unused")
 			private void commitCurrentOffsets(Map<TopicPartition, OffsetAndMetadata> offsetsToCommit) {
 				ListenerConsumer.this.commitLogger.log(() -> "Committing on assignment: " + offsetsToCommit);
 				if (ListenerConsumer.this.transactionTemplate != null
@@ -2392,12 +2426,16 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				else {
 					ContainerProperties containerProps = KafkaMessageListenerContainer.this.getContainerProperties();
 					if (containerProps.isSyncCommits()) {
-						ListenerConsumer.this.consumer.commitSync(offsetsToCommit,
-								containerProps.getSyncCommitTimeout());
+						try {
+							ListenerConsumer.this.consumer.commitSync(offsetsToCommit,
+									containerProps.getSyncCommitTimeout());
+						}
+						catch (RetriableCommitFailedException e) {
+							// ignore since this is on assignment anyway
+						}
 					}
 					else {
-						ListenerConsumer.this.consumer.commitAsync(offsetsToCommit,
-								containerProps.getCommitCallback());
+						commitAsync(offsetsToCommit, 0);
 					}
 				}
 			}
