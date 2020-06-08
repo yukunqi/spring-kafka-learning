@@ -61,7 +61,7 @@ class FailedRecordTracker {
 					+ (failedRecord == null
 						? "none"
 						: failedRecord.getBackOffExecution())
-					+ " exhausted for " + rec);
+					+ " exhausted for " + ListenerUtils.recordToString(rec));
 			};
 		}
 		else {

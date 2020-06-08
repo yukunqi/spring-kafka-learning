@@ -27,6 +27,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.core.log.LogAccessor;
+import org.springframework.kafka.listener.ListenerUtils;
 import org.springframework.util.backoff.FixedBackOff;
 
 /**
@@ -76,12 +77,12 @@ public final class SeekUtils {
 					skipped.set(test);
 				}
 				catch (Exception ex) {
-					logger.error(ex, "Failed to determine if this record (" + record
+					logger.error(ex, "Failed to determine if this record (" + ListenerUtils.recordToString(record)
 							+ ") should be recovererd, including in seeks");
 					skipped.set(false);
 				}
 				if (skipped.get()) {
-					logger.debug(() -> "Skipping seek of: " + record);
+					logger.debug(() -> "Skipping seek of: " + ListenerUtils.recordToString(record));
 				}
 			}
 			if (!recoverable || !first.get() || !skipped.get()) {

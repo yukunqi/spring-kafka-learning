@@ -81,6 +81,8 @@ See its JavaDocs and <<kafka-container>> for more information.
 Static group membership is now supported.
 See <<message-listener-container>> for more information.
 
+You can now suppress logging entire `ConsumerRecord` s in error, debug logs etc., by setting the `onlyLogRecordMetadata` container property to `true`.
+
 ==== @KafkaListener
 
 The `@KafkaListener` annotation has a new property `splitIterables`; default true.
