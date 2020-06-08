@@ -944,6 +944,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		@Override
 		public void run() {
+			ListenerUtils.setLogOnlyMetadata(this.containerProperties.isOnlyLogRecordMetadata());
 			publishConsumerStartingEvent();
 			this.consumerThread = Thread.currentThread();
 			if (this.consumerSeekAwareListener != null) {
@@ -1248,7 +1249,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void traceAck(ConsumerRecord<K, V> record) {
-			this.logger.trace(() -> "Ack: " + record);
+			this.logger.trace(() -> "Ack: " + ListenerUtils.recordToString(record));
 		}
 
 		private void processAck(ConsumerRecord<K, V> record) {
@@ -1589,7 +1590,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				if (record == null) {
 					continue;
 				}
-				this.logger.trace(() -> "Processing " + record);
+				this.logger.trace(() -> "Processing " + ListenerUtils.recordToString(record));
 				try {
 					TransactionSupport
 							.setTransactionIdSuffix(zombieFenceTxIdSuffix(record.topic(), record.partition()));
@@ -1669,7 +1670,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				if (record == null) {
 					continue;
 				}
-				this.logger.trace(() -> "Processing " + record);
+				this.logger.trace(() -> "Processing " + ListenerUtils.recordToString(record));
 				doInvokeRecordListener(record, null, iterator);
 				if (this.nackSleep >= 0) {
 					handleNack(records, record);
@@ -1683,7 +1684,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (this.earlyRecordInterceptor != null) {
 				next = this.earlyRecordInterceptor.intercept(next);
 				if (next == null && this.logger.isDebugEnabled()) {
-					this.logger.debug("RecordInterceptor returned null, skipping: " + nextArg);
+					this.logger.debug("RecordInterceptor returned null, skipping: "
+						+ ListenerUtils.recordToString(nextArg));
 				}
 			}
 			return next;
@@ -1788,7 +1790,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				record = this.recordInterceptor.intercept(record);
 			}
 			if (record == null) {
-				this.logger.debug(() -> "RecordInterceptor returned null, skipping: " + recordArg);
+				this.logger.debug(() -> "RecordInterceptor returned null, skipping: "
+						+ ListenerUtils.recordToString(recordArg));
 			}
 			else {
 				switch (this.listenerType) {

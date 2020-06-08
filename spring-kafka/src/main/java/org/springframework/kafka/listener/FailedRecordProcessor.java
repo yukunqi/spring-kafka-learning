@@ -183,7 +183,10 @@ public abstract class FailedRecordProcessor {
 				this.failureTracker.getRecoverer().accept(records.get(0), thrownException);
 			}
 			catch (Exception ex) {
-				this.logger.error(ex, () -> "Recovery of record (" + records.get(0) + ") failed");
+				if (records.size() > 0) {
+					this.logger.error(ex, () -> "Recovery of record ("
+							+ ListenerUtils.recordToString(records.get(0)) + ") failed");
+				}
 				return NEVER_SKIP_PREDICATE;
 			}
 			return ALWAYS_SKIP_PREDICATE;
