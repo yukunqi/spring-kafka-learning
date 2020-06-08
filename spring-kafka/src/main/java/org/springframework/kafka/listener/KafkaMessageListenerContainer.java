@@ -692,6 +692,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
 
 		@Override
 		public void run() {
+			ListenerUtils.setLogOnlyMetadata(this.containerProperties.isOnlyLogRecordMetadata());
 			this.consumerThread = Thread.currentThread();
 			if (this.genericListener instanceof ConsumerSeekAware) {
 				((ConsumerSeekAware) this.genericListener).registerSeekCallback(this);
@@ -911,7 +912,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
 			ConsumerRecord<K, V> record = this.acks.poll();
 			while (record != null) {
 				if (this.logger.isTraceEnabled()) {
-					this.logger.trace("Ack: " + record);
+					this.logger.trace("Ack: " + ListenerUtils.recordToString(record));
 				}
 				processAck(record);
 				record = this.acks.poll();
@@ -1172,7 +1173,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
 			while (iterator.hasNext()) {
 				final ConsumerRecord<K, V> record = iterator.next();
 				if (this.logger.isTraceEnabled()) {
-					this.logger.trace("Processing " + record);
+					this.logger.trace("Processing " + ListenerUtils.recordToString(record));
 				}
 				try {
 					TransactionSupport
@@ -1242,7 +1243,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
 			while (iterator.hasNext()) {
 				final ConsumerRecord<K, V> record = iterator.next();
 				if (this.logger.isTraceEnabled()) {
-					this.logger.trace("Processing " + record);
+					this.logger.trace("Processing " + ListenerUtils.recordToString(record));
 				}
 				doInvokeRecordListener(record, null, iterator);
 			}
@@ -1316,7 +1317,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR comment density
 			}
 			if (record == null) {
 				if (this.logger.isDebugEnabled()) {
-					this.logger.debug("RecordInterceptor returned null, skipping: " + recordArg);
+					this.logger.debug("RecordInterceptor returned null, skipping: "
+							+ ListenerUtils.recordToString(recordArg));
 				}
 			}
 			else {

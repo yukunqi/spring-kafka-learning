@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.listener;
 
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+
 import org.springframework.util.Assert;
 
 /**
@@ -30,6 +32,8 @@ public final class ListenerUtils {
 	private ListenerUtils() {
 		super();
 	}
+
+	private static final ThreadLocal<Boolean> LOG_METADATA_ONLY = new ThreadLocal<>();
 
 	public static ListenerType determineListenerType(Object listener) {
 		Assert.notNull(listener, "Listener cannot be null");
@@ -53,6 +57,33 @@ public final class ListenerUtils {
 			throw new IllegalArgumentException("Unsupported listener type: " + listener.getClass().getName());
 		}
 		return listenerType;
+	}
+
+	/**
+	 * Set to true to only log record metadata.
+	 * @param onlyMeta true to only log record metadata.
+	 * @since 2.2.14
+	 * @see #recordToString(ConsumerRecord)
+	 */
+	public static void setLogOnlyMetadata(boolean onlyMeta) {
+		LOG_METADATA_ONLY.set(onlyMeta);
+	}
+
+	/**
+	 * Return the {@link ConsumerRecord} as a String; either {@code toString()} or
+	 * {@code topic-partition@offset}.
+	 * @param record the record.
+	 * @return the rendered record.
+	 * @since 2.2.14
+	 * @see #setLogOnlyMetadata(boolean)
+	 */
+	public static String recordToString(ConsumerRecord<?, ?> record) {
+		if (Boolean.TRUE.equals(LOG_METADATA_ONLY.get())) {
+			return record.topic() + "-" + record.partition() + "@" + record.offset();
+		}
+		else {
+			return record.toString();
+		}
 	}
 
 }

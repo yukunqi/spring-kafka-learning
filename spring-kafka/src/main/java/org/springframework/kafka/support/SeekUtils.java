@@ -27,6 +27,8 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
 
+import org.springframework.kafka.listener.ListenerUtils;
+
 /**
  * Seek utilities.
  *
@@ -68,11 +70,13 @@ public final class SeekUtils {
 					skipped.set(test);
 				}
 				catch (Exception ex) {
-					logger.error("Failed to determine if this record should be recovererd, including in seeks", ex);
+					logger.error("Failed to determine if this record ("
+							+ ListenerUtils.recordToString(record)
+							+ ") should be recovererd, including in seeks", ex);
 					skipped.set(false);
 				}
 				if (skipped.get() && logger.isDebugEnabled()) {
-					logger.debug("Skipping seek of: " + record);
+					logger.debug("Skipping seek of: " + ListenerUtils.recordToString(record));
 				}
 			}
 			if (!recoverable || !first.get() || !skipped.get()) {

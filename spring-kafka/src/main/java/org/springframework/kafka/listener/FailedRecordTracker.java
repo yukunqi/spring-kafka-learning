@@ -48,7 +48,8 @@ class FailedRecordTracker {
 
 	FailedRecordTracker(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, int maxFailures, Log logger) {
 		if (recoverer == null) {
-			this.recoverer = (r, t) -> logger.error("Max failures (" + maxFailures + ") reached for: " + r, t);
+			this.recoverer = (r, t) -> logger.error("Max failures (" + maxFailures + ") reached for: "
+					+ ListenerUtils.recordToString(r), t);
 		}
 		else {
 			this.recoverer = recoverer;

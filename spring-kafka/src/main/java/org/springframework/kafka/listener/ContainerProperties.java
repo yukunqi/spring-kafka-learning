@@ -222,6 +222,8 @@ public class ContainerProperties {
 
 	private Properties consumerProperties;
 
+	private boolean onlyLogRecordMetadata;
+
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
 	 * @param topics the topics.
@@ -644,6 +646,20 @@ public class ContainerProperties {
 	 */
 	public void setConsumerProperties(Properties consumerProperties) {
 		this.consumerProperties = consumerProperties;
+	}
+
+	public boolean isOnlyLogRecordMetadata() {
+		return this.onlyLogRecordMetadata;
+	}
+
+	/**
+	 * Set to true to only log {@code topic-partition@offset} in log messages instead
+	 * of {@code record.toString()}.
+	 * @param onlyLogRecordMetadata true to only log the topic/parrtition/offset.
+	 * @since 2.2.14
+	 */
+	public void setOnlyLogRecordMetadata(boolean onlyLogRecordMetadata) {
+		this.onlyLogRecordMetadata = onlyLogRecordMetadata;
 	}
 
 	@Override
