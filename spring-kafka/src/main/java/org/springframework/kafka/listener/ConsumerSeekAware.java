@@ -60,8 +60,13 @@ public interface ConsumerSeekAware {
 	interface ConsumerSeekCallback {
 
 		/**
-		 * Queue a seek operation to the consumer. The seek will occur after any pending
-		 * offset commits. The consumer must be currently assigned the specified partition.
+		 * Perform a seek operation. When called from
+		 * {@link ConsumerSeekAware#onPartitionsAssigned(Map, ConsumerSeekCallback)} or
+		 * from {@link ConsumerSeekAware#onIdleContainer(Map, ConsumerSeekCallback)}
+		 * perform the seek immediately on the consumer. When called from elsewhere,
+		 * queue the seek operation to the consumer. The queued seek will occur after any
+		 * pending offset commits. The consumer must be currently assigned the specified
+		 * partition.
 		 * @param topic the topic.
 		 * @param partition the partition.
 		 * @param offset the offset (absolute).
@@ -69,7 +74,11 @@ public interface ConsumerSeekAware {
 		void seek(String topic, int partition, long offset);
 
 		/**
-		 * Queue a seekToBeginning operation to the consumer. The seek will occur after
+		 * Perform a seek to beginning operation. When called from
+		 * {@link ConsumerSeekAware#onPartitionsAssigned(Map, ConsumerSeekCallback)} or
+		 * from {@link ConsumerSeekAware#onIdleContainer(Map, ConsumerSeekCallback)}
+		 * perform the seek immediately on the consumer. When called from elsewhere, queue
+		 * the seek operation to the consumer. The queued seek will occur after
 		 * any pending offset commits. The consumer must be currently assigned the
 		 * specified partition.
 		 * @param topic the topic.
@@ -78,8 +87,13 @@ public interface ConsumerSeekAware {
 		void seekToBeginning(String topic, int partition);
 
 		/**
-		 * Queue a seekToEnd operation to the consumer. The seek will occur after any pending
-		 * offset commits. The consumer must be currently assigned the specified partition.
+		 * Perform a seek to end operation. When called from
+		 * {@link ConsumerSeekAware#onPartitionsAssigned(Map, ConsumerSeekCallback)} or
+		 * from {@link ConsumerSeekAware#onIdleContainer(Map, ConsumerSeekCallback)}
+		 * perform the seek immediately on the consumer. When called from elsewhere, queue
+		 * the seek operation to the consumer. The queued seek will occur after any
+		 * pending offset commits. The consumer must be currently assigned the specified
+		 * partition.
 		 * @param topic the topic.
 		 * @param partition the partition.
 		 */
