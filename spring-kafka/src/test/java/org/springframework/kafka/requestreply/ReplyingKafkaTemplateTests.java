@@ -105,6 +105,8 @@ import org.springframework.util.concurrent.SettableListenableFuture;
 		ReplyingKafkaTemplateTests.D_REPLY, ReplyingKafkaTemplateTests.D_REQUEST,
 		ReplyingKafkaTemplateTests.E_REPLY, ReplyingKafkaTemplateTests.E_REQUEST,
 		ReplyingKafkaTemplateTests.F_REPLY, ReplyingKafkaTemplateTests.F_REQUEST,
+		ReplyingKafkaTemplateTests.G_REPLY, ReplyingKafkaTemplateTests.G_REQUEST,
+		ReplyingKafkaTemplateTests.I_REPLY, ReplyingKafkaTemplateTests.I_REQUEST,
 		ReplyingKafkaTemplateTests.J_REPLY, ReplyingKafkaTemplateTests.J_REQUEST,
 		ReplyingKafkaTemplateTests.K_REPLY, ReplyingKafkaTemplateTests.K_REQUEST })
 public class ReplyingKafkaTemplateTests {
@@ -136,6 +138,10 @@ public class ReplyingKafkaTemplateTests {
 	public static final String G_REPLY = "gReply";
 
 	public static final String G_REQUEST = "gRequest";
+
+	public static final String I_REPLY = "iReply";
+
+	public static final String I_REQUEST = "iRequest";
 
 	public static final String J_REPLY = "jReply";
 
@@ -235,6 +241,24 @@ public class ReplyingKafkaTemplateTests {
 			template.setDefaultReplyTimeout(Duration.ofSeconds(30));
 			ProducerRecord<Integer, String> record = new ProducerRecord<>(C_REQUEST, "foo");
 			record.headers().add(new RecordHeader(KafkaHeaders.REPLY_TOPIC, C_REPLY.getBytes()));
+			RequestReplyFuture<Integer, String, String> future = template.sendAndReceive(record);
+			future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
+			ConsumerRecord<Integer, String> consumerRecord = future.get(30, TimeUnit.SECONDS);
+			assertThat(consumerRecord.value()).isEqualTo("FOO");
+		}
+		finally {
+			template.stop();
+			template.destroy();
+		}
+	}
+
+	@Test
+	public void testHandlerReturn() throws Exception {
+		ReplyingKafkaTemplate<Integer, String, String> template = createTemplate(I_REPLY);
+		try {
+			template.setDefaultReplyTimeout(Duration.ofSeconds(30));
+			ProducerRecord<Integer, String> record = new ProducerRecord<>(I_REQUEST, "foo");
+			record.headers().add(new RecordHeader(KafkaHeaders.REPLY_TOPIC, I_REPLY.getBytes()));
 			RequestReplyFuture<Integer, String, String> future = template.sendAndReceive(record);
 			future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
 			ConsumerRecord<Integer, String> consumerRecord = future.get(30, TimeUnit.SECONDS);
@@ -633,6 +657,11 @@ public class ReplyingKafkaTemplateTests {
 			return new MultiMessageReturn();
 		}
 
+		@Bean
+		public HandlerReturn handlerReturn() {
+			return new HandlerReturn();
+		}
+
 		@KafkaListener(id = "def1", topics = { D_REQUEST, E_REQUEST, F_REQUEST })
 		@SendTo  // default REPLY_TOPIC header
 		public String dListener1(String in) {
@@ -685,6 +714,7 @@ public class ReplyingKafkaTemplateTests {
 
 	}
 
+
 	public static class BadDeser implements Deserializer<Object> {
 
 		@Override
@@ -695,6 +725,17 @@ public class ReplyingKafkaTemplateTests {
 		@Override
 		public Object deserialize(String topic, Headers headers, byte[] data) {
 			throw new IllegalStateException("test reply deserialization failure");
+		}
+
+	}
+
+	@KafkaListener(topics = I_REQUEST, groupId = I_REQUEST)
+	public static class HandlerReturn {
+
+		@KafkaHandler
+		@SendTo
+		public String listen1(String in) {
+			return in.toUpperCase();
 		}
 
 	}
