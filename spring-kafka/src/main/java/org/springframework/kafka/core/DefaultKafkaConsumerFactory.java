@@ -28,6 +28,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.Deserializer;
 
+import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.lang.Nullable;
 import org.springframework.util.StringUtils;
@@ -57,7 +58,7 @@ import org.springframework.util.StringUtils;
  * @author Artem Bilan
  * @author Chris Gilbert
  */
-public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> {
+public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V>, BeanNameAware {
 
 	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(DefaultKafkaConsumerFactory.class));
 
@@ -102,6 +103,10 @@ public class DefaultKafkaConsumerFactory<K, V> implements ConsumerFactory<K, V> 
 		this.configs = new HashMap<>(configs);
 		this.keyDeserializerSupplier = keyDeserializerSupplier == null ? () -> null : keyDeserializerSupplier;
 		this.valueDeserializerSupplier = valueDeserializerSupplier == null ? () -> null : valueDeserializerSupplier;
+	}
+
+	@Override
+	public void setBeanName(String name) {
 	}
 
 	public void setKeyDeserializer(@Nullable Deserializer<K> keyDeserializer) {

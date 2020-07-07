@@ -50,6 +50,7 @@ import org.apache.kafka.common.errors.TimeoutException;
 import org.apache.kafka.common.serialization.Serializer;
 
 import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
@@ -107,7 +108,7 @@ import org.springframework.util.StringUtils;
  * @author Chris Gilbert
  */
 public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>, ApplicationContextAware,
-		ApplicationListener<ContextStoppedEvent>, DisposableBean {
+			BeanNameAware, ApplicationListener<ContextStoppedEvent>, DisposableBean {
 
 	/**
 	 * The default close timeout duration as 30 seconds.
@@ -207,6 +208,9 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 	@Override
 	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
 		this.applicationContext = applicationContext;
+	}
+	@Override
+	public void setBeanName(String name) {
 	}
 
 	public void setKeySerializer(@Nullable Serializer<K> keySerializer) {
