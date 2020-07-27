@@ -48,7 +48,6 @@ import org.springframework.kafka.listener.ListenerUtils;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.serializer.DeserializationException;
-import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer2;
 import org.springframework.lang.Nullable;
 import org.springframework.scheduling.TaskScheduler;
@@ -465,8 +464,8 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	 * deserialization; null otherwise. If you need to determine whether it was the key or
 	 * value, call
 	 * {@link ListenerUtils#getExceptionFromHeader(ConsumerRecord, String, LogAccessor)}
-	 * with {@link ErrorHandlingDeserializer#KEY_DESERIALIZER_EXCEPTION_HEADER} and
-	 * {@link ErrorHandlingDeserializer#VALUE_DESERIALIZER_EXCEPTION_HEADER} instead.
+	 * with {@link ErrorHandlingDeserializer2#KEY_DESERIALIZER_EXCEPTION_HEADER} and
+	 * {@link ErrorHandlingDeserializer2#VALUE_DESERIALIZER_EXCEPTION_HEADER} instead.
 	 * @param record the record.
 	 * @param logger a {@link LogAccessor}.
 	 * @return the {@link DeserializationException} or {@code null}.
