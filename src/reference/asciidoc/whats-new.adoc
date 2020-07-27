@@ -77,6 +77,10 @@ See <<container-props>> for more information.
 You can now suppress logging entire `ConsumerRecord` s in error, debug logs etc.
 See `onlyLogRecordMetadata` in <<container-props>>.
 
+Various error handlers (that extend `FailedRecordProcessor`) and the `DefaultAfterRollbackProcessor` now reset the `BackOff` if recovery fails.
+See <<seek-to-current>>, <<recovering-batch-eh>>, <<dead-letters>> and <<after-rollback>> for more information.
+
+
 [[x25-template]]
 ==== KafkaTemplate Changes
 
