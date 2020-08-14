@@ -120,7 +120,8 @@ public class EmbeddedKafkaCondition implements ExecutionCondition, AfterAllCallb
 		if (embedded.count() > 1 && ports.length == 1 && ports[0] == 0) {
 			ports = new int[embedded.count()];
 		}
-		broker = new EmbeddedKafkaBroker(embedded.count(), embedded.controlledShutdown(), embedded.topics())
+		broker = new EmbeddedKafkaBroker(embedded.count(), embedded.controlledShutdown(),
+						embedded.partitions(), embedded.topics())
 				.zkPort(embedded.zookeeperPort())
 				.kafkaPorts(ports)
 				.zkConnectionTimeout(embedded.zkConnectionTimeout())
