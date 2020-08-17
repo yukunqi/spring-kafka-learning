@@ -680,8 +680,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.logger.info(this.toString());
 			}
 			Map<String, Object> props = KafkaMessageListenerContainer.this.consumerFactory.getConfigurationProperties();
-			this.checkNullKeyForExceptions = checkDeserializer(findDeserializerClass(props, false));
-			this.checkNullValueForExceptions = checkDeserializer(findDeserializerClass(props, true));
+			this.checkNullKeyForExceptions = checkDeserializer(findDeserializerClass(props, consumerProperties, false));
+			this.checkNullValueForExceptions = checkDeserializer(findDeserializerClass(props, consumerProperties, true));
 			this.syncCommitTimeout = determineSyncCommitTimeout();
 			if (this.containerProperties.getSyncCommitTimeout() == null) {
 				// update the property so we can use it directly from code elsewhere
@@ -846,14 +846,21 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private Object findDeserializerClass(Map<String, Object> props, boolean isValue) {
+		@Nullable
+		private Object findDeserializerClass(Map<String, Object> props, Properties consumerOverrides, boolean isValue) {
 			Object configuredDeserializer = isValue
 					? KafkaMessageListenerContainer.this.consumerFactory.getValueDeserializer()
 					: KafkaMessageListenerContainer.this.consumerFactory.getKeyDeserializer();
 			if (configuredDeserializer == null) {
-				return props.get(isValue
+				Object deser = consumerOverrides.get(isValue
 						? ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG
 						: ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG);
+				if (deser == null) {
+					deser = props.get(isValue
+							? ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG
+							: ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG);
+				}
+				return deser;
 			}
 			else {
 				return configuredDeserializer.getClass();
@@ -885,10 +892,23 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private boolean checkDeserializer(Object deser) {
-			return deser instanceof Class
-					? ErrorHandlingDeserializer2.class.isAssignableFrom((Class<?>) deser)
-					: deser instanceof String && deser.equals(ErrorHandlingDeserializer2.class.getName());
+		private boolean checkDeserializer(@Nullable Object deser) {
+			Class<?> deserializer = null;
+			if (deser instanceof Class) {
+				deserializer = (Class<?>) deser;
+			}
+			else if (deser instanceof String) {
+				try {
+					deserializer = ClassUtils.forName((String) deser, getApplicationContext().getClassLoader());
+				}
+				catch (ClassNotFoundException | LinkageError e) {
+					throw new IllegalStateException(e);
+				}
+			}
+			else if (deser != null) {
+				throw new IllegalStateException("Deserializer must be a class or class name, not a " + deser.getClass());
+			}
+			return deserializer == null ? false : ErrorHandlingDeserializer2.class.isAssignableFrom(deserializer);
 		}
 
 		protected void checkConsumer() {
