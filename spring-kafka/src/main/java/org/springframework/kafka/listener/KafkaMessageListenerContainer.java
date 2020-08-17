@@ -141,6 +141,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 	private static final boolean MICROMETER_PRESENT = ClassUtils.isPresent(
 			"io.micrometer.core.instrument.MeterRegistry", KafkaMessageListenerContainer.class.getClassLoader());
 
+	private static final Map<String, Object> CONSUMER_CONFIG_DEFAULTS = ConsumerConfig.configDef().defaultValues();
+
 	private final AbstractMessageListenerContainer<K, V> thisOrParentContainer;
 
 	private final TopicPartitionOffset[] topicPartitions;
@@ -468,8 +470,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 	private final class ListenerConsumer implements SchedulingAwareRunnable, ConsumerSeekCallback {
 
-		private static final int SIXTY = 60;
-
 		private static final String UNCHECKED = "unchecked";
 
 		private static final String RAWTYPES = "rawtypes";
@@ -615,7 +615,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		@SuppressWarnings(UNCHECKED)
 		ListenerConsumer(GenericMessageListener<?> listener, ListenerType listenerType) {
-			Properties consumerProperties = new Properties(this.containerProperties.getKafkaConsumerProperties());
+			Properties consumerProperties = propertiesFromProperties();
 			checkGroupInstance(consumerProperties, KafkaMessageListenerContainer.this.consumerFactory);
 			this.autoCommit = determineAutoCommit(consumerProperties);
 			this.consumer =
@@ -696,6 +696,20 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.micrometerHolder = obtainMicrometerHolder();
 		}
 
+		private Properties propertiesFromProperties() {
+			Properties propertyOverrides = this.containerProperties.getKafkaConsumerProperties();
+			Properties props = new Properties();
+			props.putAll(propertyOverrides);
+			Set<String> stringPropertyNames = propertyOverrides.stringPropertyNames();
+			// User might have provided properties as defaults
+			stringPropertyNames.forEach((name) -> {
+				if (!props.contains(name)) {
+					props.setProperty(name, propertyOverrides.getProperty(name));
+				}
+			});
+			return props;
+		}
+
 		private void checkGroupInstance(Properties properties, ConsumerFactory<K, V> consumerFactory) {
 			String groupInstance = properties.getProperty(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG);
 			if (!StringUtils.hasText(groupInstance)) {
@@ -755,9 +769,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					this.logger.warn(() -> "Unexpected type: " + timeoutToLog.getClass().getName()
 							+ " in property '"
 							+ ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG
-							+ "'; defaulting to 30 seconds.");
+							+ "'; using Kafka default.");
 				}
-				return Duration.ofSeconds(SIXTY / 2).toMillis(); // Default 'max.poll.interval.ms' is 30 seconds
+				return (int) CONSUMER_CONFIG_DEFAULTS.get(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG);
 			}
 		}
 
@@ -824,12 +838,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						this.logger.warn(() -> "Unexpected type: " + timeoutToLog.getClass().getName()
 							+ " in property '"
 							+ ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG
-							+ "'; defaulting to 60 seconds for sync commit timeouts");
+							+ "'; defaulting to Kafka default for sync commit timeouts");
 					}
-					return Duration.ofSeconds(SIXTY);
+					return Duration
+							.ofMillis((int) CONSUMER_CONFIG_DEFAULTS.get(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG));
 				}
 			}
-
 		}
 
 		private Object findDeserializerClass(Map<String, Object> props, boolean isValue) {
