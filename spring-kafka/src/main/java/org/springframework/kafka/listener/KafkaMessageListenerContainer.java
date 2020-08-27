@@ -1059,6 +1059,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			pauseConsumerIfNecessary();
 			this.lastPoll = System.currentTimeMillis();
+			if (!isRunning()) {
+				return;
+			}
 			this.polling.set(true);
 			ConsumerRecords<K, V> records = doPoll();
 			if (!this.polling.compareAndSet(true, false) && records != null) {
