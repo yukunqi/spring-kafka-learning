@@ -106,7 +106,8 @@ import org.springframework.util.concurrent.SettableListenableFuture;
 		ReplyingKafkaTemplateTests.D_REPLY, ReplyingKafkaTemplateTests.D_REQUEST,
 		ReplyingKafkaTemplateTests.E_REPLY, ReplyingKafkaTemplateTests.E_REQUEST,
 		ReplyingKafkaTemplateTests.F_REPLY, ReplyingKafkaTemplateTests.F_REQUEST,
-		ReplyingKafkaTemplateTests.J_REPLY, ReplyingKafkaTemplateTests.J_REQUEST })
+		ReplyingKafkaTemplateTests.J_REPLY, ReplyingKafkaTemplateTests.J_REQUEST,
+		ReplyingKafkaTemplateTests.K_REPLY, ReplyingKafkaTemplateTests.K_REQUEST })
 public class ReplyingKafkaTemplateTests {
 
 	public static final String A_REPLY = "aReply";
@@ -140,6 +141,10 @@ public class ReplyingKafkaTemplateTests {
 	public static final String J_REPLY = "jReply";
 
 	public static final String J_REQUEST = "jRequest";
+
+	public static final String K_REPLY = "kReply";
+
+	public static final String K_REQUEST = "kRequest";
 
 	@Autowired
 	private EmbeddedKafkaBroker embeddedKafka;
@@ -180,6 +185,24 @@ public class ReplyingKafkaTemplateTests {
 			assertThatExceptionOfType(ExecutionException.class)
 					.isThrownBy(() -> template.sendAndReceive(record2, Duration.ZERO).get(10, TimeUnit.SECONDS))
 					.withCauseExactlyInstanceOf(KafkaReplyTimeoutException.class);
+		}
+		finally {
+			template.stop();
+			template.destroy();
+		}
+	}
+
+	@Test
+	void testConsumerRecord() throws Exception {
+		ReplyingKafkaTemplate<Integer, String, String> template = createTemplate(K_REPLY);
+		try {
+			template.setDefaultReplyTimeout(Duration.ofSeconds(30));
+			Headers headers = new RecordHeaders();
+			ProducerRecord<Integer, String> record = new ProducerRecord<>(K_REQUEST, null, null, null, "foo", headers);
+			RequestReplyFuture<Integer, String, String> future = template.sendAndReceive(record);
+			future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
+			ConsumerRecord<Integer, String> consumerRecord = future.get(30, TimeUnit.SECONDS);
+			assertThat(consumerRecord.value()).isEqualTo("FOO");
 		}
 		finally {
 			template.stop();
@@ -668,6 +691,12 @@ public class ReplyingKafkaTemplateTests {
 		@SendTo  // default REPLY_TOPIC header
 		public String handleJ(String in) throws InterruptedException {
 			return in.toUpperCase();
+		}
+		@KafkaListener(id = K_REQUEST, topics = { K_REQUEST })
+
+		@SendTo
+		public String handleK(ConsumerRecord<String, String> in) {
+			return in.value().toUpperCase();
 		}
 
 	}
