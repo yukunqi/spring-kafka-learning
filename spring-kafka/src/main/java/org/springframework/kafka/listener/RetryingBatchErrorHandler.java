@@ -34,9 +34,9 @@ import org.springframework.util.backoff.FixedBackOff;
  * A batch error handler that invokes the listener according to the supplied
  * {@link BackOff}. The consumer is paused/polled/resumed before each retry in order to
  * avoid a rebalance. If/when retries are exhausted, the provided
- * {@link ConsumerRecordRecoverer} is invoked. If the recoverer throws an exception, or
- * the thread is interrupted while sleeping, seeks are performed so that the batch will be
- * redelivered on the next poll.
+ * {@link ConsumerRecordRecoverer} is invoked for each record in the batch. If the
+ * recoverer throws an exception, or the thread is interrupted while sleeping, seeks are
+ * performed so that the batch will be redelivered on the next poll.
  *
  * @author Gary Russell
  * @since 2.3.7
