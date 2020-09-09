@@ -4772,7 +4772,7 @@ As an alternative to the <<retrying-batch-eh>>, version 2.5 introduced the `Reco
 This is now the default error handler for batch listeners.
 The default configuration retries 9 times (10 delivery attempts) with no back off between deliveries.
 
-This error handler works in conjunction with the listener throwing a `BatchListenerFailedException` providing the index in the batch where the failure occurred.
+This error handler works in conjunction with the listener throwing a `BatchListenerFailedException` providing the index in the batch where the failure occurred (or the failed record itself).
 If the listener throws a different exception, or the index is out of range, the error handler falls back to invoking a `SeekToCurrentBatchErrorHandler` and the whole batch is retried, with no recovery available.
 The sequence of events is:
 
