@@ -26,7 +26,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * conjunction with Kafka
  * {@code StringSerializer/(StringDeserializer, BytesDeserializer, or ByteArrayDeserializer)}.
  * Consider using the ByteArrayJsonMessageConverter instead to avoid unnecessary
- * {@codee String->byte[]} conversion.
+ * {@code String->byte[]} conversion.
  *
  * @author Gary Russell
  * @author Artem Bilan
