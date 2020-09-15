@@ -2290,7 +2290,7 @@ The default executor creates threads named `<name>-C-n`; with the `KafkaMessageL
 |See <<delivery-header>>.
 
 |eosMode
-|`ALPHA`
+|`BETA`
 |Exactly Once Semantics mode; see <<exactly-once>>.
 
 |groupId
