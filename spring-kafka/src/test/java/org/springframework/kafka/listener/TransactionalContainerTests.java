@@ -44,6 +44,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -82,6 +83,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.core.ProducerFactoryUtils;
 import org.springframework.kafka.event.ConsumerStoppedEvent;
+import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
 import org.springframework.kafka.listener.ContainerProperties.EOSMode;
@@ -499,7 +501,9 @@ public class TransactionalContainerTests {
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic1, topic2);
 		containerProps.setGroupId("group");
-		containerProps.setPollTimeout(10_000);
+		containerProps.setPollTimeout(500L);
+		containerProps.setIdleEventInterval(500L);
+		containerProps.setFixTxOffsets(true);
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		senderProps.put(ProducerConfig.RETRIES_CONFIG, 1);
@@ -533,6 +537,17 @@ public class TransactionalContainerTests {
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.setBeanName("testRollbackRecord");
+		AtomicReference<Map<TopicPartition, OffsetAndMetadata>> committed = new AtomicReference<>();
+		CountDownLatch idleLatch = new CountDownLatch(1);
+		container.setApplicationEventPublisher(event -> {
+			if (event instanceof ListenerContainerIdleEvent) {
+				Consumer<?, ?> consumer = ((ListenerContainerIdleEvent) event).getConsumer();
+				committed.set(consumer.committed(Set.of(new TopicPartition(topic1, 0), new TopicPartition(topic1, 1))));
+				if (committed.get().get(new TopicPartition(topic1, 0)) != null) {
+					idleLatch.countDown();
+				}
+			}
+		});
 		container.start();
 
 		template.setDefaultTopic(topic1);
@@ -541,6 +556,10 @@ public class TransactionalContainerTests {
 			return null;
 		});
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(idleLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		TopicPartition partition0 = new TopicPartition(topic1, 0);
+		assertThat(committed.get().get(partition0).offset()).isEqualTo(2L);
+		assertThat(committed.get().get(new TopicPartition(topic1, 1))).isNull();
 		container.stop();
 		Consumer<Integer, String> consumer = cf.createConsumer();
 		final CountDownLatch subsLatch = new CountDownLatch(1);
@@ -564,8 +583,7 @@ public class TransactionalContainerTests {
 		}
 		assertThat(subsLatch.await(1, TimeUnit.MILLISECONDS)).isTrue();
 		assertThat(records.count()).isEqualTo(0);
-		// depending on timing, the position might include the offset representing the commit in the log
-		assertThat(consumer.position(new TopicPartition(topic1, 0))).isGreaterThanOrEqualTo(1L);
+		assertThat(consumer.position(partition0)).isEqualTo(2L);
 		assertThat(transactionalId.get()).startsWith("rr.group.txTopic");
 		assertThat(KafkaTestUtils.getPropertyValue(pf, "consumerProducers", Map.class)).isEmpty();
 		logger.info("Stop testRollbackRecord");
