@@ -42,6 +42,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -542,7 +543,10 @@ public class TransactionalContainerTests {
 		container.setApplicationEventPublisher(event -> {
 			if (event instanceof ListenerContainerIdleEvent) {
 				Consumer<?, ?> consumer = ((ListenerContainerIdleEvent) event).getConsumer();
-				committed.set(consumer.committed(Set.of(new TopicPartition(topic1, 0), new TopicPartition(topic1, 1))));
+				Set<TopicPartition> parts = new HashSet<>();
+				parts.add(new TopicPartition(topic1, 0));
+				parts.add(new TopicPartition(topic1, 1));
+				committed.set(consumer.committed(parts));
 				if (committed.get().get(new TopicPartition(topic1, 0)) != null) {
 					idleLatch.countDown();
 				}
