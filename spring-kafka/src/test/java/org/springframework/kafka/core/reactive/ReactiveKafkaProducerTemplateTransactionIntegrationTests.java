@@ -227,7 +227,8 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 							.skip(expectedTotalRecordsCount - 1).findFirst();
 					assertThat(lastRecord.isPresent()).isEqualTo(true);
 					lastRecord.ifPresent(last -> assertThat(last.value())
-							.endsWith(String.valueOf(recordsCountInGroup * (int) Math.pow(10, transactionGroupsCount))));
+							.endsWith(
+									String.valueOf(recordsCountInGroup * (int) Math.pow(10, transactionGroupsCount))));
 				})
 				.expectComplete()
 				.verify(DEFAULT_VERIFY_TIMEOUT);
@@ -300,8 +301,9 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 		StepVerifier.create(reactiveKafkaConsumerTemplate
 				.receiveExactlyOnce(reactiveKafkaProducerTemplate.transactionManager())
 				.concatMap(consumerRecordFlux -> sendAndCommit(consumerRecordFlux, true))
-				.onErrorResume(error -> reactiveKafkaProducerTemplate.transactionManager().abort().then(Mono.error(error)))
-		)
+				.onErrorResume(error -> reactiveKafkaProducerTemplate.transactionManager()
+						.abort()
+						.then(Mono.error(error))))
 				.expectErrorMatches(throwable -> throwable instanceof KafkaException &&
 						throwable.getMessage().equals("TransactionalId reactive.transaction: Invalid transition " +
 								"attempted from state READY to state ABORTING_TRANSACTION"))
@@ -328,8 +330,9 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 		StepVerifier.create(reactiveKafkaConsumerTemplate
 				.receiveExactlyOnce(reactiveKafkaProducerTemplate.transactionManager())
 				.concatMap(consumerRecordFlux -> sendAndCommit(consumerRecordFlux, false))
-				.onErrorResume(error -> reactiveKafkaProducerTemplate.transactionManager().abort().then(Mono.error(error)))
-		)
+				.onErrorResume(error -> reactiveKafkaProducerTemplate.transactionManager()
+						.abort()
+						.then(Mono.error(error))))
 				.assertNext(senderResult -> {
 					assertThat(senderResult.correlationMetadata().intValue()).isEqualTo(DEFAULT_KEY);
 					assertThat(senderResult.recordMetadata().offset()).isGreaterThan(0);
@@ -347,7 +350,9 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 				.verify(DEFAULT_VERIFY_TIMEOUT);
 	}
 
-	private Flux<SenderResult<Integer>> sendAndCommit(Flux<ConsumerRecord<Integer, String>> fluxConsumerRecord, boolean failCommit) {
+	private Flux<SenderResult<Integer>> sendAndCommit(Flux<ConsumerRecord<Integer, String>> fluxConsumerRecord,
+			boolean failCommit) {
+
 		return reactiveKafkaProducerTemplate
 				.send(fluxConsumerRecord.map(this::toSenderRecord)
 						.concatWith(failCommit ?
@@ -360,7 +365,8 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 	}
 
 	private SenderRecord<Integer, String, Integer> toSenderRecord(ConsumerRecord<Integer, String> record) {
-		return SenderRecord.create(REACTIVE_INT_KEY_TOPIC, record.partition(), null, record.key(), record.value() + "xyz", record.key());
+		return SenderRecord.create(REACTIVE_INT_KEY_TOPIC, record.partition(), null, record.key(),
+				record.value() + "xyz", record.key());
 	}
 
 }
