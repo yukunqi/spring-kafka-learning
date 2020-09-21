@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2019 the original author or authors.
+ * Copyright 2015-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@ package org.springframework.kafka.support;
 
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+
+import org.springframework.lang.Nullable;
 
 /**
  * Listener for handling outbound Kafka messages. Exactly one of its methods will be invoked, depending on whether
@@ -49,8 +51,28 @@ public interface ProducerListener<K, V> {
 	 * Invoked after an attempt to send a message has failed.
 	 * @param producerRecord the failed record
 	 * @param exception the exception thrown
+	 * @deprecated in favor of {@link #onError(ProducerRecord, RecordMetadata, Exception)}.
 	 */
+	@Deprecated
 	default void onError(ProducerRecord<K, V> producerRecord, Exception exception) {
+	}
+
+	/**
+	 * Invoked after an attempt to send a message has failed.
+	 * @param producerRecord the failed record
+	 * @param recordMetadata The metadata for the record that was sent (i.e. the partition
+	 * and offset). If an error occurred, metadata will contain only valid topic and maybe
+	 * the partition. If the partition is not provided in the ProducerRecord and an error
+	 * occurs before partition is assigned, then the partition will be set to
+	 * RecordMetadata.UNKNOWN_PARTITION.
+	 * @param exception the exception thrown
+	 * @since 2.6.2
+	 */
+	@SuppressWarnings("deprecation")
+	default void onError(ProducerRecord<K, V> producerRecord, @Nullable RecordMetadata recordMetadata,
+			Exception exception) {
+
+		onError(producerRecord, exception);
 	}
 
 }
