@@ -196,6 +196,15 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	}
 
 	/**
+	 * Return the configured handler factory.
+	 * @return the factory.
+	 * @since 2.5.7
+	 */
+	public MessageHandlerMethodFactory getMessageHandlerMethodFactory() {
+		return this.messageHandlerMethodFactory;
+	}
+
+	/**
 	 * Making a {@link BeanFactory} available is optional; if not set,
 	 * {@link KafkaListenerConfigurer} beans won't get autodetected and an
 	 * {@link #setEndpointRegistry endpoint registry} has to be explicitly configured.
