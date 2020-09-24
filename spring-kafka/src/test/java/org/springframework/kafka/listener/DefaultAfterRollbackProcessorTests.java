@@ -17,10 +17,14 @@
 package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -37,6 +41,9 @@ import org.mockito.InOrder;
 
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.serializer.DeserializationException;
+import org.springframework.util.backoff.BackOff;
+import org.springframework.util.backoff.BackOffExecution;
+import org.springframework.util.backoff.FixedBackOff;
 
 /**
  * @author Gary Russell
@@ -46,7 +53,7 @@ import org.springframework.kafka.support.serializer.DeserializationException;
 public class DefaultAfterRollbackProcessorTests {
 
 	@Test
-	public void testClassifier() {
+	void testClassifier() {
 		AtomicReference<ConsumerRecord<?, ?>> recovered = new AtomicReference<>();
 		AtomicBoolean recovererShouldFail = new AtomicBoolean(false);
 		DefaultAfterRollbackProcessor<String, String> processor = new DefaultAfterRollbackProcessor<>((r, t) -> {
@@ -84,6 +91,35 @@ public class DefaultAfterRollbackProcessorTests {
 		inOrder.verify(consumer).seek(new TopicPartition("foo", 0), 0L); // recovery failed
 		inOrder.verify(consumer, times(2)).seek(new TopicPartition("foo", 1), 1L);
 		inOrder.verifyNoMoreInteractions();
+	}
+
+	@Test
+	void testBatchBackOff() {
+		AtomicReference<ConsumerRecord<?, ?>> recovered = new AtomicReference<>();
+		BackOff backOff = spy(new FixedBackOff(0, 1));
+		AtomicReference<BackOffExecution> execution = new AtomicReference<>();
+		willAnswer(inv -> {
+			BackOffExecution exec = spy((BackOffExecution) inv.callRealMethod());
+			execution.set(exec);
+			return exec;
+		}).given(backOff).start();
+		ConsumerRecordRecoverer recoverer = mock(ConsumerRecordRecoverer.class);
+		DefaultAfterRollbackProcessor<String, String> processor = new DefaultAfterRollbackProcessor<>(recoverer,
+				backOff);
+		ConsumerRecord<String, String> record1 = new ConsumerRecord<>("foo", 0, 0L, "foo", "bar");
+		ConsumerRecord<String, String> record2 = new ConsumerRecord<>("foo", 1, 1L, "foo", "bar");
+		List<ConsumerRecord<String, String>> records = Arrays.asList(record1, record2);
+		IllegalStateException illegalState = new IllegalStateException();
+		@SuppressWarnings("unchecked")
+		Consumer<String, String> consumer = mock(Consumer.class);
+		processor.process(records, consumer, illegalState, false);
+		processor.process(records, consumer, illegalState, false);
+		verify(backOff, times(2)).start();
+		verify(execution.get(), times(2)).nextBackOff();
+		processor.clearThreadState();
+		processor.process(records, consumer, illegalState, false);
+		verify(backOff, times(3)).start();
+		verify(recoverer, never()).accept(any(), any());
 	}
 
 }

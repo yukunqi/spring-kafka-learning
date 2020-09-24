@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 the original author or authors.
+ * Copyright 2019-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -71,7 +71,7 @@ public abstract class FailedRecordProcessor {
 		this.classifier = configureDefaultClassifier();
 	}
 
-	private static FixedBackOff maxFailuresToBackOff(int maxFailures) {
+	protected static FixedBackOff maxFailuresToBackOff(int maxFailures) {
 		if (maxFailures < 0) {
 			return new FixedBackOff(0L, FixedBackOff.UNLIMITED_ATTEMPTS);
 		}
