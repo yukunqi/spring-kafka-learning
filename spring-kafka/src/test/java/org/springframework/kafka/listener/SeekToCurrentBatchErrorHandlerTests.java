@@ -26,6 +26,8 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 
 import java.time.Duration;
 import java.util.Arrays;
@@ -65,6 +67,7 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+import org.springframework.util.backoff.BackOff;
 import org.springframework.util.backoff.FixedBackOff;
 
 /**
@@ -133,10 +136,17 @@ public class SeekToCurrentBatchErrorHandlerTests {
 		long t1 = System.currentTimeMillis();
 		for (int i = 0; i < 10; i++) {
 			assertThatThrownBy(() -> eh.handle(ex, crs, mock(Consumer.class), mock(MessageListenerContainer.class)))
-				.isInstanceOf(KafkaException.class)
-				.hasCause(ex);
+					.isInstanceOf(KafkaException.class)
+					.hasCause(ex);
 		}
 		assertThat(System.currentTimeMillis() - t1).isGreaterThanOrEqualTo(100L);
+		eh.clearThreadState();
+		BackOff backOff = spy(new FixedBackOff(0L, 0L));
+		eh.setBackOff(backOff);
+		assertThatThrownBy(() -> eh.handle(ex, crs, mock(Consumer.class), mock(MessageListenerContainer.class)))
+				.isInstanceOf(KafkaException.class)
+				.hasCause(ex);
+		verify(backOff).start();
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
