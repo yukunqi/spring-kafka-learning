@@ -29,6 +29,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SeekUtils;
 import org.springframework.lang.Nullable;
 import org.springframework.util.backoff.BackOff;
+import org.springframework.util.backoff.BackOffExecution;
 import org.springframework.util.backoff.FixedBackOff;
 
 /**
@@ -48,6 +49,12 @@ import org.springframework.util.backoff.FixedBackOff;
  *
  */
 public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor implements AfterRollbackProcessor<K, V> {
+
+	private final ThreadLocal<BackOffExecution> backOffs = new ThreadLocal<>(); // Intentionally not static
+
+	private final ThreadLocal<Long> lastIntervals = new ThreadLocal<>(); // Intentionally not static
+
+	private final BackOff backOff;
 
 	private KafkaTemplate<K, V> kafkaTemplate;
 
@@ -119,6 +126,7 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor i
 
 		// Remove super CTOR when this is removed.
 		super(recoverer, maxFailures);
+		this.backOff = maxFailuresToBackOff(maxFailures);
 	}
 
 	/**
@@ -132,6 +140,7 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor i
 			BackOff backOff) {
 
 		super(recoverer, backOff);
+		this.backOff = backOff;
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
@@ -146,6 +155,10 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor i
 			this.kafkaTemplate.sendOffsetsToTransaction(
 					Collections.singletonMap(new TopicPartition(skipped.topic(), skipped.partition()),
 							new OffsetAndMetadata(skipped.offset() + 1)));
+		}
+
+		if (!recoverable && this.backOff != null) {
+			ListenerUtils.unrecoverableBackOff(this.backOff, this.backOffs, this.lastIntervals);
 		}
 	}
 
@@ -194,6 +207,13 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor i
 	 */
 	public void setKafkaTemplate(KafkaTemplate<K, V> kafkaTemplate) {
 		this.kafkaTemplate = kafkaTemplate;
+	}
+
+	@Override
+	public void clearThreadState() {
+		super.clearThreadState();
+		this.backOffs.remove();
+		this.lastIntervals.remove();
 	}
 
 }
