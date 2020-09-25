@@ -235,7 +235,7 @@ public final class KafkaTestUtils {
 
 		try (AdminClient client = AdminClient
 				.create(Collections.singletonMap(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, brokerAddresses))) {
-			return client.listConsumerGroupOffsets(group).partitionsToOffsetAndMetadata().get()
+			return client.listConsumerGroupOffsets(group).partitionsToOffsetAndMetadata().get() // NOSONAR false positive
 					.get(new TopicPartition(topic, partition));
 		}
 	}

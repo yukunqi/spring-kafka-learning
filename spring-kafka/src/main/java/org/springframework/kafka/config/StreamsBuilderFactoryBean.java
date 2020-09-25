@@ -337,7 +337,9 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 					if (this.cleanupConfig.cleanupOnStop()) {
 						this.kafkaStreams.cleanUp();
 					}
-					this.listeners.forEach(listener -> listener.streamsRemoved(this.beanName, this.kafkaStreams));
+					for (Listener listener : this.listeners) {
+						listener.streamsRemoved(this.beanName, this.kafkaStreams);
+					}
 					this.kafkaStreams = null;
 				}
 			}

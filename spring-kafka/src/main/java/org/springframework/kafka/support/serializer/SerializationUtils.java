@@ -73,10 +73,19 @@ public final class SerializationUtils {
 				method = clazz.getDeclaredMethod(methodName, payloadType);
 			}
 			catch (@SuppressWarnings("unused") NoSuchMethodException e1) {
-				throw new IllegalStateException("the parser method must take '(String, Headers)' or '(String)'");
+				IllegalStateException ise =
+						new IllegalStateException("the parser method must take '("
+								+ payloadType.getSimpleName()
+								+ ", Headers)' or '("
+								+ payloadType.getSimpleName()
+								+ ")'", e1);
+				ise.addSuppressed(e);
+				throw ise;
 			}
 			catch (SecurityException e1) {
-				throw new IllegalStateException(e1);
+				IllegalStateException ise = new IllegalStateException(e1);
+				ise.addSuppressed(e);
+				throw ise;
 			}
 		}
 		catch (SecurityException e) {
