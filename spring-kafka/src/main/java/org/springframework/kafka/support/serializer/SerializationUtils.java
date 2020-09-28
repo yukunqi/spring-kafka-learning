@@ -80,12 +80,12 @@ public final class SerializationUtils {
 								+ payloadType.getSimpleName()
 								+ ")'", e1);
 				ise.addSuppressed(e);
-				throw ise;
+				throw ise; // NOSONAR, lost stack trace
 			}
 			catch (SecurityException e1) {
 				IllegalStateException ise = new IllegalStateException(e1);
 				ise.addSuppressed(e);
-				throw ise;
+				throw ise; // NOSONAR, lost stack trace
 			}
 		}
 		catch (SecurityException e) {

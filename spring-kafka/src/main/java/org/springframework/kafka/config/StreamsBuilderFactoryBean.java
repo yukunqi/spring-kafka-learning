@@ -319,7 +319,9 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 					this.kafkaStreams.cleanUp();
 				}
 				this.kafkaStreams.start();
-				this.listeners.forEach(listener -> listener.streamsAdded(this.beanName, this.kafkaStreams));
+				for (Listener listener : this.listeners) {
+					listener.streamsAdded(this.beanName, this.kafkaStreams);
+				}
 				this.running = true;
 			}
 			catch (Exception e) {
