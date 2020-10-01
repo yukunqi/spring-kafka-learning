@@ -236,7 +236,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	public void setCleanupConfig(CleanupConfig cleanupConfig) {
 		Assert.notNull(cleanupConfig, CLEANUP_CONFIG_MUST_NOT_BE_NULL);
-		this.cleanupConfig = cleanupConfig;
+		this.cleanupConfig = cleanupConfig; // NOSONAR (sync)
 	}
 
 	/**
