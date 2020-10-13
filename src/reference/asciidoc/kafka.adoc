@@ -4357,6 +4357,22 @@ The mapper can handle (decode) headers produced by older versions (it checks for
 IMPORTANT: To be compatible with earlier versions, set `encodeStrings` to `true`, if records produced by a version using 2.3 might be consumed by applications using earlier versions.
 When all applications are using 2.3 or higher, you can leave the property at its default value of `false`.
 
+====
+[source, java]
+----
+@Bean
+MessagingMessageConverter converter() {
+    MessagingMessageConverter converter = new MessagingMessageConverter();
+    DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+    mapper.setEncodeStrings(true);
+    converter.setHeaderMapper(mapper);
+    return converter;
+}
+----
+====
+
+If using Spring Boot, it will auto configure this converter bean into the auto-configured `KafkaTemplate`; otherwise you should add this converter to the template.
+
 [[tombstones]]
 ==== Null Payloads and Log Compaction of 'Tombstone' Records
 
