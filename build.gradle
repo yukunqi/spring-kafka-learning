@@ -299,6 +299,8 @@ project ('spring-kafka') {
 		testImplementation 'io.projectreactor:reactor-test'
 		testImplementation "org.mockito:mockito-junit-jupiter:$mockitoVersion"
 		testImplementation "org.hibernate.validator:hibernate-validator:$hibernateValidationVersion"
+		testImplementation "org.scala-lang:scala-library:$scalaLibVersion"
+		testImplementation "org.scala-lang:scala-reflect:$scalaLibVersion"
 	}
 }
 
