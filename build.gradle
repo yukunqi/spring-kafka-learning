@@ -62,6 +62,7 @@ ext {
 	mockitoVersion = '3.3.3'
 	reactorVersion = 'Dysprosium-SR12'
 	scalaVersion = '2.12'
+	scalaLibVersion = '2.12.11'
 	springDataCommonsVersion = '2.3.5.RELEASE'
 	springRetryVersion = '1.2.5.RELEASE'
 	springVersion = '5.2.10.RELEASE'
@@ -316,6 +317,8 @@ project ('spring-kafka-test') {
 		api "org.apache.kafka:kafka-streams-test-utils:$kafkaVersion"
 		api "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion"
 		api "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion:test"
+		api "org.scala-lang:scala-library:$scalaLibVersion"
+		api "org.scala-lang:scala-reflect:$scalaLibVersion"
 		api 'org.junit.jupiter:junit-jupiter-api'
 		optionalApi "org.hamcrest:hamcrest-core:$hamcrestVersion"
 		optionalApi "org.mockito:mockito-core:$mockitoVersion"
