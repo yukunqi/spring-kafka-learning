@@ -84,6 +84,44 @@ dependencies {
 The test scope dependencies are only needed if you are using the embedded Kafka broker in tests.
 
 [appendix]
+== Jackson/Scala Incompatibility
+
+When using the framework and its test embedded Kafka server with Jackson version 2.11.3 or later on the classpath, Jackson pulls in some incompatible scala jars transitively.
+The dependency management of Spring Boot version 2.3.5 and later uses that version of Jackson.
+To correct this problem, you must override those jar versions.
+
+**maven**
+
+====
+[source, xml]
+----
+<dependency>
+    <groupId>org.scala-lang</groupId>
+    <artifactId>scala-library</artifactId>
+    <version>2.12.11</version>
+    <scope>test</scope>
+</dependency>
+
+<dependency>
+    <groupId>org.scala-lang</groupId>
+    <artifactId>scala-reflect</artifactId>
+    <version>2.12.11</version>
+    <scope>test</scope>
+</dependency>
+----
+====
+
+**gradle**
+
+====
+[source, groovy]
+----
+testImplementation "org.scala-lang:scala-library:2.12.11"
+testImplementation "org.scala-lang:scala-reflect:2.12.11"
+----
+====
+
+[appendix]
 [[history]]
 == Change History
 
