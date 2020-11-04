@@ -117,7 +117,8 @@ import org.springframework.util.concurrent.SettableListenableFuture;
  *
  */
 @EmbeddedKafka(topics = { TransactionalContainerTests.topic1, TransactionalContainerTests.topic2,
-		TransactionalContainerTests.topic3, TransactionalContainerTests.topic3DLT, TransactionalContainerTests.topic4 },
+		TransactionalContainerTests.topic3, TransactionalContainerTests.topic3DLT, TransactionalContainerTests.topic4,
+		TransactionalContainerTests.topic5 },
 		brokerProperties = { "transaction.state.log.replication.factor=1", "transaction.state.log.min.isr=1" })
 public class TransactionalContainerTests {
 
@@ -132,6 +133,8 @@ public class TransactionalContainerTests {
 	public static final String topic3DLT = "txTopic3.DLT";
 
 	public static final String topic4 = "txTopic4";
+
+	public static final String topic5 = "txTopic5";
 
 	private static EmbeddedKafkaBroker embeddedKafka;
 
@@ -592,6 +595,60 @@ public class TransactionalContainerTests {
 		logger.info("Stop testRollbackRecord");
 		pf.destroy();
 		consumer.close();
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void testFixLag() throws Exception {
+		logger.info("Start testFixLag");
+		Map<String, Object> props = KafkaTestUtils.consumerProps("txTest2", "false", embeddedKafka);
+		props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
+		ContainerProperties containerProps = new ContainerProperties(topic5);
+		containerProps.setGroupId("txTest2");
+		containerProps.setPollTimeout(500L);
+		containerProps.setIdleEventInterval(500L);
+		containerProps.setFixTxOffsets(true);
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		senderProps.put(ProducerConfig.RETRIES_CONFIG, 1);
+		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		pf.setTransactionIdPrefix("fl.");
+
+		final KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		final CountDownLatch latch = new CountDownLatch(1);
+		final AtomicReference<String> transactionalId = new AtomicReference<>();
+		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
+		});
+
+		@SuppressWarnings({ "rawtypes" })
+		KafkaTransactionManager tm = new KafkaTransactionManager(pf);
+		containerProps.setTransactionManager(tm);
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setBeanName("testRollbackRecord");
+		AtomicReference<Map<TopicPartition, OffsetAndMetadata>> committed = new AtomicReference<>();
+		container.setApplicationEventPublisher(event -> {
+			if (event instanceof ListenerContainerIdleEvent) {
+				Consumer<?, ?> consumer = ((ListenerContainerIdleEvent) event).getConsumer();
+				committed.set(consumer.committed(Set.of(new TopicPartition(topic5, 0))));
+				if (committed.get().get(new TopicPartition(topic5, 0)) != null) {
+					latch.countDown();
+				}
+			}
+		});
+		container.start();
+
+		template.setDefaultTopic(topic5);
+		template.executeInTransaction(t -> {
+			template.sendDefault(0, 0, "foo");
+			return null;
+		});
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		TopicPartition partition0 = new TopicPartition(topic5, 0);
+		assertThat(committed.get().get(partition0).offset()).isEqualTo(2L);
+		container.stop();
+		pf.destroy();
 	}
 
 	@SuppressWarnings({ "unchecked", "deprecation" })

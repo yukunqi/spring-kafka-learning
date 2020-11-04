@@ -410,7 +410,9 @@ public class ConsumerProperties {
 	 * functionally affect the consumer but some users have expressed concern that the
 	 * "lag" is non-zero. Set this to true and the container will correct such
 	 * mis-reported offsets. The check is performed before the next poll to avoid adding
-	 * significant complexity to the commit processing.
+	 * significant complexity to the commit processing. IMPORTANT: The lag will only be
+	 * corrected if the consumer is configured with
+	 * {@code isolation.level=read_committed}.
 	 * @param fixTxOffsets true to correct the offset(s).
 	 * @since 2.5.6
 	 */
