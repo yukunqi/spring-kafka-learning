@@ -3030,6 +3030,11 @@ This is `true` by default since version 2.5 when transactions are enabled with `
 
 Also see <<transaction-id-prefix>>.
 
+IMPORTANT: Starting with version 2.5.8, you can now configure the `maxAge` property on the producer factory.
+This is useful when using transactional producers that might lay idle for the broker's `transactional.id.expiration.ms`.
+With current `kafka-clients`, this can cause a `ProducerFencedException` without a rebalance.
+By setting the `maxAge` to less than `transactional.id.expiration.ms`, the factory will refresh the producer if it is past it's max age.
+
 ===== Using `KafkaTransactionManager`
 
 The `KafkaTransactionManager` is an implementation of Spring Framework's `PlatformTransactionManager`.
