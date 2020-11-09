@@ -334,7 +334,6 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 				next = queue.poll();
 			}
 		});
-		this.cache.clear();
 		synchronized (this.consumerProducers) {
 			this.consumerProducers.forEach(
 					(k, v) -> v.getDelegate().close(this.physicalCloseTimeout));
