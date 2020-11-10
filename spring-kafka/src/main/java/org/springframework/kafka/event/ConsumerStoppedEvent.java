@@ -22,7 +22,8 @@ import org.springframework.lang.Nullable;
  * An event published when a consumer is stopped. While it is best practice to use
  * stateless listeners, you can consume this event to clean up any thread-based resources
  * (remove ThreadLocals, destroy thread-scoped beans etc), as long as the context event
- * multicaster is not modified to use an async task executor.
+ * multicaster is not modified to use an async task executor. You can also use this event
+ * to restart a container that was stopped because a transactional producer was fenced.
  *
  * @author Gary Russell
  * @since 2.2
@@ -40,7 +41,7 @@ public class ConsumerStoppedEvent extends KafkaEvent {
 		NORMAL,
 
 		/**
-		 * The transactional producer was fenced anf the container
+		 * The transactional producer was fenced and the container
 		 * {@code stopContainerWhenFenced} property is true.
 		 */
 		FENCED,
