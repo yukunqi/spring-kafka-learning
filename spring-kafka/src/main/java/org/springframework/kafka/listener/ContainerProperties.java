@@ -663,6 +663,15 @@ public class ContainerProperties extends ConsumerProperties {
 		this.assignmentCommitOption = assignmentCommitOption;
 	}
 
+	/**
+	 * False - back ported to make Hoxton.SR9 compatible with Boot 2.2.
+	 * @return false.
+	 * @since 2.4.11
+	 */
+	public boolean isDeliveryAttemptHeader() {
+		return false;
+	}
+
 	@Override
 	public String toString() {
 		return "ContainerProperties ["

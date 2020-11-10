@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.core;
 
+import java.util.Map;
+
 import org.apache.kafka.clients.producer.Producer;
 
 /**
@@ -96,6 +98,16 @@ public interface ProducerFactory<K, V> {
 	 */
 	default void reset() {
 		// NOSONAR
+	}
+
+	/**
+	 * Return an unmodifiable reference to the configuration map for this factory.
+	 * Useful for cloning to make a similar factory.
+	 * @return the configs.
+	 * @since 2.4.11
+	 */
+	default Map<String, Object> getConfigurationProperties() {
+		throw new UnsupportedOperationException("This implementation doesn't support this method");
 	}
 
 }
