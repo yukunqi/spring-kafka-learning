@@ -80,6 +80,7 @@ import org.springframework.kafka.event.ConsumerResumedEvent;
 import org.springframework.kafka.event.ConsumerStartedEvent;
 import org.springframework.kafka.event.ConsumerStartingEvent;
 import org.springframework.kafka.event.ConsumerStoppedEvent;
+import org.springframework.kafka.event.ConsumerStoppedEvent.Reason;
 import org.springframework.kafka.event.ConsumerStoppingEvent;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.event.NonResponsiveConsumerEvent;
@@ -393,9 +394,15 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 	}
 
-	private void publishConsumerStoppedEvent() {
+	private void publishConsumerStoppedEvent(@Nullable Throwable throwable) {
 		if (getApplicationEventPublisher() != null) {
-			getApplicationEventPublisher().publishEvent(new ConsumerStoppedEvent(this, this.thisOrParentContainer));
+			getApplicationEventPublisher().publishEvent(new ConsumerStoppedEvent(this, this.thisOrParentContainer,
+					this.thisOrParentContainer.equals(this) ? null : this,
+					throwable instanceof Error
+						? Reason.ERROR
+						: throwable instanceof StopAfterFenceException
+							? Reason.FENCED
+							: Reason.NORMAL));
 		}
 	}
 
@@ -1066,20 +1073,20 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 							+ "' has been fenced");
 					break;
 				}
-				catch (Exception e) {
-					handleConsumerException(e);
-				}
-				catch (Error e) { // NOSONAR - rethrown
+				catch (StopAfterFenceException | Error e) { // NOSONAR - rethrown
 					Runnable runnable = KafkaMessageListenerContainer.this.emergencyStop;
 					if (runnable != null) {
 						runnable.run();
 					}
 					this.logger.error(e, "Stopping container due to an Error");
-					wrapUp();
+					wrapUp(e);
 					throw e;
 				}
+				catch (Exception e) {
+					handleConsumerException(e);
+				}
 			}
-			wrapUp();
+			wrapUp(null);
 		}
 
 		private void setupSeeks() {
@@ -1311,7 +1318,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private void wrapUp() {
+		private void wrapUp(@Nullable Throwable throwable) {
 			KafkaUtils.clearConsumerGroupId();
 			if (this.micrometerHolder != null) {
 				this.micrometerHolder.destroy();
@@ -1350,7 +1357,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.consumerSeekAwareListener.unregisterSeekCallback();
 			}
 			this.logger.info(() -> getGroupId() + ": Consumer stopped");
-			publishConsumerStoppedEvent();
+			publishConsumerStoppedEvent(throwable);
 		}
 
 		/**
@@ -1520,6 +1527,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.logger.error(e, "Producer or '"
 						+ ConsumerConfig.GROUP_INSTANCE_ID_CONFIG
 						+ "' fenced during transaction");
+				if (this.containerProperties.isStopContainerWhenFenced()) {
+					throw new StopAfterFenceException("Container stopping due to fencing", e);
+				}
 			}
 			catch (RuntimeException e) {
 				this.logger.error(e, "Transaction rolled back");
@@ -1786,6 +1796,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				catch (ProducerFencedException | FencedInstanceIdException e) {
 					this.logger.error(e, "Producer or 'group.instance.id' fenced during transaction");
+					if (this.containerProperties.isStopContainerWhenFenced()) {
+						throw new StopAfterFenceException("Container stopping due to fencing", e);
+					}
 					break;
 				}
 				catch (RuntimeException e) {
@@ -2073,12 +2086,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.acks.add(record);
 			}
 			if (this.producer != null) {
-				try {
-					sendOffsetsToTransaction();
-				}
-				catch (Exception e) {
-					this.logger.error(e, "Send offsets to transaction failed");
-				}
+				sendOffsetsToTransaction();
 			}
 		}
 
@@ -2824,6 +2832,15 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (this.callback != null) {
 				this.callback.run();
 			}
+		}
+
+	}
+
+	@SuppressWarnings("serial")
+	private static class StopAfterFenceException extends KafkaException {
+
+		StopAfterFenceException(String message, Throwable t) {
+			super(message, t);
 		}
 
 	}
