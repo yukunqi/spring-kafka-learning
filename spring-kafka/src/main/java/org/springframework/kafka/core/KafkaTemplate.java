@@ -194,6 +194,15 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V> {
 		return this.producerFactory;
 	}
 
+	/**
+	 * False - API backport for Hoxton.SR9 compatibility with Boot 2.2.
+	 * @return false.
+	 * @since 2.3.13
+	 */
+	public boolean isAllowNonTransactional() {
+		return false;
+	}
+
 	@Override
 	public ListenableFuture<SendResult<K, V>> sendDefault(@Nullable V data) {
 		return send(this.defaultTopic, data);
