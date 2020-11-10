@@ -97,12 +97,14 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	public static final String USE_TYPE_INFO_HEADERS = "spring.json.use.type.headers";
 
 	/**
-	 * A method name to determine the {@link JavaType} to deserialize the key to.
+	 * A method name to determine the {@link JavaType} to deserialize the key to:
+	 * 'com.Foo.deserialize'. See {@link JsonTypeResolver#resolveType} for the signature.
 	 */
 	public static final String KEY_TYPE_METHOD = "spring.json.key.type.method";
 
 	/**
-	 * A method name to determine the {@link JavaType} to deserialize the key to.
+	 * A method name to determine the {@link JavaType} to deserialize the value to:
+	 * 'com.Foo.deserialize'. See {@link JsonTypeResolver#resolveType} for the signature.
 	 */
 	public static final String VALUE_TYPE_METHOD = "spring.json.value.type.method";
 
@@ -394,7 +396,6 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	private void setUpTypeResolver(String method) {
 		try {
 			this.typeResolver = buildTypeResolver(method);
-			return;
 		}
 		catch (IllegalStateException e) {
 			if (e.getCause() instanceof NoSuchMethodException) {
