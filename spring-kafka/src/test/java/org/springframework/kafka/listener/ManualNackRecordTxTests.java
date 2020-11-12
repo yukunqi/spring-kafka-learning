@@ -236,10 +236,10 @@ public class ManualNackRecordTxTests {
 			return pf;
 		}
 
-		@SuppressWarnings("rawtypes")
+		@SuppressWarnings({ "rawtypes", "unchecked" })
 		@Bean
 		KafkaTransactionManager tm() {
-			return new KafkaTransactionManager<>(pf());
+			return new KafkaTransactionManager(pf());
 		}
 
 		@SuppressWarnings({ "rawtypes", "unchecked" })
