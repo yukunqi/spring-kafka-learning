@@ -25,7 +25,6 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.withSettings;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -219,7 +218,7 @@ public class ManualNackRecordTxTests {
 		@SuppressWarnings({ "rawtypes", "unchecked" })
 		@Bean
 		Producer producer() {
-			Producer producer = mock(Producer.class, withSettings().verboseLogging());
+			Producer producer = mock(Producer.class);
 			willAnswer(inv -> {
 				this.commitLatch.countDown();
 				return null;
@@ -230,16 +229,16 @@ public class ManualNackRecordTxTests {
 		@SuppressWarnings("rawtypes")
 		@Bean
 		ProducerFactory pf() {
-			ProducerFactory pf = mock(ProducerFactory.class, withSettings().verboseLogging());
+			ProducerFactory pf = mock(ProducerFactory.class);
 			given(pf.createProducer(isNull())).willReturn(producer());
 			given(pf.transactionCapable()).willReturn(true);
 			return pf;
 		}
 
-		@SuppressWarnings("rawtypes")
+		@SuppressWarnings({ "rawtypes", "unchecked" })
 		@Bean
 		KafkaTransactionManager tm() {
-			return new KafkaTransactionManager<>(pf());
+			return new KafkaTransactionManager(pf());
 		}
 
 		@SuppressWarnings({ "rawtypes", "unchecked" })
