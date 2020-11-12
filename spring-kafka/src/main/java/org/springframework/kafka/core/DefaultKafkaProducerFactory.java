@@ -507,25 +507,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 			}
 		}
 		if (this.producerPerThread) {
-			CloseSafeProducer<K, V> tlProducer = this.threadBoundProducers.get();
-			if (this.threadBoundProducerEpochs.get() == null) {
-				this.threadBoundProducerEpochs.set(this.epoch.get());
-			}
-			if (tlProducer != null
-					&& (this.epoch.get() != this.threadBoundProducerEpochs.get() || expire(tlProducer))) {
-				closeThreadBoundProducer();
-				tlProducer = null;
-			}
-			if (tlProducer == null) {
-				tlProducer = new CloseSafeProducer<>(createKafkaProducer(), this::removeProducer,
-						this.physicalCloseTimeout, this.beanName);
-				for (Listener<K, V> listener : this.listeners) {
-					listener.producerAdded(tlProducer.clientId, tlProducer);
-				}
-				this.threadBoundProducers.set(tlProducer);
-				this.threadBoundProducerEpochs.set(this.epoch.get());
-			}
-			return tlProducer;
+			return getOrCreateThreadBoundProducer();
 		}
 		synchronized (this) {
 			if (this.producer != null && expire(this.producer)) {
@@ -538,6 +520,28 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 			}
 			return this.producer;
 		}
+	}
+
+	private Producer<K, V> getOrCreateThreadBoundProducer() {
+		CloseSafeProducer<K, V> tlProducer = this.threadBoundProducers.get();
+		if (this.threadBoundProducerEpochs.get() == null) {
+			this.threadBoundProducerEpochs.set(this.epoch.get());
+		}
+		if (tlProducer != null
+				&& (this.epoch.get() != this.threadBoundProducerEpochs.get() || expire(tlProducer))) {
+			closeThreadBoundProducer();
+			tlProducer = null;
+		}
+		if (tlProducer == null) {
+			tlProducer = new CloseSafeProducer<>(createKafkaProducer(), this::removeProducer,
+					this.physicalCloseTimeout, this.beanName);
+			for (Listener<K, V> listener : this.listeners) {
+				listener.producerAdded(tlProducer.clientId, tlProducer);
+			}
+			this.threadBoundProducers.set(tlProducer);
+			this.threadBoundProducerEpochs.set(this.epoch.get());
+		}
+		return tlProducer;
 	}
 
 	/**
@@ -761,7 +765,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 		final String txIdPrefix; // NOSONAR
 
-		final long created;
+		final long created; // NOSONAR
 
 		private final Duration closeTimeout;
 
