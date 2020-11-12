@@ -1550,8 +1550,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 			if (producer != null || (!this.isAnyManualAck && !this.autoCommit)) {
-				for (ConsumerRecord<K, V> record : getHighestOffsetRecords(records)) {
-					this.acks.put(record);
+				if (this.nackSleep < 0) {
+					for (ConsumerRecord<K, V> record : getHighestOffsetRecords(records)) {
+						this.acks.put(record);
+					}
 				}
 				if (producer != null) {
 					sendOffsetsToTransaction(producer);
