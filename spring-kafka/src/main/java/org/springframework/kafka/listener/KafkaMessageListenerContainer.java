@@ -1546,9 +1546,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					}
 				}
 			}
-			if (!this.isAnyManualAck && !this.autoCommit) {
-				for (ConsumerRecord<K, V> record : getHighestOffsetRecords(records)) {
-					this.acks.put(record);
+			if (producer != null || (!this.isAnyManualAck && !this.autoCommit)) {
+				if (this.nackSleep < 0) {
+					for (ConsumerRecord<K, V> record : getHighestOffsetRecords(records)) {
+						this.acks.put(record);
+					}
 				}
 				if (producer != null) {
 					sendOffsetsToTransaction(producer);
@@ -1923,7 +1925,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					this.acks.add(record);
 				}
 			}
-			else if (!this.isAnyManualAck && !this.autoCommit) {
+			else if (producer != null || (!this.isAnyManualAck && !this.autoCommit)) {
 				this.acks.add(record);
 			}
 			if (producer != null) {
