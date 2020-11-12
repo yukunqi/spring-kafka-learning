@@ -41,7 +41,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -212,7 +211,6 @@ public class ManualNackRecordTxTests {
 				this.closeLatch.countDown();
 				return null;
 			}).given(consumer).close();
-			given(consumer.groupMetadata()).willReturn(mock(ConsumerGroupMetadata.class));
 			return consumer;
 		}
 
@@ -236,10 +234,10 @@ public class ManualNackRecordTxTests {
 			return pf;
 		}
 
-		@SuppressWarnings("rawtypes")
+		@SuppressWarnings({ "rawtypes", "unchecked" })
 		@Bean
 		KafkaTransactionManager tm() {
-			return new KafkaTransactionManager<>(pf());
+			return new KafkaTransactionManager(pf());
 		}
 
 		@SuppressWarnings({ "rawtypes", "unchecked" })
