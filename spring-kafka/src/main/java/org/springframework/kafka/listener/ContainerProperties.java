@@ -311,6 +311,10 @@ public class ContainerProperties extends ConsumerProperties {
 	 * Ignored when transactions are being used. Transactional consumers commit offsets
 	 * with semantics equivalent to {@code RECORD} or {@code BATCH}, depending on
 	 * the listener type.
+	 * However, setting it to {@code MANUAL} will provide access to an
+	 * {@code Acknowledgement} in the listener; when calling its
+	 * {@code nack(index, sleeptime)} method, the container will send the offsets of
+	 * the succcessfully processed records in the batch to the transaction.
 	 * @param ackMode the {@link AckMode}; default BATCH.
 	 * @see #setTransactionManager(PlatformTransactionManager)
 	 */

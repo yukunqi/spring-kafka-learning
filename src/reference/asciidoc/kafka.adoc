@@ -1145,6 +1145,8 @@ Starting with version 2.3, the `Acknowledgment` interface has two additional met
 The first one is used with a record listener, the second with a batch listener.
 Calling the wrong method for your listener type will throw an `IllegalStateException`.
 
+NOTE: If you want to commit a partial batch, using `nack()`, When using transactions, set the `AckMode` to `MANUAL`; invoking `nack()` will send the offsets of the successfully processed records to the transaction.
+
 IMPORTANT: `nack()` can only be called on the consumer thread that invokes your listener.
 
 With a record listener, when `nack()` is called, any pending offsets are committed, the remaing records from the last poll are discarded, and seeks are performed on their partitions so that the failed record and unprocessed records are redelivered on the next `poll()`.
