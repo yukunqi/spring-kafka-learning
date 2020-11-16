@@ -693,7 +693,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 */
 	public void setEosMode(EOSMode eosMode) {
 		if (eosMode == null) {
-			this.eosMode = EOSMode.ALPHA; // TODO change this in 2.7 to an assertion
+			this.eosMode = EOSMode.ALPHA;
 		}
 		else {
 			this.eosMode = eosMode;
