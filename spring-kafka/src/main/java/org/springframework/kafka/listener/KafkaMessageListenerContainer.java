@@ -1055,6 +1055,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.last = System.currentTimeMillis();
 			initAssignedPartitions();
 			publishConsumerStartedEvent();
+			Throwable exitThrowable = null;
 			while (isRunning()) {
 				try {
 					pollAndInvoke();
@@ -1090,7 +1091,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				catch (StopAfterFenceException e) {
 					this.logger.error(e, "Stopping container due to fencing");
-					stop();
+					stop(false);
+					exitThrowable = e;
 				}
 				catch (Error e) { // NOSONAR - rethrown
 					Runnable runnable = KafkaMessageListenerContainer.this.emergencyStop;
@@ -1105,7 +1107,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					handleConsumerException(e);
 				}
 			}
-			wrapUp(null);
+			wrapUp(exitThrowable);
 		}
 
 		private void setupSeeks() {
