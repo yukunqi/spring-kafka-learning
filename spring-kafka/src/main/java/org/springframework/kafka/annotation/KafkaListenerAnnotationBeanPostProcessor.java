@@ -34,6 +34,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.commons.logging.LogFactory;
 
@@ -680,7 +682,9 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		else if (resolvedValue instanceof String) {
 			Assert.state(StringUtils.hasText((String) resolvedValue),
 					() -> "partition in @TopicPartition for topic '" + topic + "' cannot be empty");
-			result.add(new TopicPartitionOffset(topic, Integer.valueOf((String) resolvedValue)));
+			result.addAll(parsePartitions((String) resolvedValue)
+					.map(part -> new TopicPartitionOffset(topic, part))
+					.collect(Collectors.toList()));
 		}
 		else if (resolvedValue instanceof Integer[]) {
 			for (Integer partition : (Integer[]) resolvedValue) {
@@ -785,6 +789,38 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		else {
 			return Collections.emptySet();
 		}
+	}
+
+	/**
+	 * Parse a list of partitions into a {@link List}. Example: "0-5,10-15".
+	 * @param partsString the comma-delimited list of partitions/ranges.
+	 * @return the stream of partition numbers, sorted and de-duplicated.
+	 * @since 2.6.4
+	 */
+	private Stream<Integer> parsePartitions(String partsString) {
+		String[] partsStrings = partsString.split(",");
+		if (partsStrings.length == 1 && !partsStrings[0].contains("-")) {
+			return Stream.of(Integer.parseInt(partsStrings[0].trim()));
+		}
+		List<Integer> parts = new ArrayList<>();
+		for (String part : partsStrings) {
+			if (part.contains("-")) {
+				String[] startEnd = part.split("-");
+				Assert.state(startEnd.length == 2, "Only one hyphen allowed for a range of partitions: " + part);
+				int start = Integer.parseInt(startEnd[0].trim());
+				int end = Integer.parseInt(startEnd[1].trim());
+				Assert.state(end >= start, "Invalid range: " + part);
+				for (int i = start; i <= end; i++) {
+					parts.add(i);
+				}
+			}
+			else {
+				parsePartitions(part).forEach(p -> parts.add(p));
+			}
+		}
+		return parts.stream()
+				.sorted()
+				.distinct();
 	}
 
 	/**
