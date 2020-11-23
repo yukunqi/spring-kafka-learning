@@ -1045,7 +1045,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		@Override
-		public void run() {
+		public void run() { // NOSONAR complexity
 			ListenerUtils.setLogOnlyMetadata(this.containerProperties.isOnlyLogRecordMetadata());
 			publishConsumerStartingEvent();
 			this.consumerThread = Thread.currentThread();
