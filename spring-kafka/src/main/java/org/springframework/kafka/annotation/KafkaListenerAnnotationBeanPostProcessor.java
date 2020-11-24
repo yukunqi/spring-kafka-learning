@@ -585,25 +585,6 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		return result;
 	}
 
-	private Integer resolvePartition(Object topic, PartitionOffset partitionOffset) {
-		Object partitionValue = resolveExpression(partitionOffset.partition());
-		Integer partition;
-		if (partitionValue instanceof String) {
-			Assert.state(StringUtils.hasText((String) partitionValue),
-					() -> "partition in @PartitionOffset for topic '" + topic + "' cannot be empty");
-			partition = Integer.valueOf((String) partitionValue);
-		}
-		else if (partitionValue instanceof Integer) {
-			partition = (Integer) partitionValue;
-		}
-		else {
-			throw new IllegalArgumentException(String.format(
-					"@PartitionOffset for topic '%s' can't resolve '%s' as an Integer or String, resolved to '%s'",
-					topic, partitionOffset.partition(), partitionValue.getClass()));
-		}
-		return partition;
-	}
-
 	private Long resolveInitialOffset(Object topic, PartitionOffset partitionOffset) {
 		Object initialOffsetValue = resolveExpression(partitionOffset.initialOffset());
 		Long initialOffset;
