@@ -127,8 +127,6 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 	private final ThreadLocal<CloseSafeProducer<K, V>> threadBoundProducers = new ThreadLocal<>();
 
-	private final ThreadLocal<Integer> threadBoundProducerEpochs = new ThreadLocal<>();
-
 	private final AtomicInteger epoch = new AtomicInteger();
 
 	private final AtomicInteger clientIdCounter = new AtomicInteger();
@@ -402,25 +400,21 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		}
 		if (this.producerPerThread) {
 			CloseSafeProducer<K, V> tlProducer = this.threadBoundProducers.get();
-			if (this.threadBoundProducerEpochs.get() == null) {
-				this.threadBoundProducerEpochs.set(this.epoch.get());
-			}
-			if (tlProducer != null && this.epoch.get() != this.threadBoundProducerEpochs.get()) {
+			if (tlProducer != null && this.epoch.get() != tlProducer.epoch) {
 				closeThreadBoundProducer();
 				tlProducer = null;
 			}
 			if (tlProducer == null) {
 				tlProducer = new CloseSafeProducer<>(createKafkaProducer(), this::removeProducer,
-						this.physicalCloseTimeout);
+						this.physicalCloseTimeout, this.epoch);
 				this.threadBoundProducers.set(tlProducer);
-				this.threadBoundProducerEpochs.set(this.epoch.get());
 			}
 			return tlProducer;
 		}
 		synchronized (this) {
 			if (this.producer == null) {
 				this.producer = new CloseSafeProducer<>(createKafkaProducer(), this::removeProducer,
-						this.physicalCloseTimeout);
+						this.physicalCloseTimeout, this.epoch);
 			}
 			return this.producer;
 		}
@@ -527,7 +521,8 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		newProducer = createRawProducer(newProducerConfigs);
 		newProducer.initTransactions();
 		return new CloseSafeProducer<>(newProducer, getCache(prefix), remover,
-				(String) newProducerConfigs.get(ProducerConfig.TRANSACTIONAL_ID_CONFIG), this.physicalCloseTimeout);
+				(String) newProducerConfigs.get(ProducerConfig.TRANSACTIONAL_ID_CONFIG), this.physicalCloseTimeout,
+				this.epoch);
 	}
 
 	protected Producer<K, V> createRawProducer(Map<String, Object> configs) {
@@ -596,6 +591,10 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 
 		private final Duration closeTimeout;
 
+		final int epoch; // NOSONAR
+
+		private final AtomicInteger factoryEpoch;
+
 		private volatile Exception producerFailed;
 
 		private volatile boolean closed;
@@ -603,30 +602,46 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 		CloseSafeProducer(Producer<K, V> delegate, Consumer<CloseSafeProducer<K, V>> removeProducer,
 				Duration closeTimeout) {
 
-			this(delegate, null, removeProducer, null, closeTimeout);
+			this(delegate, null, removeProducer, null, closeTimeout, new AtomicInteger());
+			Assert.isTrue(!(delegate instanceof CloseSafeProducer), "Cannot double-wrap a producer");
+		}
+
+		CloseSafeProducer(Producer<K, V> delegate, Consumer<CloseSafeProducer<K, V>> removeProducer,
+				Duration closeTimeout, AtomicInteger epoch) {
+
+			this(delegate, null, removeProducer, null, closeTimeout, epoch);
 			Assert.isTrue(!(delegate instanceof CloseSafeProducer), "Cannot double-wrap a producer");
 		}
 
 		CloseSafeProducer(Producer<K, V> delegate, BlockingQueue<CloseSafeProducer<K, V>> cache,
 				Duration closeTimeout) {
-			this(delegate, cache, null, closeTimeout);
+			this(delegate, cache, null, null, closeTimeout, new AtomicInteger());
 		}
 
 		CloseSafeProducer(Producer<K, V> delegate, BlockingQueue<CloseSafeProducer<K, V>> cache,
 				@Nullable Consumer<CloseSafeProducer<K, V>> removeConsumerProducer, Duration closeTimeout) {
 
-			this(delegate, cache, removeConsumerProducer, null, closeTimeout);
+			this(delegate, cache, removeConsumerProducer, null, closeTimeout, new AtomicInteger());
 		}
 
 		CloseSafeProducer(Producer<K, V> delegate, BlockingQueue<CloseSafeProducer<K, V>> cache,
 				@Nullable Consumer<CloseSafeProducer<K, V>> removeProducer, @Nullable String txId,
 				Duration closeTimeout) {
 
+			this(delegate, cache, removeProducer, txId, closeTimeout, new AtomicInteger());
+		}
+
+		CloseSafeProducer(Producer<K, V> delegate, BlockingQueue<CloseSafeProducer<K, V>> cache,
+				@Nullable Consumer<CloseSafeProducer<K, V>> removeProducer, @Nullable String txId,
+				Duration closeTimeout, AtomicInteger epoch) {
+
 			this.delegate = delegate;
 			this.cache = cache;
 			this.removeProducer = removeProducer;
 			this.txId = txId;
 			this.closeTimeout = closeTimeout;
+			this.epoch = epoch.get();
+			this.factoryEpoch = epoch;
 			LOGGER.debug(() -> "Created new Producer: " + this);
 		}
 
@@ -760,8 +775,8 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 				else {
 					if (this.cache != null && this.removeProducer == null) { // dedicated consumer producers are not cached
 						synchronized (this) {
-							if (!this.cache.contains(this)
-									&& !this.cache.offer(this)) {
+							if (this.epoch != this.factoryEpoch.get()
+									|| (!this.cache.contains(this) && !this.cache.offer(this))) {
 								this.closed = true;
 								this.delegate.close(timeout);
 							}
