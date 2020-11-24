@@ -15,6 +15,10 @@ See <<factory-listeners>> for more information.
 You can now change bootstrap server properties at runtime, enabling failover to another Kafka cluster.
 See <<connecting>> for more information.
 
+You can now update the configuration map after the `DefaultKafkaProducerFactory` has been created.
+This might be useful, for example, if you have to update SSL key/trust store locations after a credentials change.
+See <<producer-factory>> for more information.
+
 [[x25-streams-listeners]]
 ==== `StreamsBuilderFactoryBean` Changes
 
