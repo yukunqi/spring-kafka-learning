@@ -688,7 +688,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 * {@link EOSMode#BETA} enables fetch-offset-request fencing, and requires brokers 2.5
 	 * or later. With the 2.6 client, the default is now BETA because the 2.6 client can
 	 * automatically fall back to ALPHA.
-	 * @param eosMode the mode; default ALPHA.
+	 * @param eosMode the mode; default BETA.
 	 * @since 2.5
 	 */
 	public void setEosMode(EOSMode eosMode) {
