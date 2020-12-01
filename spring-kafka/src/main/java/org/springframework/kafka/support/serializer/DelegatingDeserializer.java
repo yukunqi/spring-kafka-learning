@@ -60,8 +60,9 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 	/**
 	 * Construct an instance with the supplied mapping of selectors to delegate
 	 * deserializers. The selector must be supplied in the
-	 * {@link DelegatingSerializer#SERIALIZATION_SELECTOR} header. It is not necessary to
-	 * configure standard deserializers supported by {@link Serdes}.
+	 * {@link DelegatingSerializer#KEY_SERIALIZATION_SELECTOR_CONFIG} and
+	 * {@link DelegatingSerializer#VALUE_SERIALIZATION_SELECTOR_CONFIG} headers. It is not
+	 * necessary to configure standard deserializers supported by {@link Serdes}.
 	 * @param delegates the map of delegates.
 	 */
 	public DelegatingDeserializer(Map<String, Deserializer<?>> delegates) {
