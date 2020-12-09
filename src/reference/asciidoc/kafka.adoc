@@ -4697,7 +4697,7 @@ Spring Framework provides two out of the box `BackOff` s, `FixedBackOff` and `Ex
 The maximum back off time must not exceed the `max.poll.interval.ms` consumer property, to avoid a rebalance.
 
 IMPORTANT: Previously, the configuration was "maxFailures" (which included the first delivery attempt).
-When using a `FixedBackOff`, its `maxAttempts` properties represents the number of delivery retries (one less than the old `maxFailures` property).
+When using a `FixedBackOff`, its `maxAttempts` property represents the number of delivery retries (one less than the old `maxFailures` property).
 Also, `maxFailures=-1` meant retry indefinitely with the old configuration, with a `BackOff` you would set the `maxAttempts` to `Long.MAX_VALUE` for a `FixedBackOff` and leave the `maxElapsedTime` to its default in an `ExponentialBackOff`.
 
 The `SeekToCurrentBatchErrorHandler` can also be configured with a `BackOff` to add a delay between delivery attempts.
