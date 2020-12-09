@@ -52,20 +52,20 @@ ext {
 	googleJsr305Version = '3.0.2'
 	hamcrestVersion = '2.2'
 	hibernateValidationVersion = '6.1.6.Final'
-	jacksonVersion = '2.11.3'
+	jacksonBomVersion = '2.11.3'
 	jaywayJsonPathVersion = '2.4.0'
 	junit4Version = '4.13.1'
 	junitJupiterVersion = '5.6.3'
 	kafkaVersion = '2.5.1'
 	log4jVersion = '2.13.3'
-	micrometerVersion = '1.5.5'
+	micrometerVersion = '1.5.8'
 	mockitoVersion = '3.3.3'
-	reactorVersion = 'Dysprosium-SR13'
+	reactorVersion = 'Dysprosium-SR15'
 	scalaVersion = '2.12'
 	scalaLibVersion = '2.12.11'
-	springDataCommonsVersion = '2.3.5.RELEASE'
+	springDataCommonsVersion = '2.3.6.RELEASE'
 	springRetryVersion = '1.2.5.RELEASE'
-	springVersion = '5.2.10.RELEASE'
+	springVersion = '5.2.12.RELEASE'
 
 	idPrefix = 'kafka'
 }
@@ -90,7 +90,7 @@ allprojects {
 		}
 
 		imports {
-			mavenBom "com.fasterxml.jackson:jackson-bom:$jacksonVersion"
+			mavenBom "com.fasterxml.jackson:jackson-bom:$jacksonBomVersion"
 			mavenBom "org.junit:junit-bom:$junitJupiterVersion"
 			mavenBom "org.springframework:spring-framework-bom:$springVersion"
 			mavenBom "io.projectreactor:reactor-bom:$reactorVersion"
