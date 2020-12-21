@@ -171,6 +171,7 @@ subprojects { subproject ->
 		testImplementation("org.awaitility:awaitility:$awaitilityVersion") {
 			exclude group: 'org.hamcrest'
 		}
+		testImplementation "org.hamcrest:hamcrest-core:$hamcrestVersion"
 		optionalApi "org.assertj:assertj-core:$assertjVersion"
 	}
 
