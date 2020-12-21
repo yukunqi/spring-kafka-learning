@@ -51,6 +51,7 @@ ext {
 	}
 
 	assertjVersion = '3.18.1'
+	awaitilityVersion = '4.0.3'
 	googleJsr305Version = '3.0.2'
 	hamcrestVersion = '2.2'
 	hibernateValidationVersion = '6.1.6.Final'
@@ -167,6 +168,9 @@ subprojects { subproject ->
 
 		testImplementation 'org.jetbrains.kotlin:kotlin-reflect'
 		testImplementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
+		testImplementation("org.awaitility:awaitility:$awaitilityVersion") {
+			exclude group: 'org.hamcrest'
+		}
 		optionalApi "org.assertj:assertj-core:$assertjVersion"
 	}
 

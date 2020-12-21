@@ -17,14 +17,15 @@
 package org.springframework.kafka.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 import java.lang.reflect.Method;
-import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -35,6 +36,7 @@ import org.apache.kafka.clients.admin.NewPartitions;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.common.config.TopicConfig;
+import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.DirectFieldAccessor;
@@ -85,36 +87,64 @@ public class KafkaAdminTests {
 
 	@Test
 	public void testAddTopicsAndAddPartitions() throws Exception {
-		AdminClient adminClient = AdminClient.create(this.admin.getConfigurationProperties());
-		DescribeTopicsResult topics = adminClient.describeTopics(Arrays.asList("foo", "bar"));
-		Map<String, TopicDescription> results = topics.all().get();
-		results.forEach((name, td) -> assertThat(td.partitions()).hasSize(name.equals("foo") ? 2 : 1));
-		new DirectFieldAccessor(this.topic1).setPropertyValue("numPartitions", Optional.of(4));
-		new DirectFieldAccessor(this.topic2).setPropertyValue("numPartitions", Optional.of(3));
-		this.admin.initialize();
-		int n = 0;
-		TopicDescription bar = results.values().stream()
-			.filter(td -> td.name().equals("bar"))
-			.findFirst()
-			.get();
-		while (n++ < 100 && bar.partitions().size() == 1) {
-			Thread.sleep(100);
-			topics = adminClient.describeTopics(Arrays.asList("foo", "bar"));
-			results = topics.all().get();
-			bar = results.values().stream()
-					.filter(tp -> tp.name().equals("bar"))
-					.findFirst()
-					.get();
+		try (AdminClient adminClient = AdminClient.create(this.admin.getConfigurationProperties())) {
+			Map<String, TopicDescription> results = new HashMap<>();
+			await().until(() -> {
+				DescribeTopicsResult topics = adminClient.describeTopics(Arrays.asList("foo", "bar"));
+				try {
+					results.putAll(topics.all().get(10, TimeUnit.SECONDS));
+					return true;
+				}
+				catch (InterruptedException ie) {
+					Thread.currentThread().interrupt();
+					return true;
+				}
+				catch (ExecutionException ex) {
+					if (ex.getCause() instanceof UnknownTopicOrPartitionException) {
+						return false;
+					}
+					throw ex;
+				}
+			});
+			results.forEach((name, td) -> assertThat(td.partitions()).hasSize(name.equals("foo") ? 2 : 1));
+			new DirectFieldAccessor(this.topic1).setPropertyValue("numPartitions", Optional.of(4));
+			new DirectFieldAccessor(this.topic2).setPropertyValue("numPartitions", Optional.of(3));
+			this.admin.initialize();
+			int n = 0;
+			await().until(() -> {
+				DescribeTopicsResult topics = adminClient.describeTopics(Arrays.asList("foo", "bar"));
+				results.putAll(topics.all().get());
+				TopicDescription bar = results.values().stream()
+						.filter(tp -> tp.name().equals("bar"))
+						.findFirst()
+						.get();
+				return bar.partitions().size() != 1;
+			});
+			results.forEach((name, td) -> assertThat(td.partitions()).hasSize(name.equals("foo") ? 4 : 3));
 		}
-		results.forEach((name, td) -> assertThat(td.partitions()).hasSize(name.equals("foo") ? 4 : 3));
-		adminClient.close(Duration.ofSeconds(10));
 	}
 
 	@Test
 	public void testDefaultPartsAndReplicas() throws Exception {
 		try (AdminClient adminClient = AdminClient.create(this.admin.getConfigurationProperties())) {
-			DescribeTopicsResult topics = adminClient.describeTopics(Arrays.asList("optBoth", "optPart", "optRepl"));
-			Map<String, TopicDescription> results = topics.all().get(10, TimeUnit.SECONDS);
+			Map<String, TopicDescription> results = new HashMap<>();
+			await().until(() -> {
+				DescribeTopicsResult topics = adminClient.describeTopics(Arrays.asList("optBoth", "optPart", "optRepl"));
+				try {
+					results.putAll(topics.all().get(10, TimeUnit.SECONDS));
+					return true;
+				}
+				catch (InterruptedException ie) {
+					Thread.currentThread().interrupt();
+					return true;
+				}
+				catch (ExecutionException ex) {
+					if (ex.getCause() instanceof UnknownTopicOrPartitionException) {
+						return false;
+					}
+					throw ex;
+				}
+			});
 			var topicDescription = results.get("optBoth");
 			assertThat(topicDescription.partitions()).hasSize(2);
 			assertThat(topicDescription.partitions().stream()
