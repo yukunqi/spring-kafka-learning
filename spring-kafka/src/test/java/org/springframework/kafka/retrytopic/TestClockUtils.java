@@ -16,29 +16,16 @@
 
 package org.springframework.kafka.retrytopic;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
+
 /**
- *
- * Contains the headers that will be used in the forwarded messages.
- *
- * @author Tomaz Fernandes
- * @since 2.7
- *
+ * @author tomazlemos
+ * @since 14/02/21
  */
-public abstract class RetryTopicHeaders {
+public abstract class TestClockUtils {
 
-	/**
-	 * The default header for the backoff duetimestamp.
-	 */
-	public static final String DEFAULT_HEADER_BACKOFF_TIMESTAMP = "retry_topic-backoff-timestamp";
-
-	/**
-	 * The default header for the attempts.
-	 */
-	public static final String DEFAULT_HEADER_ATTEMPTS = "retry_topic-attempts";
-
-	/**
-	 * The default header for the original message's timestamp.
-	 */
-	public static final String DEFAULT_HEADER_ORIGINAL_TIMESTAMP = "retry_topic-original-timestamp";
+	public static Clock CLOCK = Clock.fixed(Instant.ofEpochMilli(325587600000L), ZoneId.systemDefault());
 
 }

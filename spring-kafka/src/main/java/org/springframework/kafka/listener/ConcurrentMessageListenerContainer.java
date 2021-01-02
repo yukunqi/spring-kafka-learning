@@ -310,6 +310,14 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 		}
 	}
 
+	@Override
+	public boolean isPartitionPaused(TopicPartition topicPartition) {
+		return this
+				.containers
+				.stream()
+				.anyMatch(container -> container.isPartitionPaused(topicPartition));
+	}
+
 	private boolean containsPartition(TopicPartition topicPartition, KafkaMessageListenerContainer<K, V> container) {
 		Collection<TopicPartition> assignedPartitions = container.getAssignedPartitions();
 		return assignedPartitions != null && assignedPartitions.contains(topicPartition);

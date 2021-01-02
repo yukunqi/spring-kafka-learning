@@ -28,7 +28,6 @@ import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
 import org.springframework.kafka.retrytopic.destinationtopic.DefaultDestinationTopicProcessor;
 import org.springframework.kafka.retrytopic.destinationtopic.DestinationTopicContainer;
 
-
 /**
  *
  * Bootstraps the {@link RetryTopicConfigurer} context, registering the dependency
@@ -85,9 +84,9 @@ public class RetryTopicBootstrapper {
 	}
 
 	private void configureBackoffClock() {
-		if (!this.applicationContext.containsBeanDefinition(RetryTopicInternalBeanNames.INTERNAL_BACKOFF_CLOCK_NAME)) {
+		if (!this.applicationContext.containsBeanDefinition(KafkaConsumerBackoffManager.INTERNAL_BACKOFF_CLOCK_BEAN_NAME)) {
 			((SingletonBeanRegistry) this.beanFactory).registerSingleton(
-					RetryTopicInternalBeanNames.INTERNAL_BACKOFF_CLOCK_NAME, Clock.systemUTC());
+					KafkaConsumerBackoffManager.INTERNAL_BACKOFF_CLOCK_BEAN_NAME, Clock.systemUTC());
 		}
 	}
 

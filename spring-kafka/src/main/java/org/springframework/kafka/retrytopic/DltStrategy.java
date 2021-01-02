@@ -18,27 +18,28 @@ package org.springframework.kafka.retrytopic;
 
 /**
  *
- * Contains the headers that will be used in the forwarded messages.
+ * Strategies for handling DLT processing.
  *
  * @author Tomaz Fernandes
  * @since 2.7
  *
  */
-public abstract class RetryTopicHeaders {
+public enum DltStrategy {
 
 	/**
-	 * The default header for the backoff duetimestamp.
+	 * Don't create a DLT.
 	 */
-	public static final String DEFAULT_HEADER_BACKOFF_TIMESTAMP = "retry_topic-backoff-timestamp";
+	NO_DLT,
 
 	/**
-	 * The default header for the attempts.
+	 * Always send the message back to the DLT for reprocessing in case of failure in
+	 * DLT processing.
 	 */
-	public static final String DEFAULT_HEADER_ATTEMPTS = "retry_topic-attempts";
+	ALWAYS_RETRY_ON_ERROR,
 
 	/**
-	 * The default header for the original message's timestamp.
+	 * Fail if DLT processing throws an error.
 	 */
-	public static final String DEFAULT_HEADER_ORIGINAL_TIMESTAMP = "retry_topic-original-timestamp";
+	FAIL_ON_ERROR
 
 }

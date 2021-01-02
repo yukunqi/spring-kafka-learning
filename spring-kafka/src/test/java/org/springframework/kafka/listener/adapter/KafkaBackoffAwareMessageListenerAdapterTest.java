@@ -23,9 +23,9 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.times;
 
+import java.math.BigInteger;
 import java.time.Clock;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 
 import org.apache.kafka.clients.consumer.Consumer;
@@ -74,12 +74,16 @@ class KafkaBackoffAwareMessageListenerAdapterTest {
 	Header header;
 
 	@Captor
-	ArgumentCaptor<LocalDateTime> timestampCaptor;
+	ArgumentCaptor<Long> timestampCaptor;
 
 	@Mock
 	KafkaConsumerBackoffManager kafkaConsumerBackoffManager;
 
 	Clock clock = Clock.fixed(Instant.EPOCH, ZoneId.systemDefault());
+
+	private long originalTimestamp = Instant.now(this.clock).toEpochMilli();
+
+	private byte[] originalTimestampBytes = BigInteger.valueOf(originalTimestamp).toByteArray();
 
 	@Mock
 	KafkaConsumerBackoffManager.Context context;
@@ -123,16 +127,14 @@ class KafkaBackoffAwareMessageListenerAdapterTest {
 		given(data.headers()).willReturn(headers);
 		given(headers.lastHeader(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP))
 				.willReturn(header);
-		LocalDateTime dueTimestamp = LocalDateTime.now(clock);
-		String dueTimestampString = dueTimestamp
-				.format(RetryTopicHeaders.DEFAULT_BACKOFF_TIMESTAMP_HEADER_FORMATTER);
+
 		given(header.value())
-				.willReturn(dueTimestampString.getBytes());
+				.willReturn(originalTimestampBytes);
 		given(data.topic()).willReturn(testTopic);
 		given(data.partition()).willReturn(testPartition);
 		TopicPartition topicPartition = new TopicPartition(testTopic, testPartition);
 
-		given(kafkaConsumerBackoffManager.createContext(dueTimestamp, listenerId, topicPartition))
+		given(kafkaConsumerBackoffManager.createContext(originalTimestamp, listenerId, topicPartition))
 					.willReturn(context);
 
 		KafkaBackoffAwareMessageListenerAdapter<Object, Object> backoffAwareMessageListenerAdapter =
@@ -144,7 +146,7 @@ class KafkaBackoffAwareMessageListenerAdapterTest {
 		// then
 		then(kafkaConsumerBackoffManager).should(times(1))
 				.createContext(timestampCaptor.capture(), eq(listenerId), eq(topicPartition));
-		assertEquals(dueTimestamp, timestampCaptor.getValue());
+		assertEquals(originalTimestamp, timestampCaptor.getValue());
 		then(kafkaConsumerBackoffManager).should(times(1))
 				.maybeBackoff(context);
 

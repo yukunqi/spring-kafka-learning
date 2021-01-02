@@ -47,7 +47,7 @@ import org.springframework.util.ReflectionUtils;
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)
-class RetryableTopicAnnotationProcessorTest {
+class RetryableTopicAnnotationProcessorTests {
 
 	private final String topic1 = "topic1";
 
@@ -266,7 +266,7 @@ class RetryableTopicAnnotationProcessorTest {
 	static class RetryableTopicAnnotationFactory {
 
 		@KafkaListener
-		@RetryableTopic(kafkaTemplate = RetryableTopicAnnotationProcessorTest.kafkaTemplateName)
+		@RetryableTopic(kafkaTemplate = RetryableTopicAnnotationProcessorTests.kafkaTemplateName)
 		void listenWithRetry() {
 			// NoOps
 		}
@@ -276,7 +276,7 @@ class RetryableTopicAnnotationProcessorTest {
 
 		@KafkaListener
 		@RetryableTopic(attempts = 3, backoff = @Backoff(multiplier = 2, value = 1000),
-			dltProcessingFailureStrategy = RetryTopicConfiguration.DltProcessingFailureStrategy.FAIL)
+			dltStrategy = DltStrategy.FAIL_ON_ERROR)
 		void listenWithRetry() {
 			// NoOps
 		}

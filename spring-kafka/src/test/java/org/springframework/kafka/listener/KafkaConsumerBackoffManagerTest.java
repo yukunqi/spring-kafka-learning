@@ -23,10 +23,9 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.times;
 
+import java.math.BigInteger;
 import java.time.Clock;
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 
 import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
@@ -36,7 +35,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.event.ListenerContainerPartitionIdleEvent;
-import org.springframework.kafka.retrytopic.RetryTopicHeaders;
+import org.springframework.kafka.retrytopic.TestClockUtils;
 
 /**
  * @author Tomaz Fernandes
@@ -48,21 +47,25 @@ class KafkaConsumerBackoffManagerTest {
 	private final String testListenerId = "testListenerId";
 
 	@Mock
-	KafkaListenerEndpointRegistry registry;
+	private KafkaListenerEndpointRegistry registry;
 
 	@Mock
-	MessageListenerContainer listenerContainer;
+	private MessageListenerContainer listenerContainer;
 
-	Clock clock = Clock.fixed(Instant.EPOCH, ZoneId.systemDefault());
+	private Clock clock = TestClockUtils.CLOCK;
 
-	String testTopic = "testTopic";
+	private String testTopic = "testTopic";
 
-	int testPartition = 0;
+	private int testPartition = 0;
 
 	private TopicPartition topicPartition = new TopicPartition(testTopic, testPartition);
 
 	@Mock
 	private ListenerContainerPartitionIdleEvent partitionIdleEvent;
+
+	private long originalTimestamp = Instant.now(this.clock).toEpochMilli();
+
+	private byte[] originalTimestampBytes = BigInteger.valueOf(originalTimestamp).toByteArray();
 
 	@Test
 	void shouldBackoffgivenDueTimestampIsLater() {
@@ -70,9 +73,8 @@ class KafkaConsumerBackoffManagerTest {
 		// setup
 		given(this.registry.getListenerContainer(testListenerId)).willReturn(listenerContainer);
 		KafkaConsumerBackoffManager backoffManager = new KafkaConsumerBackoffManager(registry, clock);
-		LocalDateTime dueTimestamp = LocalDateTime.now(clock).plusMinutes(5);
-		String expectedTimestamp = dueTimestamp.format(
-				RetryTopicHeaders.DEFAULT_BACKOFF_TIMESTAMP_HEADER_FORMATTER);
+
+		long dueTimestamp = originalTimestamp + 5000;
 		KafkaConsumerBackoffManager.Context context =
 				backoffManager.createContext(dueTimestamp, testListenerId, topicPartition);
 
@@ -81,7 +83,7 @@ class KafkaConsumerBackoffManagerTest {
 				() -> backoffManager.maybeBackoff(context));
 
 		// then
-		assertEquals(expectedTimestamp, backoffException.getDueTimestamp());
+		assertEquals(dueTimestamp, backoffException.getDueTimestamp());
 		assertEquals(testListenerId, backoffException.getListenerId());
 		assertEquals(topicPartition, backoffException.getTopicPartition());
 		assertEquals(context, backoffManager.getBackoff(topicPartition));
@@ -93,11 +95,8 @@ class KafkaConsumerBackoffManagerTest {
 
 		// setup
 		KafkaConsumerBackoffManager backoffManager = new KafkaConsumerBackoffManager(registry, clock);
-		LocalDateTime dueTimestamp = LocalDateTime.now(clock).minusMinutes(5);
-		String expectedTimestamp = dueTimestamp.format(
-				RetryTopicHeaders.DEFAULT_BACKOFF_TIMESTAMP_HEADER_FORMATTER);
 		KafkaConsumerBackoffManager.Context context =
-				backoffManager.createContext(dueTimestamp, testListenerId, topicPartition);
+				backoffManager.createContext(originalTimestamp - 5000, testListenerId, topicPartition);
 
 		// given
 		backoffManager.maybeBackoff(context);
@@ -113,11 +112,9 @@ class KafkaConsumerBackoffManagerTest {
 		// setup
 		given(this.partitionIdleEvent.getTopicPartition()).willReturn(topicPartition);
 		KafkaConsumerBackoffManager backoffManager = new KafkaConsumerBackoffManager(registry, clock);
-		LocalDateTime dueTimestamp = LocalDateTime.now(clock).plusMinutes(5);
-		String expectedTimestamp = dueTimestamp.format(
-				RetryTopicHeaders.DEFAULT_BACKOFF_TIMESTAMP_HEADER_FORMATTER);
+
 		KafkaConsumerBackoffManager.Context context =
-				backoffManager.createContext(dueTimestamp, testListenerId, topicPartition);
+				backoffManager.createContext(originalTimestamp + 5000, testListenerId, topicPartition);
 		backoffManager.addBackoff(context, topicPartition);
 
 		// given
@@ -135,11 +132,8 @@ class KafkaConsumerBackoffManagerTest {
 		given(this.registry.getListenerContainer(testListenerId)).willReturn(listenerContainer);
 		given(this.partitionIdleEvent.getTopicPartition()).willReturn(topicPartition);
 		KafkaConsumerBackoffManager backoffManager = new KafkaConsumerBackoffManager(registry, clock);
-		LocalDateTime dueTimestamp = LocalDateTime.now(clock).minusMinutes(5);
-		String expectedTimestamp = dueTimestamp.format(
-				RetryTopicHeaders.DEFAULT_BACKOFF_TIMESTAMP_HEADER_FORMATTER);
 		KafkaConsumerBackoffManager.Context context =
-				backoffManager.createContext(dueTimestamp, testListenerId, topicPartition);
+				backoffManager.createContext(originalTimestamp - 5000, testListenerId, topicPartition);
 		backoffManager.addBackoff(context, topicPartition);
 
 		// given

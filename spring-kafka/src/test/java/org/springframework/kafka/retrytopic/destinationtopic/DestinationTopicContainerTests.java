@@ -19,11 +19,9 @@ package org.springframework.kafka.retrytopic.destinationtopic;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.math.BigInteger;
 import java.time.Clock;
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -31,19 +29,24 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import org.springframework.kafka.retrytopic.RetryTopicHeaders;
+import org.springframework.kafka.listener.ListenerExecutionFailedException;
+import org.springframework.kafka.retrytopic.TestClockUtils;
 
 /**
  * @author Tomaz Fernandes
  * @since 2.7
  */
-class DestinationTopicContainerTest extends DestinationTopicTest {
+class DestinationTopicContainerTests extends DestinationTopicTests {
 
 	private Map<String, DestinationTopicResolver.DestinationsHolder> destinationTopicMap;
 
-	private final Clock clock = Clock.fixed(Instant.EPOCH, ZoneId.systemDefault());
+	private final Clock clock = TestClockUtils.CLOCK;
 
 	private DestinationTopicContainer destinationTopicContainer = new DestinationTopicContainer(clock);
+
+	private long originalTimestamp = Instant.now(this.clock).toEpochMilli();
+
+	private byte[] originalTimestampBytes = BigInteger.valueOf(originalTimestamp).toByteArray();
 
 	@BeforeEach
 	public void setup() {
@@ -66,6 +69,13 @@ class DestinationTopicContainerTest extends DestinationTopicTest {
 		DestinationTopicResolver.DestinationsHolder dltDestinationHolder2 =
 				DestinationTopicResolver.holderFor(dltDestinationTopic2, noOpsDestinationTopic2);
 
+		DestinationTopicResolver.DestinationsHolder mainDestinationHolder3 =
+				DestinationTopicResolver.holderFor(mainDestinationTopic3, firstRetryDestinationTopic3);
+		DestinationTopicResolver.DestinationsHolder firstRetryDestinationHolder3 =
+				DestinationTopicResolver.holderFor(firstRetryDestinationTopic3, secondRetryDestinationTopic3);
+		DestinationTopicResolver.DestinationsHolder secondRetryDestinationHolder3 =
+				DestinationTopicResolver.holderFor(secondRetryDestinationTopic3, noOpsDestinationTopic3);
+
 		destinationTopicMap.put(mainDestinationTopic.getDestinationName(), mainDestinationHolder);
 		destinationTopicMap.put(firstRetryDestinationTopic.getDestinationName(), firstRetryDestinationHolder);
 		destinationTopicMap.put(secondRetryDestinationTopic.getDestinationName(), secondRetryDestinationHolder);
@@ -74,74 +84,111 @@ class DestinationTopicContainerTest extends DestinationTopicTest {
 		destinationTopicMap.put(firstRetryDestinationTopic2.getDestinationName(), firstRetryDestinationHolder2);
 		destinationTopicMap.put(secondRetryDestinationTopic2.getDestinationName(), secondRetryDestinationHolder2);
 		destinationTopicMap.put(dltDestinationTopic2.getDestinationName(), dltDestinationHolder2);
+		destinationTopicMap.put(mainDestinationTopic3.getDestinationName(), mainDestinationHolder3);
+		destinationTopicMap.put(firstRetryDestinationTopic3.getDestinationName(), firstRetryDestinationHolder3);
+		destinationTopicMap.put(secondRetryDestinationTopic3.getDestinationName(), secondRetryDestinationHolder3);
 		destinationTopicContainer.addDestinations(destinationTopicMap);
 	}
 
 	@Test
 	void shouldResolveRetryDestination() {
 		assertEquals(firstRetryDestinationTopic, destinationTopicContainer
-				.resolveNextDestination(mainDestinationTopic.getDestinationName(), 1, new IllegalArgumentException()));
+				.resolveNextDestination(mainDestinationTopic.getDestinationName(), 1,
+						new IllegalArgumentException(), this.originalTimestamp));
 		assertEquals(secondRetryDestinationTopic, destinationTopicContainer
-				.resolveNextDestination(firstRetryDestinationTopic.getDestinationName(), 1, new IllegalArgumentException()));
+				.resolveNextDestination(firstRetryDestinationTopic.getDestinationName(), 1,
+						new IllegalArgumentException(), this.originalTimestamp));
 		assertEquals(dltDestinationTopic, destinationTopicContainer
-				.resolveNextDestination(secondRetryDestinationTopic.getDestinationName(), 1, new IllegalArgumentException()));
+				.resolveNextDestination(secondRetryDestinationTopic.getDestinationName(), 1,
+						new IllegalArgumentException(), this.originalTimestamp));
 		assertEquals(noOpsDestinationTopic, destinationTopicContainer
-				.resolveNextDestination(dltDestinationTopic.getDestinationName(), 1, new IllegalArgumentException()));
+				.resolveNextDestination(dltDestinationTopic.getDestinationName(), 1,
+						new IllegalArgumentException(), this.originalTimestamp));
+
 		assertEquals(firstRetryDestinationTopic2, destinationTopicContainer
-				.resolveNextDestination(mainDestinationTopic2.getDestinationName(), 1, new IllegalArgumentException()));
+				.resolveNextDestination(mainDestinationTopic2.getDestinationName(), 1,
+						new IllegalArgumentException(), this.originalTimestamp));
 		assertEquals(secondRetryDestinationTopic2, destinationTopicContainer
-				.resolveNextDestination(firstRetryDestinationTopic2.getDestinationName(), 1, new IllegalArgumentException()));
+				.resolveNextDestination(firstRetryDestinationTopic2.getDestinationName(), 1,
+						new IllegalArgumentException(), this.originalTimestamp));
 		assertEquals(dltDestinationTopic2, destinationTopicContainer
-				.resolveNextDestination(secondRetryDestinationTopic2.getDestinationName(), 1, new IllegalArgumentException()));
+				.resolveNextDestination(secondRetryDestinationTopic2.getDestinationName(), 1,
+						new IllegalArgumentException(), this.originalTimestamp));
 		assertEquals(dltDestinationTopic2, destinationTopicContainer
-				.resolveNextDestination(dltDestinationTopic2.getDestinationName(), 1, new IllegalArgumentException()));
+				.resolveNextDestination(dltDestinationTopic2.getDestinationName(), 1,
+						new IllegalArgumentException(), this.originalTimestamp));
 	}
 
 	@Test
 	void shouldResolveDltDestinationForNonRetryableException() {
 		assertEquals(dltDestinationTopic, destinationTopicContainer
-				.resolveNextDestination(mainDestinationTopic.getDestinationName(), 1, new RuntimeException()));
+				.resolveNextDestination(mainDestinationTopic.getDestinationName(),
+						1, new RuntimeException(), originalTimestamp));
+	}
+
+	@Test
+	void shouldResolveRetryDestinationForWrappedException() {
+		assertEquals(firstRetryDestinationTopic, destinationTopicContainer
+				.resolveNextDestination(mainDestinationTopic.getDestinationName(),
+						1, new ListenerExecutionFailedException("Test exception!",
+								new IllegalArgumentException()), originalTimestamp));
 	}
 
 	@Test
 	void shouldResolveNoOpsDestinationForDoNotRetryDltPolicy() {
 		assertEquals(noOpsDestinationTopic, destinationTopicContainer
-				.resolveNextDestination(dltDestinationTopic.getDestinationName(), 1, new IllegalArgumentException()));
+				.resolveNextDestination(dltDestinationTopic.getDestinationName(),
+						1, new IllegalArgumentException(), originalTimestamp));
 	}
 
 	@Test
 	void shouldResolveDltDestinationForAlwaysRetryDltPolicy() {
 		assertEquals(dltDestinationTopic2, destinationTopicContainer
-				.resolveNextDestination(dltDestinationTopic2.getDestinationName(), 1, new IllegalArgumentException()));
+				.resolveNextDestination(dltDestinationTopic2.getDestinationName(),
+						1, new IllegalArgumentException(), originalTimestamp));
+	}
+
+	@Test
+	void shouldResolveDltDestinationForExpiredTimeout() {
+		long timestampInThePastToForceTimeout = this.originalTimestamp - 10000;
+		assertEquals(dltDestinationTopic2, destinationTopicContainer
+				.resolveNextDestination(mainDestinationTopic2.getDestinationName(),
+						1, new IllegalArgumentException(), timestampInThePastToForceTimeout));
 	}
 
 	@Test
 	void shouldThrowIfNoDestinationFound() {
 		assertThrows(NullPointerException.class,
-				() -> destinationTopicContainer.resolveNextDestination("Non-existing-topic", 0, new IllegalArgumentException()));
+				() -> destinationTopicContainer.resolveNextDestination("Non-existing-topic", 0,
+						new IllegalArgumentException(), originalTimestamp));
+	}
+
+	@Test
+	void shouldResolveNoOpsIfDltAndNotRetryable() {
+		assertEquals(noOpsDestinationTopic3, destinationTopicContainer
+						.resolveNextDestination(mainDestinationTopic3.getDestinationName(), 0,
+						new RuntimeException(), originalTimestamp));
 	}
 
 	@Test
 	void shouldResolveDestinationNextExecutionTime() {
 		RuntimeException e = new IllegalArgumentException();
-		assertEquals(destinationTopicContainer.resolveDestinationNextExecutionTime(
-				mainDestinationTopic.getDestinationName(), 0, e),
-				getExpectedNextExecutionTime(firstRetryDestinationTopic));
-		assertEquals(destinationTopicContainer.resolveDestinationNextExecutionTime(
-				firstRetryDestinationTopic.getDestinationName(), 0, e),
-				getExpectedNextExecutionTime(secondRetryDestinationTopic));
-		assertEquals(destinationTopicContainer.resolveDestinationNextExecutionTime(
-				secondRetryDestinationTopic.getDestinationName(), 0, e),
-				getExpectedNextExecutionTime(dltDestinationTopic));
-		assertEquals(destinationTopicContainer.resolveDestinationNextExecutionTime(
-				dltDestinationTopic.getDestinationName(), 0, e),
-				getExpectedNextExecutionTime(noOpsDestinationTopic));
+		assertEquals(getExpectedNextExecutionTime(firstRetryDestinationTopic),
+				destinationTopicContainer.resolveDestinationNextExecutionTimestamp(
+					mainDestinationTopic.getDestinationName(), 0, e, originalTimestamp));
+		assertEquals(getExpectedNextExecutionTime(secondRetryDestinationTopic),
+				destinationTopicContainer.resolveDestinationNextExecutionTimestamp(
+					firstRetryDestinationTopic.getDestinationName(), 0, e, originalTimestamp));
+		assertEquals(getExpectedNextExecutionTime(dltDestinationTopic),
+				destinationTopicContainer.resolveDestinationNextExecutionTimestamp(
+					secondRetryDestinationTopic.getDestinationName(), 0, e, originalTimestamp));
+		assertEquals(getExpectedNextExecutionTime(noOpsDestinationTopic),
+				destinationTopicContainer.resolveDestinationNextExecutionTimestamp(
+					dltDestinationTopic.getDestinationName(), 0, e, originalTimestamp));
 	}
 
-	private String getExpectedNextExecutionTime(DestinationTopic destinationTopic) {
-		String expectedNextExecutionTime = LocalDateTime.now(clock).plus(destinationTopic.getDestinationDelay(),
-				ChronoUnit.MILLIS).format(RetryTopicHeaders.DEFAULT_BACKOFF_TIMESTAMP_HEADER_FORMATTER);
-		return expectedNextExecutionTime;
+	private long getExpectedNextExecutionTime(DestinationTopic destinationTopic) {
+		return originalTimestamp + destinationTopic.getDestinationDelay();
 	}
 
 	@Test
@@ -149,11 +196,5 @@ class DestinationTopicContainerTest extends DestinationTopicTest {
 		destinationTopicContainer.onApplicationEvent(null);
 		assertThrows(IllegalStateException.class, () ->
 				destinationTopicContainer.addDestinations(Collections.emptyMap()));
-	}
-
-	@Test
-	void shouldGetKafkaTemplateForTopic() {
-		assertEquals(kafkaOperations1, destinationTopicContainer.getKafkaOperationsFor(firstRetryDestinationTopic.getDestinationName()));
-		assertEquals(kafkaOperations2, destinationTopicContainer.getKafkaOperationsFor(firstRetryDestinationTopic2.getDestinationName()));
 	}
 }

@@ -22,9 +22,11 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
+import org.springframework.kafka.retrytopic.DltStrategy;
+import org.springframework.kafka.retrytopic.FixedDelayStrategy;
 import org.springframework.kafka.retrytopic.RetryTopicConfigurer;
-import org.springframework.kafka.retrytopic.destinationtopic.DestinationTopicPropertiesFactory;
+import org.springframework.kafka.retrytopic.RetryTopicConstants;
+import org.springframework.kafka.retrytopic.TopicSuffixingStrategy;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.policy.MaxAttemptsRetryPolicy;
 
@@ -38,7 +40,7 @@ import org.springframework.retry.policy.MaxAttemptsRetryPolicy;
  *
  * @see RetryTopicConfigurer
  */
-@Target({ ElementType.METHOD }) //, ElementType.TYPE }) TODO: Enable class level annotation
+@Target({ ElementType.METHOD })
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 public @interface RetryableTopic {
@@ -57,6 +59,16 @@ public @interface RetryableTopic {
 	 * @return a backoff specification
 	 */
 	Backoff backoff() default @Backoff;
+
+	/**
+	 *
+	 * The amount of time in milliseconds after which message retrying should give up
+	 * and send the message to the DLT.
+	 *
+	 * @return the timeout value.
+	 *
+	 */
+	long timeout() default RetryTopicConstants.NOT_SET;
 
 	/**
 	 *
@@ -130,7 +142,7 @@ public @interface RetryableTopic {
 	 *
 	 * @return the retry topics' suffix.
 	 */
-	String retryTopicSuffix() default DestinationTopicPropertiesFactory.DestinationTopicSuffixes.DEFAULT_RETRY_SUFFIX;
+	String retryTopicSuffix() default RetryTopicConstants.DEFAULT_RETRY_SUFFIX;
 
 	/**
 	 * The suffix that will be appended to the main topic in order to generate
@@ -138,11 +150,20 @@ public @interface RetryableTopic {
 	 *
 	 * @return the dlt suffix.
 	 */
-	String dltTopicSuffix() default DestinationTopicPropertiesFactory.DestinationTopicSuffixes.DEFAULT_DLT_SUFFIX;
+	String dltTopicSuffix() default RetryTopicConstants.DEFAULT_DLT_SUFFIX;
 
-	RetryTopicConfiguration.DltProcessingFailureStrategy dltProcessingFailureStrategy()
-			default RetryTopicConfiguration.DltProcessingFailureStrategy.ALWAYS_RETRY;
 
-	RetryTopicConfiguration.FixedDelayTopicStrategy fixedDelayTopicStrategy()
-			default RetryTopicConfiguration.FixedDelayTopicStrategy.MULTIPLE_TOPICS;
+	/**
+	 * The suffix that will be appended to the main topic in order to generate
+	 * the dlt topic.
+	 *
+	 * @return the dlt suffix.
+	 */
+	TopicSuffixingStrategy topicSuffixingStrategy() default TopicSuffixingStrategy.SUFFIX_WITH_DELAY_VALUE;
+
+	DltStrategy dltStrategy()
+			default DltStrategy.ALWAYS_RETRY_ON_ERROR;
+
+	FixedDelayStrategy fixedDelayTopicStrategy()
+			default FixedDelayStrategy.MULTIPLE_TOPICS;
 }

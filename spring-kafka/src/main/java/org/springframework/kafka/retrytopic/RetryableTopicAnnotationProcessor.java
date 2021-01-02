@@ -87,7 +87,9 @@ public class RetryableTopicAnnotationProcessor {
 				.notRetryOn(Arrays.asList(annotation.exclude()))
 				.traversingCauses(annotation.traversingCauses())
 				.useSingleTopicForFixedDelays(annotation.fixedDelayTopicStrategy())
-				.dltProcessingFailureStrategy(annotation.dltProcessingFailureStrategy())
+				.dltProcessingFailureStrategy(annotation.dltStrategy())
+				.setTopicSuffixingStrategy(annotation.topicSuffixingStrategy())
+				.timeoutAfter(annotation.timeout())
 				.create(getKafkaTemplate(annotation.kafkaTemplate(), topics));
 	}
 

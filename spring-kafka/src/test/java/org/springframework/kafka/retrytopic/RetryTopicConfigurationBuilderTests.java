@@ -38,7 +38,7 @@ import org.springframework.test.util.ReflectionTestUtils;
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)
-class RetryTopicConfigurationBuilderTest {
+class RetryTopicConfigurationBuilderTests {
 
 	@Mock
 	private KafkaOperations<?, ?> kafkaOperations;

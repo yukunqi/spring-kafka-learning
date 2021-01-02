@@ -132,6 +132,16 @@ public interface MessageListenerContainer extends SmartLifecycle {
 	}
 
 	/**
+	 * Whether or not this topic's partition is currently paused.
+	 * @param topicPartition the topic partition to check
+	 * @return true if this partition has been paused.
+	 * @since 2.7
+	 */
+	default boolean isPartitionPaused(TopicPartition topicPartition) {
+		throw new UnsupportedOperationException("This container doesn't support checking if a partition is paused");
+	}
+
+	/**
 	 * Return true if {@link #pause()} has been called; the container might not have actually
 	 * paused yet.
 	 * @return true if pause has been requested.

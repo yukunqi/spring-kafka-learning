@@ -251,7 +251,7 @@ public class RetryTopicConfigurer {
 	public void processMainAndRetryListeners(EndpointProcessor endpointProcessor,
 											MethodKafkaListenerEndpoint<?, ?> mainEndpoint,
 											RetryTopicConfiguration configuration) {
-		throwIfMultiMethodEndpoint(mainEndpoint); // TODO: Add support to MultiMethodEndpoint
+		throwIfMultiMethodEndpoint(mainEndpoint);
 		DestinationTopicProcessor.Context context =
 				new DestinationTopicProcessor.Context(configuration.getDestinationTopicProperties());
 		configureMainEndpoint(mainEndpoint, endpointProcessor, context, configuration);
@@ -485,7 +485,7 @@ public class RetryTopicConfigurer {
 		EndpointHandlerMethod(Class<?> beanClass, String methodName) {
 			Assert.notNull(beanClass, () -> "No destination bean class provided!");
 			Assert.notNull(methodName, () -> "No method name for destination bean class provided!");
-			this.method = Arrays.stream(ReflectionUtils.getDeclaredMethods(beanClass)) // TODO: Maybe cache this result
+			this.method = Arrays.stream(ReflectionUtils.getDeclaredMethods(beanClass))
 					.filter(method -> method.getName().equals(methodName))
 					.findFirst()
 					.orElseThrow(() -> new IllegalArgumentException(String.format("No method %s in class %s", methodName, beanClass)));

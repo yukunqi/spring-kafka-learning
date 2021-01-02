@@ -50,6 +50,7 @@ import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.ContainerProperties;
+import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.retry.annotation.Backoff;
@@ -73,7 +74,9 @@ public class RetryableTopicIntegrationTests {
 
 	private final static String SECOND_TOPIC = "myRetryTopic2";
 
-	private final static String THIRD_TOPIC = "myRetryTopic4";
+	private final static String THIRD_TOPIC = "myRetryTopic3";
+
+	private final static String FOURTH_TOPIC = "myRetryTopic4";
 
 	private final static String NOT_RETRYABLE_EXCEPTION_TOPIC = "noRetryTopic";
 
@@ -93,6 +96,7 @@ public class RetryableTopicIntegrationTests {
 
 	@Test
 	void shouldRetryFirstTopic() {
+		logger.debug("Sending message to topic " + FIRST_TOPIC);
 		kafkaTemplate.send(FIRST_TOPIC, "Testing topic 1");
 		assertTrue(awaitLatch(latchContainer.countDownLatch1));
 		assertTrue(awaitLatch(latchContainer.customDltCountdownLatch));
@@ -100,21 +104,30 @@ public class RetryableTopicIntegrationTests {
 
 	@Test
 	void shouldRetrySecondTopic() {
+		logger.debug("Sending message to topic " + SECOND_TOPIC);
 		kafkaTemplate.send(SECOND_TOPIC, "Testing topic 2");
 		assertTrue(awaitLatch(latchContainer.countDownLatch2));
 		assertTrue(awaitLatch(latchContainer.customDltCountdownLatch));
 	}
 
 	@Test
-	void shouldRetryThirdTopic() {
+	void shouldRetryThirdTopicWithTimeout() {
+		logger.debug("Sending message to topic " + THIRD_TOPIC);
 		kafkaTemplate.send(THIRD_TOPIC, "Testing topic 3");
 		assertTrue(awaitLatch(latchContainer.countDownLatch3));
 		assertTrue(awaitLatch(latchContainer.countDownLatchDltOne));
 	}
 
 	@Test
+	void shouldRetryFourthTopicWithNoDlt() {
+		logger.debug("Sending message to topic " + FOURTH_TOPIC);
+		kafkaTemplate.send(FOURTH_TOPIC, "Testing topic 4");
+		assertTrue(awaitLatch(latchContainer.countDownLatch4));
+	}
+
+	@Test
 	public void shouldGoStraightToDlt() {
-		logger.info("Testing topic " + NOT_RETRYABLE_EXCEPTION_TOPIC);
+		logger.debug("Sending message to topic " + NOT_RETRYABLE_EXCEPTION_TOPIC);
 		kafkaTemplate.send(NOT_RETRYABLE_EXCEPTION_TOPIC, "Testing topic with annotation 1");
 		assertTrue(awaitLatch(latchContainer.countDownLatchNoRetry));
 		assertTrue(awaitLatch(latchContainer.countDownLatchDltTwo));
@@ -138,7 +151,7 @@ public class RetryableTopicIntegrationTests {
 
 		@KafkaListener(topics = FIRST_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
 		public void listen(String message) {
-			logger.info("Message {} received in topic {}", message, FIRST_TOPIC);
+			logger.debug("Message {} received in topic {}", message, FIRST_TOPIC);
 			container.countDownLatch1.countDown();
 			throw new RuntimeException("Woooops... in topic " + FIRST_TOPIC);
 		}
@@ -152,7 +165,7 @@ public class RetryableTopicIntegrationTests {
 
 		@KafkaListener(topics = SECOND_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
 		public void listenAgain(String message) {
-			logger.info("Message {} received in topic {} ", message, SECOND_TOPIC);
+			logger.debug("Message {} received in topic {} ", message, SECOND_TOPIC);
 			container.countDownLatch2.countDown();
 			throw new IllegalStateException("Another woooops... " + SECOND_TOPIC);
 		}
@@ -164,27 +177,47 @@ public class RetryableTopicIntegrationTests {
 		@Autowired
 		CountDownLatchContainer container;
 
-		@RetryableTopic(attempts = 4,
-				backoff = @Backoff(delay = 50, maxDelay = 120, multiplier = 1.5),
+		@RetryableTopic(attempts = 5,
+				backoff = @Backoff(delay = 70, maxDelay = 120, multiplier = 1.5),
 				numPartitions = 3,
-				traversingCauses = true,
+				timeout = 2000,
 				include = MyRetryException.class, kafkaTemplate = "kafkaTemplate")
 		@KafkaListener(topics = THIRD_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
 		public void listenWithAnnotation(String message) {
 			container.countDownLatch3.countDown();
-			logger.info("Message {} received in annotated topic {} ", message, NOT_RETRYABLE_EXCEPTION_TOPIC);
-			throw new MyRetryException("Annotated woooops... " + NOT_RETRYABLE_EXCEPTION_TOPIC);
+			logger.debug("========================== Message {} received in annotated topic {} ", message, THIRD_TOPIC);
+			throw new MyRetryException("Annotated woooops... " + THIRD_TOPIC);
 		}
 
 		@DltHandler
 		public void annotatedDltMethod(Object message) {
-			logger.info("Received message in annotated Dlt method");
+			logger.debug("Received message in annotated Dlt method");
 			container.countDownLatchDltOne.countDown();
 		}
 	}
 
 	@Component
 	static class FourthTopicListener {
+
+		@Autowired
+		CountDownLatchContainer container;
+
+		@RetryableTopic(dltStrategy = DltStrategy.NO_DLT, attempts = 4, backoff = @Backoff(50), kafkaTemplate = "kafkaTemplate")
+		@KafkaListener(topics = FOURTH_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
+		public void listenNoDlt(String message) {
+			logger.debug("Message {} received in topic {} ", message, FOURTH_TOPIC);
+			container.countDownLatch4.countDown();
+			throw new IllegalStateException("Another woooops... " + FOURTH_TOPIC);
+		}
+
+		@DltHandler
+		public void shouldNotGetHere() {
+			fail("Dlt should not be processed!");
+		}
+	}
+
+	@Component
+	static class NoRetryTopicListener {
 
 		@Autowired
 		CountDownLatchContainer container;
@@ -211,7 +244,8 @@ public class RetryableTopicIntegrationTests {
 
 		CountDownLatch countDownLatch1 = new CountDownLatch(5);
 		CountDownLatch countDownLatch2 = new CountDownLatch(3);
-		CountDownLatch countDownLatch3 = new CountDownLatch(4);
+		CountDownLatch countDownLatch3 = new CountDownLatch(3);
+		CountDownLatch countDownLatch4 = new CountDownLatch(4);
 		CountDownLatch countDownLatchNoRetry = new CountDownLatch(1);
 		CountDownLatch countDownLatchDltOne = new CountDownLatch(1);
 		CountDownLatch countDownLatchDltTwo = new CountDownLatch(1);
@@ -294,9 +328,15 @@ public class RetryableTopicIntegrationTests {
 			return new ThirdTopicListener();
 		}
 
+
 		@Bean
 		public FourthTopicListener fourthTopicListener() {
 			return new FourthTopicListener();
+		}
+
+		@Bean
+		public NoRetryTopicListener noRetryTopicListener() {
+			return new NoRetryTopicListener();
 		}
 
 		@Bean
@@ -314,11 +354,10 @@ public class RetryableTopicIntegrationTests {
 	@Configuration
 	public static class RuntimeConfig {
 
-		@Bean(name = RetryTopicInternalBeanNames.INTERNAL_BACKOFF_CLOCK_NAME)
+		@Bean(name = KafkaConsumerBackoffManager.INTERNAL_BACKOFF_CLOCK_BEAN_NAME)
 		public Clock clock() {
 			return Clock.systemUTC();
 		}
-
 	}
 
 	@Configuration

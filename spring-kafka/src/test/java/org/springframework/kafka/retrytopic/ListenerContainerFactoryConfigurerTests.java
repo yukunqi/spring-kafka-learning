@@ -17,6 +17,7 @@
 package org.springframework.kafka.retrytopic;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -25,6 +26,9 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.times;
 
+import java.math.BigInteger;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
@@ -50,6 +54,7 @@ import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.ErrorHandler;
 import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
+import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.listener.SeekToCurrentErrorHandler;
 import org.springframework.kafka.listener.adapter.AbstractDelegatingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.KafkaBackoffAwareMessageListenerAdapter;
@@ -61,7 +66,7 @@ import org.springframework.kafka.support.Acknowledgment;
  */
 @ExtendWith(MockitoExtension.class)
 @SuppressWarnings({"unchecked", "rawtypes"})
-class ListenerContainerFactoryConfigurerTest {
+class ListenerContainerFactoryConfigurerTests {
 
 	@Mock
 	private KafkaConsumerBackoffManager kafkaConsumerBackoffManager;
@@ -107,6 +112,9 @@ class ListenerContainerFactoryConfigurerTest {
 	@Mock
 	private AcknowledgingConsumerAwareMessageListener<?, ?> listener;
 
+	@Mock
+	private MessageListener<?, ?> wrongListener;
+
 	@Captor
 	private ArgumentCaptor<AbstractDelegatingMessageListenerAdapter<?>> listenerAdapterCaptor;
 
@@ -125,6 +133,12 @@ class ListenerContainerFactoryConfigurerTest {
 
 	@Mock
 	private java.util.function.Consumer<ConcurrentMessageListenerContainer<?, ?>> configurerContainerCustomizer;
+
+	private final Clock clock = TestClockUtils.CLOCK;
+
+	private long originalTimestamp = Instant.now(this.clock).toEpochMilli();
+
+	private byte[] originalTimestampBytes = BigInteger.valueOf(originalTimestamp).toByteArray();
 
 	@Test
 	void shouldSetupErrorHandling() {
@@ -216,8 +230,7 @@ class ListenerContainerFactoryConfigurerTest {
 		given(containerProperties.getIdlePartitionEventInterval()).willReturn(null);
 		given(containerProperties.getMessageListener()).willReturn(listener);
 		RecordHeaders headers = new RecordHeaders();
-		headers.add(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP,
-				LocalDateTime.now().format(RetryTopicHeaders.DEFAULT_BACKOFF_TIMESTAMP_HEADER_FORMATTER).getBytes());
+		headers.add(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP, originalTimestampBytes);
 		given(data.headers()).willReturn(headers);
 		String testListenerId = "testListenerId";
 		given(container.getListenerId()).willReturn(testListenerId);
@@ -240,11 +253,39 @@ class ListenerContainerFactoryConfigurerTest {
 		listenerAdapter.onMessage(data, ack, consumer);
 
 		then(this.kafkaConsumerBackoffManager).should(times(1))
-				.createContext(any(LocalDateTime.class), listenerIdCaptor.capture(), any(TopicPartition.class));
+				.createContext(anyLong(), listenerIdCaptor.capture(), any(TopicPartition.class));
 		assertEquals(testListenerId, listenerIdCaptor.getValue());
 		then(listener).should(times(1)).onMessage(data, ack, consumer);
 
 		then(this.configurerContainerCustomizer).should(times(1)).accept(container);
+	}
+	@Test
+	void shouldThrowIfNotAckowledgingMessageListenerAdapter() {
+
+		// setup
+		given(containerFactory.getContainerProperties()).willReturn(containerProperties);
+		given(container.getContainerProperties()).willReturn(containerProperties);
+		given(deadLetterPublishingRecovererFactory.create(recovererConfiguration)).willReturn(recoverer);
+		given(containerProperties.getMessageListener()).willReturn(wrongListener);
+
+		RecordHeaders headers = new RecordHeaders();
+		headers.add(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP, originalTimestampBytes);
+		String testListenerId = "testListenerId";
+
+		// given
+		ListenerContainerFactoryConfigurer configurer =
+				new ListenerContainerFactoryConfigurer(kafkaConsumerBackoffManager, deadLetterPublishingRecovererFactory);
+		configurer.setContainerCustomizer(configurerContainerCustomizer);
+		ConcurrentKafkaListenerContainerFactory<?, ?> factory = configurer.configure(containerFactory, recovererConfiguration);
+
+		// then
+		then(containerFactory)
+				.should(times(1))
+				.setContainerCustomizer(containerCustomizerCaptor.capture());
+		ContainerCustomizer containerCustomizer = containerCustomizerCaptor.getValue();
+
+		assertThrows(IllegalArgumentException.class, () -> containerCustomizer.configure(container));
+
 	}
 
 	@Test

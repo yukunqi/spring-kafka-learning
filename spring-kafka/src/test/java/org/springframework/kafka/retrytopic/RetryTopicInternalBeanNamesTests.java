@@ -16,18 +16,15 @@
 
 package org.springframework.kafka.retrytopic;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import org.junit.jupiter.api.Test;
+
 /**
- *
- * Contains the internal bean names that will be used by the retryable topic configuration.
- *
- * If you provide a bean of your own with the same name that instance will be used instead
- * of the default one.
- *
  * @author Tomaz Fernandes
  * @since 2.7
- *
  */
-public abstract class RetryTopicInternalBeanNames {
+class RetryTopicInternalBeanNamesTests {
 
 	static final String DESTINATION_TOPIC_PROCESSOR_NAME = "internalDestinationTopicProcessor";
 
@@ -47,4 +44,17 @@ public abstract class RetryTopicInternalBeanNames {
 
 	static final String DEFAULT_KAFKA_TEMPLATE_BEAN_NAME = "retryTopicDefaultKafkaTemplate";
 
+	@Test
+	public void assertRetryTopicInternalBeanNamesConstants() {
+		new RetryTopicInternalBeanNames() { }; // for coverage
+		assertEquals(DESTINATION_TOPIC_PROCESSOR_NAME, RetryTopicInternalBeanNames.DESTINATION_TOPIC_PROCESSOR_NAME);
+		assertEquals(KAFKA_CONSUMER_BACKOFF_MANAGER, RetryTopicInternalBeanNames.KAFKA_CONSUMER_BACKOFF_MANAGER);
+		assertEquals(RETRY_TOPIC_CONFIGURER, RetryTopicInternalBeanNames.RETRY_TOPIC_CONFIGURER);
+		assertEquals(LISTENER_CONTAINER_FACTORY_RESOLVER_NAME, RetryTopicInternalBeanNames.LISTENER_CONTAINER_FACTORY_RESOLVER_NAME);
+		assertEquals(LISTENER_CONTAINER_FACTORY_CONFIGURER_NAME, RetryTopicInternalBeanNames.LISTENER_CONTAINER_FACTORY_CONFIGURER_NAME);
+		assertEquals(DEAD_LETTER_PUBLISHING_RECOVERER_PROVIDER_NAME, RetryTopicInternalBeanNames.DEAD_LETTER_PUBLISHING_RECOVERER_PROVIDER_NAME);
+		assertEquals(DESTINATION_TOPIC_CONTAINER_NAME, RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME);
+		assertEquals(DEFAULT_LISTENER_FACTORY_BEAN_NAME, RetryTopicInternalBeanNames.DEFAULT_LISTENER_FACTORY_BEAN_NAME);
+		assertEquals(DEFAULT_KAFKA_TEMPLATE_BEAN_NAME, RetryTopicInternalBeanNames.DEFAULT_KAFKA_TEMPLATE_BEAN_NAME);
+	}
 }

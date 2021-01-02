@@ -18,27 +18,20 @@ package org.springframework.kafka.retrytopic;
 
 /**
  *
- * Contains the headers that will be used in the forwarded messages.
+ * Defines the topic strategy to handle fixed delays.
  *
  * @author Tomaz Fernandes
  * @since 2.7
  *
  */
-public abstract class RetryTopicHeaders {
+public enum FixedDelayStrategy {
+	/**
+	 * Uses a single topic to achieve non-blocking retry.
+	 */
+	SINGLE_TOPIC,
 
 	/**
-	 * The default header for the backoff duetimestamp.
+	 * Uses one separate topic per retry attempt.
 	 */
-	public static final String DEFAULT_HEADER_BACKOFF_TIMESTAMP = "retry_topic-backoff-timestamp";
-
-	/**
-	 * The default header for the attempts.
-	 */
-	public static final String DEFAULT_HEADER_ATTEMPTS = "retry_topic-attempts";
-
-	/**
-	 * The default header for the original message's timestamp.
-	 */
-	public static final String DEFAULT_HEADER_ORIGINAL_TIMESTAMP = "retry_topic-original-timestamp";
-
+	MULTIPLE_TOPICS
 }

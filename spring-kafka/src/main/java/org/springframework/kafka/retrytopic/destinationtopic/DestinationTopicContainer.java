@@ -17,8 +17,7 @@
 package org.springframework.kafka.retrytopic.destinationtopic;
 
 import java.time.Clock;
-import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
+import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -26,8 +25,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
-import org.springframework.kafka.core.KafkaOperations;
-import org.springframework.kafka.retrytopic.RetryTopicHeaders;
+import org.springframework.kafka.listener.ListenerExecutionFailedException;
+import org.springframework.kafka.retrytopic.RetryTopicConstants;
 
 
 /**
@@ -56,13 +55,27 @@ public class DestinationTopicContainer implements DestinationTopicResolver, Appl
 	}
 
 	@Override
-	public DestinationTopic resolveNextDestination(String topic, Integer attempt, Exception e) {
+	public DestinationTopic resolveNextDestination(String topic, Integer attempt, Exception e,
+												long originalTimestamp) {
 		DestinationsHolder destinationsHolder = getDestinationHolderFor(topic);
 		return destinationsHolder.getSourceDestination().isDltTopic()
 				? handleDltProcessingFailure(destinationsHolder)
-				: destinationsHolder.getSourceDestination().shouldRetryOn(attempt, e)
+				: destinationsHolder.getSourceDestination().shouldRetryOn(attempt, maybeUnwrapException(e))
+						&& !isPastTimout(originalTimestamp, destinationsHolder)
 					? resolveRetryDestination(destinationsHolder)
-					: resolveDltDestination(topic);
+					: resolveDltOrNoOpsDestination(topic);
+	}
+
+	private Throwable maybeUnwrapException(Exception e) {
+		return ListenerExecutionFailedException.class.isAssignableFrom(e.getClass()) && e.getCause() != null
+				? e.getCause()
+				: e;
+	}
+
+	private boolean isPastTimout(long originalTimestamp, DestinationsHolder destinationsHolder) {
+		long timeout = destinationsHolder.getNextDestination().getDestinationTimeout();
+		return timeout != RetryTopicConstants.NOT_SET &&
+				Instant.now(this.clock).toEpochMilli() > originalTimestamp + timeout;
 	}
 
 	private DestinationTopic handleDltProcessingFailure(DestinationsHolder destinationsHolder) {
@@ -78,17 +91,22 @@ public class DestinationTopicContainer implements DestinationTopicResolver, Appl
 	}
 
 	@Override
-	public String resolveDestinationNextExecutionTime(String topic, Integer attempt, Exception e) {
-		return LocalDateTime.now(this.clock)
-				.plus(resolveNextDestination(topic, attempt, e).getDestinationDelay(), ChronoUnit.MILLIS)
-				.format(RetryTopicHeaders.DEFAULT_BACKOFF_TIMESTAMP_HEADER_FORMATTER);
+	public long resolveDestinationNextExecutionTimestamp(String topic, Integer attempt, Exception e,
+														long originalTimestamp) {
+		return Instant.now(this.clock).plusMillis(resolveNextDestination(topic, attempt, e, originalTimestamp)
+				.getDestinationDelay()).toEpochMilli();
 	}
 
-	private DestinationTopic resolveDltDestination(String topic) {
+	@Override
+	public DestinationTopic getCurrentTopic(String topic) {
+		return getDestinationHolderFor(topic).getSourceDestination();
+	}
+
+	private DestinationTopic resolveDltOrNoOpsDestination(String topic) {
 		DestinationTopic destination = getDestinationFor(topic);
-		return destination.isDltTopic()
+		return destination.isDltTopic() || destination.isNoOpsTopic()
 				? destination
-				: resolveDltDestination(destination.getDestinationName());
+				: resolveDltOrNoOpsDestination(destination.getDestinationName());
 	}
 
 	private DestinationTopic getDestinationFor(String topic) {
@@ -125,11 +143,6 @@ public class DestinationTopicContainer implements DestinationTopicResolver, Appl
 		synchronized (this.destinationsHolderMap) {
 			this.destinationsHolderMap.putAll(sourceDestinationMapToAdd);
 		}
-	}
-
-	@Override
-	public KafkaOperations<?, ?> getKafkaOperationsFor(String topic) {
-		return getDestinationFor(topic).getKafkaOperations();
 	}
 
 	@Override

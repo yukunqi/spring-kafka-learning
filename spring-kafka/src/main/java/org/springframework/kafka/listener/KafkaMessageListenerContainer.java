@@ -280,6 +280,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 	}
 
 	@Override
+	public boolean isPartitionPaused(TopicPartition topicPartition) {
+		return this.listenerConsumer != null && this.listenerConsumer
+				.isPartitionPaused(topicPartition);
+	}
+
+	@Override
 	public Map<String, Map<MetricName, ? extends Metric>> metrics() {
 		ListenerConsumer listenerConsumerForMetrics = this.listenerConsumer;
 		if (listenerConsumerForMetrics != null) {
@@ -682,6 +688,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private volatile long lastPoll = System.currentTimeMillis();
 
+		private Set<TopicPartition> pausedPartitions;
+
 		@SuppressWarnings(UNCHECKED)
 		ListenerConsumer(GenericMessageListener<?> listener, ListenerType listenerType) {
 			Properties consumerProperties = propertiesFromProperties();
@@ -769,6 +777,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.lastReceivePartition = new HashMap<>();
 			this.lastAlertPartition = new HashMap<>();
 			this.wasIdlePartition = new HashMap<>();
+			this.pausedPartitions = new HashSet<>();
 		}
 
 		private Properties propertiesFromProperties() {
@@ -898,6 +907,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		boolean isConsumerPaused() {
 			return this.consumerPaused;
+		}
+
+		boolean isPartitionPaused(TopicPartition topicPartition) {
+			return this.pausedPartitions.contains(topicPartition);
 		}
 
 		@Nullable
@@ -1434,28 +1447,32 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void pausePartitionsIfNecessary() {
-			Set<TopicPartition> pausedPartitions = this.consumer.paused();
+			Set<TopicPartition> pausedConsumerPartitions = this.consumer.paused();
 			List<TopicPartition> partitionsToPause = this
 					.assignedPartitions
 					.stream()
-					.filter(tp -> isPartitionPauseRequested(tp) && !pausedPartitions.contains(tp))
+					.filter(tp -> isPartitionPauseRequested(tp)
+							&& !pausedConsumerPartitions.contains(tp))
 					.collect(Collectors.toList());
 			if (partitionsToPause.size() > 0) {
 				this.consumer.pause(partitionsToPause);
+				this.pausedPartitions.addAll(partitionsToPause);
 				this.logger.debug(() -> "Paused consumption from " + partitionsToPause);
 				partitionsToPause.forEach(KafkaMessageListenerContainer.this::publishConsumerPartitionPausedEvent);
 			}
 		}
 
 		private void resumePartitionsIfNecessary() {
-			Set<TopicPartition> pausedPartitions = this.consumer.paused();
+			Set<TopicPartition> pausedConsumerPartitions = this.consumer.paused();
 			List<TopicPartition> partitionsToResume = this
 					.assignedPartitions
 					.stream()
-					.filter(tp -> !isPartitionPauseRequested(tp) && pausedPartitions.contains(tp))
+					.filter(tp -> !isPartitionPauseRequested(tp)
+							&& pausedConsumerPartitions.contains(tp))
 					.collect(Collectors.toList());
 			if (partitionsToResume.size() > 0) {
 				this.consumer.resume(partitionsToResume);
+				this.pausedPartitions.removeAll(partitionsToResume);
 				this.logger.debug(() -> "Resumed consumption from " + partitionsToResume);
 				partitionsToResume.forEach(KafkaMessageListenerContainer.this::publishConsumerPartitionResumedEvent);
 			}

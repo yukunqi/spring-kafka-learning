@@ -108,7 +108,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private ApplicationContext applicationContext;
 
-	private final Set<TopicPartition> pausedPartitions;
+	private final Set<TopicPartition> pauseRequestedPartitions;
 
 	/**
 	 * Construct an instance with the provided factory and properties.
@@ -151,7 +151,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 			this.containerProperties.setConsumerRebalanceListener(createSimpleLoggingConsumerRebalanceListener());
 		}
 
-		this.pausedPartitions = new HashSet<>();
+		this.pauseRequestedPartitions = new HashSet<>();
 	}
 
 	@Override
@@ -242,22 +242,22 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	@Override
 	public boolean isPartitionPauseRequested(TopicPartition topicPartition) {
-		synchronized (this.pausedPartitions) {
-			return this.pausedPartitions.contains(topicPartition);
+		synchronized (this.pauseRequestedPartitions) {
+			return this.pauseRequestedPartitions.contains(topicPartition);
 		}
 	}
 
 	@Override
 	public void pausePartition(TopicPartition topicPartition) {
-		synchronized (this.pausedPartitions) {
-			this.pausedPartitions.add(topicPartition);
+		synchronized (this.pauseRequestedPartitions) {
+			this.pauseRequestedPartitions.add(topicPartition);
 		}
 	}
 
 	@Override
 	public void resumePartition(TopicPartition topicPartition) {
-		synchronized (this.pausedPartitions) {
-			this.pausedPartitions.remove(topicPartition);
+		synchronized (this.pauseRequestedPartitions) {
+			this.pauseRequestedPartitions.remove(topicPartition);
 		}
 	}
 

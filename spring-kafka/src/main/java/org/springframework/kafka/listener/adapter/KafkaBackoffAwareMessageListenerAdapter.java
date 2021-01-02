@@ -16,7 +16,7 @@
 
 package org.springframework.kafka.listener.adapter;
 
-import java.time.LocalDateTime;
+import java.math.BigInteger;
 import java.util.Optional;
 
 import org.apache.kafka.clients.consumer.Consumer;
@@ -69,19 +69,18 @@ public class KafkaBackoffAwareMessageListenerAdapter<K, V> extends AbstractDeleg
 	@Override
 	public void onMessage(ConsumerRecord<K, V> data, Acknowledgment ack, Consumer<?, ?> consumer) throws KafkaBackoffException {
 		maybeGetBackoffTimestamp(data)
-				.ifPresent(timestamp -> this.kafkaConsumerBackoffManager.maybeBackoff(createContext(data, timestamp)));
+				.ifPresent(nextExecutionTimestamp -> this.kafkaConsumerBackoffManager.maybeBackoff(createContext(data, nextExecutionTimestamp)));
 		super.getDelegate().onMessage(data, ack, consumer);
 		ack.acknowledge();
 	}
 
-	private KafkaConsumerBackoffManager.Context createContext(ConsumerRecord<K, V> data, LocalDateTime timestamp) {
-		return this.kafkaConsumerBackoffManager.createContext(timestamp, this.listenerId, new TopicPartition(data.topic(), data.partition()));
+	private KafkaConsumerBackoffManager.Context createContext(ConsumerRecord<K, V> data, long nextExecutionTimestamp) {
+		return this.kafkaConsumerBackoffManager.createContext(nextExecutionTimestamp, this.listenerId, new TopicPartition(data.topic(), data.partition()));
 	}
 
-	private <V, K> Optional<LocalDateTime> maybeGetBackoffTimestamp(ConsumerRecord<K, V> data) {
+	private <V, K> Optional<Long> maybeGetBackoffTimestamp(ConsumerRecord<K, V> data) {
 		return Optional
 				.ofNullable(data.headers().lastHeader(this.backoffTimestampHeader))
-				.map(timestampHeader -> new String(timestampHeader.value()))
-				.map(timestamp -> LocalDateTime.parse(timestamp, RetryTopicHeaders.DEFAULT_BACKOFF_TIMESTAMP_HEADER_FORMATTER));
+				.map(timestampHeader -> new BigInteger(timestampHeader.value()).longValue());
 	}
 }

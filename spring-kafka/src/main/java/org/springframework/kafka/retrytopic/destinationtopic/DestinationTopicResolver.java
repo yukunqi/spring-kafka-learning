@@ -18,8 +18,6 @@ package org.springframework.kafka.retrytopic.destinationtopic;
 
 import java.util.Map;
 
-import org.springframework.kafka.core.KafkaOperations;
-
 /**
  *
  * Contains methods for resolving the destination to which a message that failed
@@ -32,10 +30,10 @@ import org.springframework.kafka.core.KafkaOperations;
  */
 public interface DestinationTopicResolver {
 
-	DestinationTopic resolveNextDestination(String topic, Integer attempt, Exception e);
-	String resolveDestinationNextExecutionTime(String topic, Integer attempt, Exception e);
+	DestinationTopic resolveNextDestination(String topic, Integer attempt, Exception e, long originalTimestamp);
+	long resolveDestinationNextExecutionTimestamp(String topic, Integer attempt, Exception e, long originalTimestamp);
+	DestinationTopic getCurrentTopic(String topic);
 	void addDestinations(Map<String, DestinationTopicResolver.DestinationsHolder> sourceDestinationMapToAdd);
-	KafkaOperations<?, ?> getKafkaOperationsFor(String topic);
 
 	static DestinationsHolder holderFor(DestinationTopic sourceDestination, DestinationTopic nextDestination) {
 		return new DestinationsHolder(sourceDestination, nextDestination);

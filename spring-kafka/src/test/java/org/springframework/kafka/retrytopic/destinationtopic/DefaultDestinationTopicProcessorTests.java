@@ -37,7 +37,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)
-class DefaultDestinationTopicProcessorTest extends DestinationTopicTest {
+class DefaultDestinationTopicProcessorTests extends DestinationTopicTests {
 
 	@Mock
 	private DestinationTopicResolver destinationTopicResolver;
@@ -69,6 +69,7 @@ class DefaultDestinationTopicProcessorTest extends DestinationTopicTest {
 		// when
 		registerFirstTopicDestinations(context);
 		registerSecondTopicDestinations(context);
+		registerThirdTopicDestinations(context);
 
 		// then
 		assertTrue(context.destinationsByTopicMap.containsKey(FIRST_TOPIC));
@@ -86,6 +87,13 @@ class DefaultDestinationTopicProcessorTest extends DestinationTopicTest {
 		assertEquals(firstRetryDestinationTopic2, destinationTopicsForSecondTopic.get(1));
 		assertEquals(secondRetryDestinationTopic2, destinationTopicsForSecondTopic.get(2));
 		assertEquals(dltDestinationTopic2, destinationTopicsForSecondTopic.get(3));
+
+		assertTrue(context.destinationsByTopicMap.containsKey(THIRD_TOPIC));
+		List<DestinationTopic> destinationTopicsForThirdTopic = context.destinationsByTopicMap.get(THIRD_TOPIC);
+		assertEquals(3, destinationTopicsForThirdTopic.size());
+		assertEquals(mainDestinationTopic3, destinationTopicsForThirdTopic.get(0));
+		assertEquals(firstRetryDestinationTopic3, destinationTopicsForThirdTopic.get(1));
+		assertEquals(secondRetryDestinationTopic3, destinationTopicsForThirdTopic.get(2));
 	}
 
 	private void registerFirstTopicDestinations(DestinationTopicProcessor.Context context) {
@@ -104,8 +112,14 @@ class DefaultDestinationTopicProcessorTest extends DestinationTopicTest {
 						getSuffixedName(propsHolder), propsHolder.props, context));
 	}
 
+	private void registerThirdTopicDestinations(DestinationTopicProcessor.Context context) {
+		allThirdDestinationHolders.forEach(propsHolder ->
+				destinationTopicProcessor.registerDestinationTopic(THIRD_TOPIC,
+						getSuffixedName(propsHolder), propsHolder.props, context));
+	}
+
 	@Test
-	void shouldCreateDestinationMap() {
+	void shouldCreateDestinationMapWhenProcessDestinations() {
 		// setup
 		DefaultDestinationTopicProcessor destinationTopicProcessor =
 				new DefaultDestinationTopicProcessor(destinationTopicResolver);
@@ -115,13 +129,14 @@ class DefaultDestinationTopicProcessorTest extends DestinationTopicTest {
 		// when
 		registerFirstTopicDestinations(context);
 		registerSecondTopicDestinations(context);
+		registerThirdTopicDestinations(context);
 		destinationTopicProcessor.processRegisteredDestinations(topic -> { }, context);
 
 		// then
 		then(destinationTopicResolver).should().addDestinations(destinationMapCaptor.capture());
 		Map<String, DestinationTopicResolver.DestinationsHolder> destinationMap = destinationMapCaptor.getValue();
 
-		assertEquals(8, destinationMap.size());
+		assertEquals(11, destinationMap.size());
 
 		assertTrue(destinationMap.containsKey(mainDestinationTopic.getDestinationName()));
 		assertEquals(mainDestinationTopic, destinationMap.get(mainDestinationTopic.getDestinationName()).getSourceDestination());
@@ -149,6 +164,15 @@ class DefaultDestinationTopicProcessorTest extends DestinationTopicTest {
 		assertEquals(dltDestinationTopic2, destinationMap.get(dltDestinationTopic2.getDestinationName()).getSourceDestination());
 		assertEquals(noOpsDestinationTopic2, destinationMap.get(dltDestinationTopic2.getDestinationName()).getNextDestination());
 
+		assertTrue(destinationMap.containsKey(mainDestinationTopic3.getDestinationName()));
+		assertEquals(mainDestinationTopic3, destinationMap.get(mainDestinationTopic3.getDestinationName()).getSourceDestination());
+		assertEquals(firstRetryDestinationTopic3, destinationMap.get(mainDestinationTopic3.getDestinationName()).getNextDestination());
+		assertTrue(destinationMap.containsKey(firstRetryDestinationTopic3.getDestinationName()));
+		assertEquals(firstRetryDestinationTopic3, destinationMap.get(firstRetryDestinationTopic3.getDestinationName()).getSourceDestination());
+		assertEquals(secondRetryDestinationTopic3, destinationMap.get(firstRetryDestinationTopic3.getDestinationName()).getNextDestination());
+		assertTrue(destinationMap.containsKey(secondRetryDestinationTopic3.getDestinationName()));
+		assertEquals(secondRetryDestinationTopic3, destinationMap.get(secondRetryDestinationTopic3.getDestinationName()).getSourceDestination());
+		assertEquals(noOpsDestinationTopic3, destinationMap.get(secondRetryDestinationTopic3.getDestinationName()).getNextDestination());
 	}
 
 	@Test

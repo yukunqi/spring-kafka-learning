@@ -18,27 +18,33 @@ package org.springframework.kafka.retrytopic;
 
 /**
  *
- * Contains the headers that will be used in the forwarded messages.
+ * Constants for the RetryTopic functionality.
  *
  * @author Tomaz Fernandes
  * @since 2.7
  *
  */
-public abstract class RetryTopicHeaders {
+public abstract class RetryTopicConstants {
 
 	/**
-	 * The default header for the backoff duetimestamp.
+	 * Default suffix for retry topics.
 	 */
-	public static final String DEFAULT_HEADER_BACKOFF_TIMESTAMP = "retry_topic-backoff-timestamp";
+	public static final String DEFAULT_RETRY_SUFFIX = "-retry";
 
 	/**
-	 * The default header for the attempts.
+	 * Default suffix for dlt.
 	 */
-	public static final String DEFAULT_HEADER_ATTEMPTS = "retry_topic-attempts";
+	public static final String DEFAULT_DLT_SUFFIX = "-dlt";
 
 	/**
-	 * The default header for the original message's timestamp.
+	 * Default number of times the message processing should be attempted,
+	 * including the first.
 	 */
-	public static final String DEFAULT_HEADER_ORIGINAL_TIMESTAMP = "retry_topic-original-timestamp";
+	public static final int DEFAULT_MAX_ATTEMPTS = 3;
+
+	/**
+	 * Constant to represent that the integer property is not set.
+	 */
+	public static final int NOT_SET = -1;
 
 }

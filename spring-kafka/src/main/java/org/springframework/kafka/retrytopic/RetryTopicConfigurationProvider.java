@@ -57,7 +57,6 @@ public class RetryTopicConfigurationProvider {
 		this.beanFactory = beanFactory;
 	}
 	public RetryTopicConfiguration findRetryConfigurationFor(String[] topics, Method method, Object bean) {
-		// TODO: Enable class-level annotations
 		RetryableTopic annotation = AnnotationUtils.findAnnotation(method, RetryableTopic.class);
 		return annotation != null
 				? new RetryableTopicAnnotationProcessor(this.beanFactory)

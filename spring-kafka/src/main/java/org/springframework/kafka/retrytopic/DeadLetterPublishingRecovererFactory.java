@@ -17,7 +17,7 @@
 package org.springframework.kafka.retrytopic;
 
 import java.math.BigInteger;
-import java.util.stream.StreamSupport;
+import java.util.function.Consumer;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -45,11 +45,11 @@ import org.springframework.util.Assert;
  */
 public class DeadLetterPublishingRecovererFactory {
 
-	private static final CharSequence KAFKA_DLT_HEADERS_PREFIX = "kafka_dlt";
-
 	private static final String NO_OPS_RETRY_TOPIC = "internal-kafka-noOpsRetry";
 
 	private final DestinationTopicResolver destinationTopicResolver;
+
+	private Consumer<DeadLetterPublishingRecoverer> recovererCustomizer = recoverer -> { };
 
 	public DeadLetterPublishingRecovererFactory(DestinationTopicResolver destinationTopicResolver) {
 		this.destinationTopicResolver = destinationTopicResolver;
@@ -62,18 +62,25 @@ public class DeadLetterPublishingRecovererFactory {
 			@Override
 			protected void publish(ProducerRecord<Object, Object> outRecord, KafkaOperations<Object, Object> kafkaTemplate) {
 				if (NO_OPS_RETRY_TOPIC.equals(outRecord.topic())) {
-					this.logger.warn(() -> "Processing failed for dlt topic, giving up.");
+					this.logger.warn(() -> "Processing failed for last topic, giving up.");
 					return;
 				}
 
 				KafkaOperations<Object, Object> kafkaOperationsForTopic = (KafkaOperations<Object, Object>)
-						DeadLetterPublishingRecovererFactory.this.destinationTopicResolver.getKafkaOperationsFor(outRecord.topic());
+						DeadLetterPublishingRecovererFactory.this.destinationTopicResolver
+								.getCurrentTopic(outRecord.topic())
+								.getKafkaOperations();
 				super.publish(outRecord, kafkaOperationsForTopic);
 			}
 		};
 
 		recoverer.setHeadersFunction((consumerRecord, e) -> addHeaders(consumerRecord, e, getAttempts(consumerRecord)));
+		this.recovererCustomizer.accept(recoverer);
 		return recoverer;
+	}
+
+	public void setDeadLetterPublishingRecovererCustomizer(Consumer<DeadLetterPublishingRecoverer> customizer) {
+		this.recovererCustomizer = customizer;
 	}
 
 	private TopicPartition resolveDestination(ConsumerRecord<?, ?> cr, Exception e, Configuration configuration) {
@@ -82,8 +89,10 @@ public class DeadLetterPublishingRecovererFactory {
 		}
 
 		int attempt = getAttempts(cr);
+		BigInteger originalTimestamp = new BigInteger(getOriginalTimestampHeader(cr));
 
-		DestinationTopic nextDestination = this.destinationTopicResolver.resolveNextDestination(cr.topic(), attempt, e);
+		DestinationTopic nextDestination = this.destinationTopicResolver.resolveNextDestination(
+				cr.topic(), attempt, e, originalTimestamp.longValue());
 
 		return nextDestination.isNoOpsTopic()
 					? new TopicPartition(NO_OPS_RETRY_TOPIC, 0)
@@ -104,24 +113,30 @@ public class DeadLetterPublishingRecovererFactory {
 	}
 
 	private Headers addHeaders(ConsumerRecord<?, ?> consumerRecord, Exception e, int attempts) {
-		Headers headers = filterPreviousDltHeaders(consumerRecord.headers());
+
+		Headers headers = new RecordHeaders();
+
+		byte[] originalTimestampHeader = getOriginalTimestampHeader(consumerRecord);
+		headers.add(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP, originalTimestampHeader);
+
 		headers.add(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS,
 				BigInteger.valueOf(attempts + 1).toByteArray());
-		headers.add(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP,
-					this.destinationTopicResolver
-							.resolveDestinationNextExecutionTime(consumerRecord.topic(), attempts, e).getBytes());
+		long originalTimestamp = new BigInteger(originalTimestampHeader).longValue();
+
+		long nextExecutionTimestamp = this.destinationTopicResolver
+				.resolveDestinationNextExecutionTimestamp(consumerRecord.topic(), attempts, e,
+						originalTimestamp);
+
+		headers.add(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP,	BigInteger.valueOf(nextExecutionTimestamp).toByteArray());
 		return headers;
 	}
 
-	// TODO: Integrate better with the DeadLetterPublisherRecoverer so that the headers end up better.
-	private RecordHeaders filterPreviousDltHeaders(Headers headers) {
-		return StreamSupport
-				.stream(headers.spliterator(), false)
-				.filter(header -> !new String(header.value()).contains(KAFKA_DLT_HEADERS_PREFIX))
-				.reduce(new RecordHeaders(), ((recordHeaders, header) -> {
-					recordHeaders.add(header);
-					return recordHeaders;
-				}), (a, b) -> a);
+	private byte[] getOriginalTimestampHeader(ConsumerRecord<?, ?> consumerRecord) {
+		Header currentOriginalTimestampHeader = consumerRecord.headers()
+				.lastHeader(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP);
+		return currentOriginalTimestampHeader != null
+				? currentOriginalTimestampHeader.value()
+				: BigInteger.valueOf(consumerRecord.timestamp()).toByteArray();
 	}
 
 	public static class Configuration {

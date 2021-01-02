@@ -40,7 +40,7 @@ import org.springframework.kafka.core.KafkaOperations;
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)
-class RetryTopicConfigurationProviderTest {
+class RetryTopicConfigurationProviderTests {
 
 	@Mock
 	private ListableBeanFactory beanFactory;

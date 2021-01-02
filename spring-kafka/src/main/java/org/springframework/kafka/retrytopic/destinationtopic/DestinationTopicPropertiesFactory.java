@@ -25,7 +25,10 @@ import java.util.stream.IntStream;
 import org.springframework.classify.BinaryExceptionClassifier;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.retrytopic.BackOffValuesGenerator;
-import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
+import org.springframework.kafka.retrytopic.DltStrategy;
+import org.springframework.kafka.retrytopic.FixedDelayStrategy;
+import org.springframework.kafka.retrytopic.RetryTopicConstants;
+import org.springframework.kafka.retrytopic.TopicSuffixingStrategy;
 import org.springframework.retry.backoff.BackOffPolicy;
 import org.springframework.util.StringUtils;
 
@@ -54,20 +57,28 @@ public class DestinationTopicPropertiesFactory {
 
 	private final KafkaOperations<?, ?> kafkaOperations;
 
-	private final RetryTopicConfiguration.FixedDelayTopicStrategy fixedDelayTopicStrategy;
+	private final FixedDelayStrategy fixedDelayStrategy;
 
-	private final RetryTopicConfiguration.DltProcessingFailureStrategy dltProcessingFailureStrategy;
+	private final DltStrategy dltStrategy;
+
+	private final TopicSuffixingStrategy topicSuffixingStrategy;
+
+	private final long timeout;
 
 	public DestinationTopicPropertiesFactory(String retryTopicSuffix, String dltSuffix, int maxAttempts,
 											BackOffPolicy backOffPolicy, BinaryExceptionClassifier exceptionClassifier,
 											int numPartitions, KafkaOperations<?, ?> kafkaOperations,
-											RetryTopicConfiguration.FixedDelayTopicStrategy fixedDelayTopicStrategy,
-											RetryTopicConfiguration.DltProcessingFailureStrategy dltProcessingFailureStrategy) {
-		this.dltProcessingFailureStrategy = dltProcessingFailureStrategy;
+											FixedDelayStrategy fixedDelayStrategy,
+											DltStrategy dltStrategy,
+											TopicSuffixingStrategy topicSuffixingStrategy,
+											long timeout) {
+		this.dltStrategy = dltStrategy;
 		this.kafkaOperations = kafkaOperations;
 		this.exceptionClassifier = exceptionClassifier;
 		this.numPartitions = numPartitions;
-		this.fixedDelayTopicStrategy = fixedDelayTopicStrategy;
+		this.fixedDelayStrategy = fixedDelayStrategy;
+		this.topicSuffixingStrategy = topicSuffixingStrategy;
+		this.timeout = timeout;
 		this.destinationTopicSuffixes = new DestinationTopicSuffixes(retryTopicSuffix, dltSuffix);
 		this.backOffValues = new BackOffValuesGenerator(maxAttempts, backOffPolicy).generateValues();
 		// Max Attempts include the initial try.
@@ -81,7 +92,7 @@ public class DestinationTopicPropertiesFactory {
 	}
 
 	private List<DestinationTopic.Properties> createPropertiesForFixedDelaySingleTopic() {
-		return Arrays.asList(createMainTopicProperties(), createRetryDestinationTopic(1,
+		return Arrays.asList(createMainTopicProperties(), createRetryProperties(1,
 				DestinationTopic.Type.SINGLE_TOPIC_RETRY, getShouldRetryOn()), createDltProperties());
 	}
 
@@ -90,66 +101,85 @@ public class DestinationTopicPropertiesFactory {
 	}
 
 	private boolean isSingleTopicStrategy() {
-		return RetryTopicConfiguration.FixedDelayTopicStrategy.SINGLE_TOPIC.equals(this.fixedDelayTopicStrategy);
+		return FixedDelayStrategy.SINGLE_TOPIC.equals(this.fixedDelayStrategy);
 	}
 
 	private List<DestinationTopic.Properties> createPropertiesForDefaultTopicStrategy() {
-		return IntStream.rangeClosed(0, this.maxAttempts)
+		return IntStream.rangeClosed(0, DltStrategy.NO_DLT.equals(this.dltStrategy)
+							? this.maxAttempts - 1
+							: this.maxAttempts)
 				.mapToObj(index -> createRetryOrDltTopicSuffixes(index))
 				.collect(Collectors.toList());
 	}
 
 	private DestinationTopic.Properties createMainTopicProperties() {
 		return new DestinationTopic.Properties(0, MAIN_TOPIC_SUFFIX, DestinationTopic.Type.MAIN, this.maxAttempts,
-				this.numPartitions, this.dltProcessingFailureStrategy, this.kafkaOperations, getShouldRetryOn());
+				this.numPartitions, this.dltStrategy, this.kafkaOperations, getShouldRetryOn(), this.timeout);
 	}
 
 	private DestinationTopic.Properties createRetryOrDltTopicSuffixes(int index) {
-		BiPredicate<Integer, Exception> shouldRetryOn = getShouldRetryOn();
+		BiPredicate<Integer, Throwable> shouldRetryOn = getShouldRetryOn();
 		return index == 0
 				? createMainTopicProperties()
 				: index < this.maxAttempts
-					? createRetryDestinationTopic(index,
+				? createRetryProperties(index,
 				DestinationTopic.Type.RETRY, shouldRetryOn)
-					: createDltProperties();
+				: createDltProperties();
 	}
 
 	private DestinationTopic.Properties createDltProperties() {
 		return new DestinationTopic.Properties(0, this.destinationTopicSuffixes.getDltSuffix(),
-		DestinationTopic.Type.DLT, this.maxAttempts, this.numPartitions, this.dltProcessingFailureStrategy,
-				this.kafkaOperations, (a, e) -> false);
+				DestinationTopic.Type.DLT, this.maxAttempts, this.numPartitions, this.dltStrategy,
+				this.kafkaOperations, (a, e) -> false, this.timeout);
 	}
 
-	private BiPredicate<Integer, Exception> getShouldRetryOn() {
-		return (attempt, exception) -> attempt < this.maxAttempts && this.exceptionClassifier.classify(exception);
+	private BiPredicate<Integer, Throwable> getShouldRetryOn() {
+		return (attempt, throwable) -> attempt < this.maxAttempts && this.exceptionClassifier.classify(throwable);
 	}
 
-	private DestinationTopic.Properties createRetryDestinationTopic(int index,
-																	DestinationTopic.Type topicType,
-																	BiPredicate<Integer, Exception> shouldRetryOn) {
+	private DestinationTopic.Properties createRetryProperties(int index,
+															DestinationTopic.Type topicType,
+															BiPredicate<Integer, Throwable> shouldRetryOn) {
 		int indexInBackoffValues = index - 1;
-		String retrySuffix = this.destinationTopicSuffixes.getRetrySuffix();
-		return hasDuplicates()
-				? getProperties(topicType, shouldRetryOn, indexInBackoffValues,
-						isSingleTopicStrategy() ? retrySuffix : joinWithRetrySuffix(indexInBackoffValues, retrySuffix))
-				: getProperties(topicType, shouldRetryOn, indexInBackoffValues,
-						joinWithRetrySuffix(this.backOffValues.get(indexInBackoffValues), retrySuffix));
+		Long thisBackOffValue = this.backOffValues.get(indexInBackoffValues);
+		return createProperties(topicType, shouldRetryOn, indexInBackoffValues,
+				getTopicSuffix(indexInBackoffValues, thisBackOffValue));
 	}
 
-	private boolean hasDuplicates() {
-		return this.backOffValues
+	private String getTopicSuffix(int indexInBackoffValues, Long thisBackOffValue) {
+		return isSingleTopicFixedDelay()
+				? this.destinationTopicSuffixes.getRetrySuffix()
+				: isSuffixWithIndexStrategy() || isFixedDelay()
+					? joinWithRetrySuffix(indexInBackoffValues)
+					: hasDuplicates(thisBackOffValue)
+						? joinWithRetrySuffix(thisBackOffValue)
+						.concat("-" + String.valueOf(getIndexInBackoffValues(indexInBackoffValues, thisBackOffValue)))
+						: joinWithRetrySuffix(thisBackOffValue);
+	}
+
+	private int getIndexInBackoffValues(int indexInBackoffValues, Long thisBackOffValue) {
+		return indexInBackoffValues - this.backOffValues.indexOf(thisBackOffValue);
+	}
+
+	private boolean isSuffixWithIndexStrategy() {
+		return TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE.equals(this.topicSuffixingStrategy);
+	}
+
+	private boolean hasDuplicates(Long thisBackOffValue) {
+		return this
+				.backOffValues
 				.stream()
-				.distinct()
-				.count() != this.backOffValues.size();
+				.filter(value -> value.equals(thisBackOffValue))
+				.count() > 1;
 	}
 
-	private DestinationTopic.Properties getProperties(DestinationTopic.Type topicType,
-													BiPredicate<Integer, Exception> shouldRetryOn,
-													int indexInBackoffValues,
-													String suffix) {
+	private DestinationTopic.Properties createProperties(DestinationTopic.Type topicType,
+														BiPredicate<Integer, Throwable> shouldRetryOn,
+														int indexInBackoffValues,
+														String suffix) {
 		return new DestinationTopic.Properties(this.backOffValues.get(indexInBackoffValues), suffix,
-				topicType, this.maxAttempts, this.numPartitions, this.dltProcessingFailureStrategy,
-				this.kafkaOperations, shouldRetryOn);
+				topicType, this.maxAttempts, this.numPartitions, this.dltStrategy,
+				this.kafkaOperations, shouldRetryOn, this.timeout);
 	}
 
 	private boolean isFixedDelay() {
@@ -157,26 +187,20 @@ public class DestinationTopicPropertiesFactory {
 		return this.backOffValues.size() > 1 && this.backOffValues.stream().distinct().count() == 1;
 	}
 
-	private String joinWithRetrySuffix(long parameter, String retrySuffix) {
-		return String.join("-", retrySuffix, String.valueOf(parameter));
+	private String joinWithRetrySuffix(long parameter) {
+		return String.join("-", this.destinationTopicSuffixes.getRetrySuffix(), String.valueOf(parameter));
 	}
 
 	public static class DestinationTopicSuffixes {
-		/**
-		 * Default suffix for retry topics.
-		 */
-		public static final String DEFAULT_RETRY_SUFFIX = "-retry";
 
-		/**
-		 * Default suffix for dlt.
-		 */
-		public static final String DEFAULT_DLT_SUFFIX = "-dlt";
 		private final String retryTopicSuffix;
 		private final String dltSuffix;
 
 		DestinationTopicSuffixes(String retryTopicSuffix, String dltSuffix) {
-			this.retryTopicSuffix = StringUtils.hasText(retryTopicSuffix) ? retryTopicSuffix : DEFAULT_RETRY_SUFFIX;
-			this.dltSuffix = StringUtils.hasText(dltSuffix) ? dltSuffix : DEFAULT_DLT_SUFFIX;
+			this.retryTopicSuffix = StringUtils.hasText(retryTopicSuffix)
+					? retryTopicSuffix
+					: RetryTopicConstants.DEFAULT_RETRY_SUFFIX;
+			this.dltSuffix = StringUtils.hasText(dltSuffix) ? dltSuffix : RetryTopicConstants.DEFAULT_DLT_SUFFIX;
 		}
 
 		public String getRetrySuffix() {

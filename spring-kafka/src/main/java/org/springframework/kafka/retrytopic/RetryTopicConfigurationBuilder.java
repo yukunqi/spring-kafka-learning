@@ -45,7 +45,7 @@ import org.springframework.util.Assert;
  */
 public class RetryTopicConfigurationBuilder {
 
-	private int maxAttempts = BackOffValuesGenerator.NOT_SET;
+	private int maxAttempts = RetryTopicConstants.NOT_SET;
 
 	private BackOffPolicy backOffPolicy;
 
@@ -67,13 +67,16 @@ public class RetryTopicConfigurationBuilder {
 
 	private BinaryExceptionClassifierBuilder classifierBuilder;
 
-	private RetryTopicConfiguration.FixedDelayTopicStrategy fixedDelayTopicStrategy =
-			RetryTopicConfiguration.FixedDelayTopicStrategy.MULTIPLE_TOPICS;
+	private FixedDelayStrategy fixedDelayStrategy =
+			FixedDelayStrategy.MULTIPLE_TOPICS;
 
-	private RetryTopicConfiguration.DltProcessingFailureStrategy dltProcessingFailureStrategy =
-			RetryTopicConfiguration.DltProcessingFailureStrategy.ALWAYS_RETRY;
+	private DltStrategy dltStrategy =
+			DltStrategy.ALWAYS_RETRY_ON_ERROR;
 
-	/* ---------------- Configure Dlt Bean and Method -------------- */
+	private long timeout = RetryTopicConstants.NOT_SET;
+	private TopicSuffixingStrategy topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_DELAY_VALUE;
+
+	/* ---------------- DLT Behavior -------------- */
 	public RetryTopicConfigurationBuilder dltHandlerMethod(Class<?> clazz, String methodName) {
 		this.dltHandlerMethod = RetryTopicConfigurer.createHandlerMethodWith(clazz, methodName);
 		return this;
@@ -81,6 +84,24 @@ public class RetryTopicConfigurationBuilder {
 
 	RetryTopicConfigurationBuilder dltHandlerMethod(RetryTopicConfigurer.EndpointHandlerMethod endpointHandlerMethod) {
 		this.dltHandlerMethod = endpointHandlerMethod;
+		return this;
+	}
+
+	public RetryTopicConfigurationBuilder doNotRetryOnDltFailure() {
+		this.dltStrategy =
+				DltStrategy.FAIL_ON_ERROR;
+		return this;
+	}
+
+	RetryTopicConfigurationBuilder dltProcessingFailureStrategy(
+			DltStrategy dltStrategy) {
+		this.dltStrategy = dltStrategy;
+		return this;
+	}
+
+	public RetryTopicConfigurationBuilder doNotConfigureDlt() {
+		this.dltStrategy =
+				DltStrategy.NO_DLT;
 		return this;
 	}
 
@@ -117,13 +138,28 @@ public class RetryTopicConfigurationBuilder {
 		return this;
 	}
 
+	public RetryTopicConfigurationBuilder suffixTopicsWithIndexValues() {
+		this.topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE;
+		return this;
+	}
+
+	RetryTopicConfigurationBuilder setTopicSuffixingStrategy(TopicSuffixingStrategy topicSuffixingStrategy) {
+		this.topicSuffixingStrategy = topicSuffixingStrategy;
+		return this;
+	}
+
 	/* ---------------- Configure BackOff -------------- */
 
 	public RetryTopicConfigurationBuilder maxAttempts(int maxAttempts) {
 		Assert.isTrue(maxAttempts > 0, "Number of attempts should be positive");
-		Assert.isTrue(this.maxAttempts == BackOffValuesGenerator.NOT_SET,
+		Assert.isTrue(this.maxAttempts == RetryTopicConstants.NOT_SET,
 				"You have already set the number of attempts");
 		this.maxAttempts = maxAttempts;
+		return this;
+	}
+
+	public RetryTopicConfigurationBuilder timeoutAfter(long timeout) {
+		this.timeout = timeout;
 		return this;
 	}
 
@@ -188,12 +224,12 @@ public class RetryTopicConfigurationBuilder {
 	}
 
 	public RetryTopicConfigurationBuilder useSingleTopicForFixedDelays() {
-		this.fixedDelayTopicStrategy = RetryTopicConfiguration.FixedDelayTopicStrategy.SINGLE_TOPIC;
+		this.fixedDelayStrategy = FixedDelayStrategy.SINGLE_TOPIC;
 		return this;
 	}
 
-	RetryTopicConfigurationBuilder useSingleTopicForFixedDelays(RetryTopicConfiguration.FixedDelayTopicStrategy useSameTopicForFixedDelays) {
-		this.fixedDelayTopicStrategy = useSameTopicForFixedDelays;
+	RetryTopicConfigurationBuilder useSingleTopicForFixedDelays(FixedDelayStrategy useSameTopicForFixedDelays) {
+		this.fixedDelayStrategy = useSameTopicForFixedDelays;
 		return this;
 	}
 
@@ -259,20 +295,6 @@ public class RetryTopicConfigurationBuilder {
 		return this.classifierBuilder;
 	}
 
-	/* ---------------- DLT Processing Failure Behavior -------------- */
-	public RetryTopicConfigurationBuilder doNotRetryOnDltFailure() {
-		this.dltProcessingFailureStrategy =
-				RetryTopicConfiguration.DltProcessingFailureStrategy.FAIL;
-		return this;
-	}
-
-	RetryTopicConfigurationBuilder dltProcessingFailureStrategy(
-			RetryTopicConfiguration.DltProcessingFailureStrategy dltProcessingFailureStrategy) {
-		this.dltProcessingFailureStrategy = dltProcessingFailureStrategy;
-		return this;
-	}
-
-
 	/* ---------------- Configure KafkaListenerContainerFactory -------------- */
 	public RetryTopicConfigurationBuilder listenerFactory(ConcurrentKafkaListenerContainerFactory<?, ?> factory) {
 		this.listenerContainerFactory = factory;
@@ -296,7 +318,8 @@ public class RetryTopicConfigurationBuilder {
 		List<DestinationTopic.Properties> destinationTopicProperties =
 				new DestinationTopicPropertiesFactory(this.retryTopicSuffix, this.dltSuffix, this.maxAttempts,
 						this.backOffPolicy, buildClassifier(), this.topicCreationConfiguration.getNumPartitions(),
-						sendToTopicKafkaTemplate, this.fixedDelayTopicStrategy, this.dltProcessingFailureStrategy)
+						sendToTopicKafkaTemplate, this.fixedDelayStrategy, this.dltStrategy,
+						this.topicSuffixingStrategy, this.timeout)
 						.createProperties();
 		return new RetryTopicConfiguration(destinationTopicProperties, deadLetterProviderConfig,
 				this.dltHandlerMethod, this.topicCreationConfiguration, allowListManager, listenerContainerFactory);
@@ -307,5 +330,4 @@ public class RetryTopicConfigurationBuilder {
 				? this.classifierBuilder.build()
 				: new BinaryExceptionClassifierBuilder().retryOn(Throwable.class).build();
 	}
-
 }

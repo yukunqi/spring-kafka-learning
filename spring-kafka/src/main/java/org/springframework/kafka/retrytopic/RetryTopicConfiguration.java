@@ -123,28 +123,4 @@ public class RetryTopicConfiguration {
 			return this.shouldCreateTopics;
 		}
 	}
-
-	public enum FixedDelayTopicStrategy {
-		/**
-		 * Uses a single topic to achieve non-blocking retry.
-		 */
-		SINGLE_TOPIC,
-
-		/**
-		 * Uses one topic per retry attempt.
-		 */
-		MULTIPLE_TOPICS
-	}
-
-	public enum DltProcessingFailureStrategy {
-		/**
-		 * Always send the message back to the DLT for reprocessing in case of failure.
-		 */
-		ALWAYS_RETRY,
-
-		/**
-		 * Don't retry if DLT processing fails.
-		 */
-		FAIL
-	}
 }

@@ -34,7 +34,7 @@ public class KafkaBackoffException extends KafkaException {
 
 	private final TopicPartition topicPartition;
 
-	private final String dueTimestamp;
+	private final long dueTimestamp;
 
 	/**
 	 * Constructor with data from the BackOff event.
@@ -44,7 +44,7 @@ public class KafkaBackoffException extends KafkaException {
 	 * @param listenerId the listenerId for the consumer that was backed off.
 	 * @param dueTimestamp the time at which the message should be consumed.
 	 */
-	public KafkaBackoffException(String message, TopicPartition topicPartition, String listenerId, String dueTimestamp) {
+	public KafkaBackoffException(String message, TopicPartition topicPartition, String listenerId, long dueTimestamp) {
 		super(message);
 		this.listenerId = listenerId;
 		this.topicPartition = topicPartition;
@@ -59,7 +59,7 @@ public class KafkaBackoffException extends KafkaException {
 		return this.topicPartition;
 	}
 
-	public String getDueTimestamp() {
+	public long getDueTimestamp() {
 		return this.dueTimestamp;
 	}
 }

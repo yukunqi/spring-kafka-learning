@@ -17,7 +17,7 @@
 package org.springframework.kafka.listener;
 
 import java.time.Clock;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
@@ -25,11 +25,11 @@ import java.util.Map;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.common.TopicPartition;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationListener;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.event.ListenerContainerPartitionIdleEvent;
-import org.springframework.kafka.retrytopic.RetryTopicHeaders;
 
 /**
  *
@@ -45,6 +45,11 @@ public class KafkaConsumerBackoffManager implements ApplicationListener<Listener
 
 	private static final LogAccessor logger = new LogAccessor(LogFactory.getLog(KafkaConsumerBackoffManager.class));
 
+	/**
+	 * Internal Back Off Clock Bean Name.
+	 */
+	public static final String INTERNAL_BACKOFF_CLOCK_BEAN_NAME = "internalBackOffClock";
+
 	private final KafkaListenerEndpointRegistry registry;
 
 	private final Map<TopicPartition, Context> backOffTimes;
@@ -52,14 +57,14 @@ public class KafkaConsumerBackoffManager implements ApplicationListener<Listener
 	private final Clock clock;
 
 	public KafkaConsumerBackoffManager(KafkaListenerEndpointRegistry registry,
-									Clock clock) {
+									@Qualifier(INTERNAL_BACKOFF_CLOCK_BEAN_NAME) Clock clock) {
 		this.registry = registry;
 		this.clock = clock;
 		this.backOffTimes = new HashMap<>();
 	}
 
 	public void maybeBackoff(Context context) {
-		long backoffTime = ChronoUnit.MILLIS.between(LocalDateTime.now(this.clock), context.dueTimestamp);
+		long backoffTime = ChronoUnit.MILLIS.between(Instant.now(this.clock), Instant.ofEpochMilli(context.dueTimestamp));
 		if (backoffTime > 0) {
 			pauseConsumptionAndThrow(context, backoffTime);
 		}
@@ -71,8 +76,7 @@ public class KafkaConsumerBackoffManager implements ApplicationListener<Listener
 		addBackoff(context, topicPartition);
 		throw new KafkaBackoffException(String.format("Partition %s from topic %s is not ready for consumption, " +
 				"backing off for approx. %s millis.", context.topicPartition.partition(), context.topicPartition.topic(), timeToSleep),
-				topicPartition, context.listenerId, context.dueTimestamp.format(
-						RetryTopicHeaders.DEFAULT_BACKOFF_TIMESTAMP_HEADER_FORMATTER));
+				topicPartition, context.listenerId, context.dueTimestamp);
 	}
 
 	private MessageListenerContainer getListenerContainerFromContext(Context context) {
@@ -82,7 +86,7 @@ public class KafkaConsumerBackoffManager implements ApplicationListener<Listener
 	@Override
 	public void onApplicationEvent(ListenerContainerPartitionIdleEvent partitionIdleEvent) {
 		Context context = getBackoff(partitionIdleEvent.getTopicPartition());
-		if (context == null || LocalDateTime.now(this.clock).isBefore(context.dueTimestamp)) {
+		if (context == null || Instant.now(this.clock).isBefore(Instant.ofEpochMilli(context.dueTimestamp))) {
 			return;
 		}
 		MessageListenerContainer container = getListenerContainerFromContext(context);
@@ -108,7 +112,7 @@ public class KafkaConsumerBackoffManager implements ApplicationListener<Listener
 		}
 	}
 
-	public Context createContext(LocalDateTime dueTimestamp, String listenerId, TopicPartition topicPartition) {
+	public Context createContext(long dueTimestamp, String listenerId, TopicPartition topicPartition) {
 		return new Context(dueTimestamp, listenerId, topicPartition);
 	}
 
@@ -117,7 +121,7 @@ public class KafkaConsumerBackoffManager implements ApplicationListener<Listener
 		/**
 		 * The time after which the message should be processed.
 		 */
-		final LocalDateTime dueTimestamp;
+		final long dueTimestamp;
 
 		/**
 		 * The id for the listener that should be paused.
@@ -129,7 +133,7 @@ public class KafkaConsumerBackoffManager implements ApplicationListener<Listener
 		 */
 		final TopicPartition topicPartition;
 
-		Context(LocalDateTime dueTimestamp, String listenerId, TopicPartition topicPartition) {
+		Context(long dueTimestamp, String listenerId, TopicPartition topicPartition) {
 			this.dueTimestamp = dueTimestamp;
 			this.listenerId = listenerId;
 			this.topicPartition = topicPartition;

@@ -42,15 +42,6 @@ import org.springframework.retry.support.RetrySynchronizationManager;
 public class BackOffValuesGenerator {
 
 	private static final BackOffPolicy DEFAULT_BACKOFF_POLICY = new FixedBackOffPolicy();
-	/**
-	 * Default number of times the message processing should be retried.
-	 */
-	public static final int DEFAULT_MAX_ATTEMPTS = 3;
-
-	/**
-	 * Constant to represent that the number of attempts is not set.
-	 */
-	public static final int NOT_SET = -1;
 
 	private final int numberOfvaluesToCreate;
 
@@ -64,7 +55,9 @@ public class BackOffValuesGenerator {
 	}
 
 	public int getMaxAttemps(int providedMaxAttempts) {
-		return providedMaxAttempts != NOT_SET ? providedMaxAttempts : DEFAULT_MAX_ATTEMPTS;
+		return providedMaxAttempts != RetryTopicConstants.NOT_SET
+				? providedMaxAttempts
+				: RetryTopicConstants.DEFAULT_MAX_ATTEMPTS;
 	}
 
 	public List<Long> generateValues() {

@@ -36,7 +36,7 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)
-class ListenerContainerFactoryResolverTest {
+class ListenerContainerFactoryResolverTests {
 
 	@Mock
 	private BeanFactory beanFactory;

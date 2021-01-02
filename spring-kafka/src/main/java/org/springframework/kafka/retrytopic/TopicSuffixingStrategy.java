@@ -18,27 +18,24 @@ package org.springframework.kafka.retrytopic;
 
 /**
  *
- * Contains the headers that will be used in the forwarded messages.
+ * Constants for the RetryTopic functionality.
  *
  * @author Tomaz Fernandes
  * @since 2.7
  *
  */
-public abstract class RetryTopicHeaders {
+public enum TopicSuffixingStrategy {
 
 	/**
-	 * The default header for the backoff duetimestamp.
+	 * Suffixes the topics with their index in the retry topics.
+	 * E.g. my-retry-topic-0, my-retry-topic-1, my-retry-topic-2.
 	 */
-	public static final String DEFAULT_HEADER_BACKOFF_TIMESTAMP = "retry_topic-backoff-timestamp";
+	SUFFIX_WITH_INDEX_VALUE,
 
 	/**
-	 * The default header for the attempts.
+	 * Suffixes the topics the delay value for the topic.
+	 * E.g. my-retry-topic-1000, my-retry-topic-2000, my-retry-topic-4000.
 	 */
-	public static final String DEFAULT_HEADER_ATTEMPTS = "retry_topic-attempts";
-
-	/**
-	 * The default header for the original message's timestamp.
-	 */
-	public static final String DEFAULT_HEADER_ORIGINAL_TIMESTAMP = "retry_topic-original-timestamp";
+	SUFFIX_WITH_DELAY_VALUE
 
 }

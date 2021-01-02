@@ -20,11 +20,11 @@ import java.util.Objects;
 import java.util.function.BiPredicate;
 
 import org.springframework.kafka.core.KafkaOperations;
-import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
+import org.springframework.kafka.retrytopic.DltStrategy;
 
 /**
  *
- * Representation a Destination Topic to which messages can be forwarded, such as retry topics and dlt.
+ * Representation of a Destination Topic to which messages can be forwarded, such as retry topics and dlt.
  *
  * @author Tomaz Fernandes
  * @since 2.7
@@ -55,8 +55,8 @@ public class DestinationTopic {
 	}
 
 	public boolean isAlwaysRetryOnDltFailure() {
-		return RetryTopicConfiguration.DltProcessingFailureStrategy.ALWAYS_RETRY
-				.equals(this.properties.dltProcessingFailureStrategy);
+		return DltStrategy.ALWAYS_RETRY_ON_ERROR
+				.equals(this.properties.dltStrategy);
 	}
 
 	public boolean isDltTopic() {
@@ -83,7 +83,7 @@ public class DestinationTopic {
 		return this.properties.kafkaOperations;
 	}
 
-	public boolean shouldRetryOn(Integer attempt, Exception e) {
+	public boolean shouldRetryOn(Integer attempt, Throwable e) {
 		return this.properties.shouldRetryOn.test(attempt, e);
 	}
 
@@ -104,30 +104,44 @@ public class DestinationTopic {
 		return Objects.hash(this.destinationName, this.properties);
 	}
 
+	public long getDestinationTimeout() {
+		return this.properties.timeout;
+	}
+
 	public static class Properties {
+
 		private final long delayMs;
+
 		private final String suffix;
+
 		private final Type type;
+
 		private final int maxAttempts;
+
 		private final int numPartitions;
-		private final RetryTopicConfiguration.DltProcessingFailureStrategy dltProcessingFailureStrategy;
+
+		private final DltStrategy dltStrategy;
+
 		private final KafkaOperations<?, ?> kafkaOperations;
-		private final BiPredicate<Integer, Exception> shouldRetryOn;
+
+		private final BiPredicate<Integer, Throwable> shouldRetryOn;
+
+		private final long timeout;
 
 		public Properties(long delayMs, String suffix, Type type,
 						int maxAttempts, int numPartitions,
-						RetryTopicConfiguration.DltProcessingFailureStrategy dltProcessingFailureStrategy,
+						DltStrategy dltStrategy,
 						KafkaOperations<?, ?> kafkaOperations,
-						BiPredicate<Integer, Exception> shouldRetryOn) {
+						BiPredicate<Integer, Throwable> shouldRetryOn, long timeout) {
 			this.delayMs = delayMs;
 			this.suffix = suffix;
 			this.type = type;
 			this.maxAttempts = maxAttempts;
 			this.numPartitions = numPartitions;
-			this.dltProcessingFailureStrategy = dltProcessingFailureStrategy;
+			this.dltStrategy = dltStrategy;
 			this.kafkaOperations = kafkaOperations;
 			this.shouldRetryOn = shouldRetryOn;
-
+			this.timeout = timeout;
 		}
 
 		public Properties(Properties sourceProperties, String suffix, Type type) {
@@ -136,9 +150,10 @@ public class DestinationTopic {
 			this.type = type;
 			this.maxAttempts = sourceProperties.maxAttempts;
 			this.numPartitions = sourceProperties.numPartitions;
-			this.dltProcessingFailureStrategy = sourceProperties.dltProcessingFailureStrategy;
+			this.dltStrategy = sourceProperties.dltStrategy;
 			this.kafkaOperations = sourceProperties.kafkaOperations;
 			this.shouldRetryOn = sourceProperties.shouldRetryOn;
+			this.timeout = sourceProperties.timeout;
 		}
 
 		public boolean isDltTopic() {
@@ -167,14 +182,14 @@ public class DestinationTopic {
 					&& this.numPartitions == that.numPartitions
 					&& this.suffix.equals(that.suffix)
 					&& this.type == that.type
-					&& this.dltProcessingFailureStrategy == that.dltProcessingFailureStrategy
+					&& this.dltStrategy == that.dltStrategy
 					&& this.kafkaOperations.equals(that.kafkaOperations);
 		}
 
 		@Override
 		public int hashCode() {
 			return Objects.hash(this.delayMs, this.suffix, this.type, this.maxAttempts, this.numPartitions,
-					this.dltProcessingFailureStrategy, this.kafkaOperations);
+					this.dltStrategy, this.kafkaOperations);
 		}
 	}
 
