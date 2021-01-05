@@ -60,6 +60,8 @@ import org.springframework.util.Assert;
  */
 public final class KafkaTestUtils {
 
+	private static final int TEN = 10;
+
 	private static final LogAccessor logger = new LogAccessor(LogFactory.getLog(KafkaTestUtils.class)); // NOSONAR
 
 	private static Properties defaults;
@@ -256,7 +258,7 @@ public final class KafkaTestUtils {
 
 		Collection<TopicPartition> tps;
 		if (partitions == null || partitions.length == 0) {
-			Map<String, List<PartitionInfo>> parts = consumer.listTopics(Duration.ofSeconds(10));
+			Map<String, List<PartitionInfo>> parts = consumer.listTopics(Duration.ofSeconds(TEN));
 			tps = parts.entrySet()
 					.stream()
 					.filter(entry -> entry.getKey().equals(topic))
@@ -270,7 +272,7 @@ public final class KafkaTestUtils {
 					.map(part -> new TopicPartition(topic, part))
 					.collect(Collectors.toList());
 		}
-		return consumer.endOffsets(tps, Duration.ofSeconds(10));
+		return consumer.endOffsets(tps, Duration.ofSeconds(TEN));
 	}
 
 	/**
