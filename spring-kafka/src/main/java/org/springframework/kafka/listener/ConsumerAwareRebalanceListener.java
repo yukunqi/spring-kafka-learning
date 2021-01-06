@@ -39,7 +39,7 @@ public interface ConsumerAwareRebalanceListener extends ConsumerRebalanceListene
 	/**
 	 * {@link LogAccessor} for use in default methods.
 	 */
-	LogAccessor logger = new LogAccessor(LogFactory.getLog(ConsumerAwareRebalanceListener.class));
+	LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(ConsumerAwareRebalanceListener.class));
 
 	/**
 	 * The same as {@link #onPartitionsRevoked(Collection)} with the additional consumer
@@ -52,7 +52,7 @@ public interface ConsumerAwareRebalanceListener extends ConsumerRebalanceListene
 			onPartitionsRevoked(partitions);
 		}
 		catch (Exception e) { // NOSONAR
-			logger.debug(e, "User method threw exception");
+			LOGGER.debug(e, "User method threw exception");
 		}
 	}
 
@@ -76,7 +76,7 @@ public interface ConsumerAwareRebalanceListener extends ConsumerRebalanceListene
 			onPartitionsLost(partitions);
 		}
 		catch (Exception e) { // NOSONAR
-			logger.debug(e, "User method threw exception");
+			LOGGER.debug(e, "User method threw exception");
 		}
 	}
 
@@ -91,7 +91,7 @@ public interface ConsumerAwareRebalanceListener extends ConsumerRebalanceListene
 			onPartitionsAssigned(partitions);
 		}
 		catch (Exception e) { // NOSONAR
-			logger.debug(e, "User method threw exception");
+			LOGGER.debug(e, "User method threw exception");
 		}
 	}
 
