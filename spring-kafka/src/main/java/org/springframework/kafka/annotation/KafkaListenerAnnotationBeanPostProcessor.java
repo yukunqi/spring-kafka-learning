@@ -467,13 +467,13 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 	}
 
-	private void resolveErrorHandler(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener KafkaListener) {
-		Object errorHandler = resolveExpression(KafkaListener.errorHandler());
+	private void resolveErrorHandler(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener) {
+		Object errorHandler = resolveExpression(kafkaListener.errorHandler());
 		if (errorHandler instanceof KafkaListenerErrorHandler) {
 			endpoint.setErrorHandler((KafkaListenerErrorHandler) errorHandler);
 		}
 		else {
-			String errorHandlerBeanName = resolveExpressionAsString(KafkaListener.errorHandler(), "errorHandler");
+			String errorHandlerBeanName = resolveExpressionAsString(kafkaListener.errorHandler(), "errorHandler");
 			if (StringUtils.hasText(errorHandlerBeanName)) {
 				endpoint.setErrorHandler(
 						this.beanFactory.getBean(errorHandlerBeanName, KafkaListenerErrorHandler.class));
@@ -482,15 +482,15 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	}
 
 	@Nullable
-	private KafkaListenerContainerFactory<?> resolveContainerFactory(KafkaListener KafkaListener,
+	private KafkaListenerContainerFactory<?> resolveContainerFactory(KafkaListener kafkaListener,
 			Object factoryTarget, String beanName) {
 
 		KafkaListenerContainerFactory<?> factory = null;
-		Object resolved = resolveExpression(KafkaListener.containerFactory());
+		Object resolved = resolveExpression(kafkaListener.containerFactory());
 		if (resolved instanceof KafkaListenerContainerFactory) {
 			return (KafkaListenerContainerFactory<?>) resolved;
 		}
-		String containerFactoryBeanName = resolveExpressionAsString(KafkaListener.containerFactory(),
+		String containerFactoryBeanName = resolveExpressionAsString(kafkaListener.containerFactory(),
 				"containerFactory");
 		if (StringUtils.hasText(containerFactoryBeanName)) {
 			assertBeanFactory();
