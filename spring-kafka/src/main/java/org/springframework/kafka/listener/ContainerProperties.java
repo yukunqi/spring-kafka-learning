@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2020 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,6 +49,7 @@ import org.springframework.util.CollectionUtils;
  * @author Artem Yakshin
  * @author Johnny Lim
  * @author Lukasz Kaminski
+ * @author Kyuhyeok Park
  */
 public class ContainerProperties extends ConsumerProperties {
 
@@ -242,7 +243,7 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private boolean micrometerEnabled = true;
 
-	private Duration consumerStartTimout = DEFAULT_CONSUMER_START_TIMEOUT;
+	private Duration consumerStartTimeout = DEFAULT_CONSUMER_START_TIMEOUT;
 
 	private Boolean subBatchPerPartition;
 
@@ -594,18 +595,28 @@ public class ContainerProperties extends ConsumerProperties {
 		return Collections.unmodifiableMap(this.micrometerTags);
 	}
 
+	public Duration getConsumerStartTimeout() {
+		return this.consumerStartTimeout;
+	}
+
+	@Deprecated
 	public Duration getConsumerStartTimout() {
-		return this.consumerStartTimout;
+		return this.consumerStartTimeout;
 	}
 
 	/**
 	 * Set the timeout to wait for a consumer thread to start before logging
 	 * an error. Default 30 seconds.
-	 * @param consumerStartTimout the consumer start timeout.
+	 * @param consumerStartTimeout the consumer start timeout.
 	 */
-	public void setConsumerStartTimout(Duration consumerStartTimout) {
-		Assert.notNull(consumerStartTimout, "'consumerStartTimout' cannot be null");
-		this.consumerStartTimout = consumerStartTimout;
+	public void setConsumerStartTimeout(Duration consumerStartTimeout) {
+		Assert.notNull(consumerStartTimeout, "'consumerStartTimout' cannot be null");
+		this.consumerStartTimeout = consumerStartTimeout;
+	}
+
+	@Deprecated
+	public void setConsumerStartTimout(Duration consumerStartTimeout) {
+		setConsumerStartTimeout(consumerStartTimeout);
 	}
 
 	/**
