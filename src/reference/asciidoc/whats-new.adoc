@@ -18,6 +18,9 @@ In addition, you can now select the `BackOff` to use based on the failed record 
 See <<seek-to-current>>, <<recovering-batch-eh>>, <<dead-letters>> and <<after-rollback>> for more information.
 
 You can now configure an `adviceChain` in the container properties.
+
+A new container property `stopImmediate` is now available.
+
 See <<container-props>> for more information.
 
 When the container is configured to publish `ListenerContainerIdleEvent` s, it now publishes a `ListenerContainerNoLongerIdleEvent` when a record is received after publishing an idle event.
