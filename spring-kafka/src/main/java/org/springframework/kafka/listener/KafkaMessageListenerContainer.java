@@ -582,6 +582,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final boolean fixTxOffsets = this.containerProperties.isFixTxOffsets();
 
+		private final boolean stopImmediate = this.containerProperties.isStopImmediate();
+
 		private Map<TopicPartition, OffsetMetadata> definedPartitions;
 
 		private int count;
@@ -1793,6 +1795,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void invokeRecordListenerInTx(final ConsumerRecords<K, V> records) {
 			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
 			while (iterator.hasNext()) {
+				if (this.stopImmediate && !isRunning()) {
+					break;
+				}
 				final ConsumerRecord<K, V> record = checkEarlyIntercept(iterator.next());
 				if (record == null) {
 					continue;
@@ -1882,6 +1887,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void doInvokeWithRecords(final ConsumerRecords<K, V> records) {
 			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
 			while (iterator.hasNext()) {
+				if (this.stopImmediate && !isRunning()) {
+					break;
+				}
 				final ConsumerRecord<K, V> record = checkEarlyIntercept(iterator.next());
 				if (record == null) {
 					continue;
