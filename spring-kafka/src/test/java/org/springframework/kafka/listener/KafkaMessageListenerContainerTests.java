@@ -3152,7 +3152,8 @@ public class KafkaMessageListenerContainerTests {
 		cfProps.put(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 45000); // wins
 		given(cf.getConfigurationProperties()).willReturn(cfProps);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records =
-				Map.of(new TopicPartition("foo", 0), Arrays.asList(new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
+				Collections.singletonMap(new TopicPartition("foo", 0),
+						Arrays.asList(new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
 						new ConsumerRecord<>("foo", 0, 1L, 1, "bar")));
 		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
 		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
@@ -3186,7 +3187,9 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 		container.stop();
 		assertThat(delivered.get()).isEqualTo(1);
-		verify(consumer).commitSync(eq(Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(1L))), any());
+		verify(consumer).commitSync(
+				eq(Collections.singletonMap(new TopicPartition("foo", 0), new OffsetAndMetadata(1L))),
+				any());
 	}
 
 	private Consumer<?, ?> spyOnConsumer(KafkaMessageListenerContainer<Integer, String> container) {
