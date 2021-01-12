@@ -1825,10 +1825,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				this.logger.trace(() -> "Processing " + ListenerUtils.recordToString(record));
 				try {
-					if (this.producerPerConsumerPartition) {
-						TransactionSupport
-								.setTransactionIdSuffix(zombieFenceTxIdSuffix(record.topic(), record.partition()));
-					}
 					invokeInTransaction(iterator, record);
 				}
 				catch (ProducerFencedException | FencedInstanceIdException e) {
@@ -1856,6 +1852,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void invokeInTransaction(Iterator<ConsumerRecord<K, V>> iterator, final ConsumerRecord<K, V> record) {
+			if (this.producerPerConsumerPartition) {
+				TransactionSupport
+						.setTransactionIdSuffix(zombieFenceTxIdSuffix(record.topic(), record.partition()));
+			}
 			this.transactionTemplate.execute(new TransactionCallbackWithoutResult() {
 
 				@Override
