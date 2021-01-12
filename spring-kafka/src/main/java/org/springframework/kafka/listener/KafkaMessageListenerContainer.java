@@ -1829,22 +1829,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						TransactionSupport
 								.setTransactionIdSuffix(zombieFenceTxIdSuffix(record.topic(), record.partition()));
 					}
-					this.transactionTemplate.execute(new TransactionCallbackWithoutResult() {
-
-						@Override
-						public void doInTransactionWithoutResult(TransactionStatus s) {
-							if (ListenerConsumer.this.kafkaTxManager != null) {
-								ListenerConsumer.this.producer = ((KafkaResourceHolder) TransactionSynchronizationManager
-										.getResource(ListenerConsumer.this.kafkaTxManager.getProducerFactory()))
-												.getProducer(); // NOSONAR
-							}
-							RuntimeException aborted = doInvokeRecordListener(record, iterator);
-							if (aborted != null) {
-								throw aborted;
-							}
-						}
-
-					});
+					invokeInTransaction(iterator, record);
 				}
 				catch (ProducerFencedException | FencedInstanceIdException e) {
 					this.logger.error(e, "Producer or 'group.instance.id' fenced during transaction");
@@ -1868,6 +1853,25 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 
 			}
+		}
+
+		private void invokeInTransaction(Iterator<ConsumerRecord<K, V>> iterator, final ConsumerRecord<K, V> record) {
+			this.transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+
+				@Override
+				public void doInTransactionWithoutResult(TransactionStatus s) {
+					if (ListenerConsumer.this.kafkaTxManager != null) {
+						ListenerConsumer.this.producer = ((KafkaResourceHolder) TransactionSynchronizationManager
+								.getResource(ListenerConsumer.this.kafkaTxManager.getProducerFactory()))
+										.getProducer(); // NOSONAR
+					}
+					RuntimeException aborted = doInvokeRecordListener(record, iterator);
+					if (aborted != null) {
+						throw aborted;
+					}
+				}
+
+			});
 		}
 
 		private void recordAfterRollback(Iterator<ConsumerRecord<K, V>> iterator, final ConsumerRecord<K, V> record,
