@@ -60,7 +60,7 @@ ext {
 	junitJupiterVersion = '5.7.0'
 	kafkaVersion = '2.6.1'
 	log4jVersion = '2.13.3'
-	micrometerVersion = '1.5.8'
+	micrometerVersion = '1.5.10'
 	mockitoVersion = '3.6.28'
 	reactorVersion = 'Dysprosium-SR16'
 	scalaVersion = '2.13'
