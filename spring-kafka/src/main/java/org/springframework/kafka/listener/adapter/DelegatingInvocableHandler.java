@@ -330,6 +330,15 @@ public class DelegatingInvocableHandler {
 			}
 		}
 
+		MethodParameter foundCandidate = findCandidate(payloadClass, method, parameterAnnotations);
+		if (foundCandidate != null && this.validator != null) {
+			this.payloadMethodParameters.put(handler, foundCandidate);
+		}
+		return foundCandidate != null;
+	}
+
+	private MethodParameter findCandidate(Class<? extends Object> payloadClass, Method method,
+			Annotation[][] parameterAnnotations) {
 		MethodParameter foundCandidate = null;
 		for (int i = 0; i < parameterAnnotations.length; i++) {
 			MethodParameter methodParameter = new MethodParameter(method, i);
@@ -342,10 +351,7 @@ public class DelegatingInvocableHandler {
 				foundCandidate = methodParameter;
 			}
 		}
-		if (foundCandidate != null && this.validator != null) {
-			this.payloadMethodParameters.put(handler, foundCandidate);
-		}
-		return foundCandidate != null;
+		return foundCandidate;
 	}
 
 	/**
