@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2020 the original author or authors.
+ * Copyright 2014-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -158,6 +158,27 @@ public abstract class KafkaHeaders {
 	 * @since 2.2
 	 */
 	public static final String DLT_EXCEPTION_MESSAGE = PREFIX + "dlt-exception-message";
+
+	/**
+	 * Exception stack trace for a record published to a dead-letter topic with a key
+	 * deserialization exception.
+	 * @since 2.7
+	 */
+	public static final String DLT_KEY_EXCEPTION_STACKTRACE = PREFIX + "dlt-key-exception-stacktrace";
+
+	/**
+	 * Exception message for a record published to a dead-letter topic with a key
+	 * deserialization exception.
+	 * @since 2.7
+	 */
+	public static final String DLT_KEY_EXCEPTION_MESSAGE = PREFIX + "dlt-key-exception-message";
+
+	/**
+	 * Exception class name for a record published sent to a dead-letter topic with a key
+	 * deserialization exception.
+	 * @since 2.7
+	 */
+	public static final String DLT_KEY_EXCEPTION_FQCN = PREFIX + "dlt-key-exception-fqcn";
 
 	/**
 	 * Original topic for a record published to a dead-letter topic.
