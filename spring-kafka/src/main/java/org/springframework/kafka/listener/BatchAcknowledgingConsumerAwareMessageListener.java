@@ -22,6 +22,7 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.lang.Nullable;
 
 /**
  * Listener for handling a batch of incoming Kafka messages, propagating an acknowledgment
@@ -50,6 +51,6 @@ public interface BatchAcknowledgingConsumerAwareMessageListener<K, V> extends Ba
 	}
 
 	@Override
-	void onMessage(List<ConsumerRecord<K, V>> data, Acknowledgment acknowledgment, Consumer<?, ?> consumer);
+	void onMessage(List<ConsumerRecord<K, V>> data, @Nullable Acknowledgment acknowledgment, Consumer<?, ?> consumer);
 
 }

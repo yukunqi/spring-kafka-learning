@@ -30,6 +30,7 @@ import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.converter.BatchMessageConverter;
 import org.springframework.kafka.support.converter.BatchMessagingMessageConverter;
+import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.GenericMessage;
 import org.springframework.messaging.support.MessageBuilder;
@@ -134,7 +135,9 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 	 * @param consumer the consumer.
 	 */
 	@Override
-	public void onMessage(List<ConsumerRecord<K, V>> records, Acknowledgment acknowledgment, Consumer<?, ?> consumer) {
+	public void onMessage(List<ConsumerRecord<K, V>> records, @Nullable Acknowledgment acknowledgment,
+			Consumer<?, ?> consumer) {
+
 		Message<?> message;
 		if (!isConsumerRecordList()) {
 			if (isMessageList() || this.batchToRecordAdapter != null) {
@@ -162,7 +165,7 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 		invoke(records, acknowledgment, consumer, message);
 	}
 
-	protected void invoke(Object records, Acknowledgment acknowledgment, Consumer<?, ?> consumer,
+	protected void invoke(Object records, @Nullable Acknowledgment acknowledgment, Consumer<?, ?> consumer,
 			final Message<?> messageArg) {
 
 		Message<?> message = messageArg;
@@ -196,7 +199,9 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	protected Message<?> toMessagingMessage(List records, Acknowledgment acknowledgment, Consumer<?, ?> consumer) {
+	protected Message<?> toMessagingMessage(List records, @Nullable Acknowledgment acknowledgment,
+			Consumer<?, ?> consumer) {
+
 		return getBatchMessageConverter().toMessage(records, acknowledgment, consumer, getType());
 	}
 

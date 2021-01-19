@@ -300,7 +300,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		}
 	}
 
-	protected Message<?> toMessagingMessage(ConsumerRecord<K, V> record, Acknowledgment acknowledgment,
+	protected Message<?> toMessagingMessage(ConsumerRecord<K, V> record, @Nullable Acknowledgment acknowledgment,
 			Consumer<?, ?> consumer) {
 		return getMessageConverter().toMessage(record, acknowledgment, consumer, getType());
 	}
@@ -314,7 +314,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 * @param consumer the consumer.
 	 * @return the result of invocation.
 	 */
-	protected final Object invokeHandler(Object data, Acknowledgment acknowledgment, Message<?> message,
+	protected final Object invokeHandler(Object data, @Nullable Acknowledgment acknowledgment, Message<?> message,
 			Consumer<?, ?> consumer) {
 
 		try {
@@ -332,25 +332,10 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			}
 		}
 		catch (org.springframework.messaging.converter.MessageConversionException ex) {
-			if (this.hasAckParameter && acknowledgment == null) {
-				throw new ListenerExecutionFailedException("invokeHandler Failed",
-						new IllegalStateException("No Acknowledgment available as an argument, "
-								+ "the listener container must have a MANUAL AckMode to populate the Acknowledgment.",
-								ex));
-			}
-			throw new ListenerExecutionFailedException(createMessagingErrorMessage("Listener method could not " +
-					"be invoked with the incoming message", message.getPayload()),
-					new MessageConversionException("Cannot handle message", ex));
+			throw checkAckArg(acknowledgment, message, new MessageConversionException("Cannot handle message", ex));
 		}
 		catch (MethodArgumentNotValidException ex) {
-			if (this.hasAckParameter && acknowledgment == null) {
-				throw new ListenerExecutionFailedException("invokeHandler Failed",
-						new IllegalStateException("No Acknowledgment available as an argument, "
-								+ "the listener container must have a MANUAL AckMode to populate the Acknowledgment.",
-								ex));
-			}
-			throw new ListenerExecutionFailedException(createMessagingErrorMessage("Listener method could not " +
-					"be invoked with the incoming message", message.getPayload()), ex);
+			throw checkAckArg(acknowledgment, message, ex);
 		}
 		catch (MessagingException ex) {
 			throw new ListenerExecutionFailedException(createMessagingErrorMessage("Listener method could not " +
@@ -360,6 +345,17 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			throw new ListenerExecutionFailedException("Listener method '" +
 					this.handlerMethod.getMethodAsString(message.getPayload()) + "' threw exception", ex);
 		}
+	}
+
+	private RuntimeException checkAckArg(@Nullable Acknowledgment acknowledgment, Message<?> message, Exception ex) {
+		if (this.hasAckParameter && acknowledgment == null) {
+			return new ListenerExecutionFailedException("invokeHandler Failed",
+					new IllegalStateException("No Acknowledgment available as an argument, "
+							+ "the listener container must have a MANUAL AckMode to populate the Acknowledgment.",
+							ex));
+		}
+		return new ListenerExecutionFailedException(createMessagingErrorMessage("Listener method could not " +
+				"be invoked with the incoming message", message.getPayload()), ex);
 	}
 
 	/**

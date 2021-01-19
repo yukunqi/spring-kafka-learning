@@ -25,6 +25,7 @@ import org.springframework.kafka.listener.AcknowledgingConsumerAwareMessageListe
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.GenericMessage;
 
@@ -71,7 +72,9 @@ public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessag
 	 * @param consumer the consumer.
 	 */
 	@Override
-	public void onMessage(ConsumerRecord<K, V> record, Acknowledgment acknowledgment, Consumer<?, ?> consumer) {
+	public void onMessage(ConsumerRecord<K, V> record, @Nullable Acknowledgment acknowledgment,
+			Consumer<?, ?> consumer) {
+
 		Message<?> message;
 		if (isConversionNeeded()) {
 			message = toMessagingMessage(record, acknowledgment, consumer);
