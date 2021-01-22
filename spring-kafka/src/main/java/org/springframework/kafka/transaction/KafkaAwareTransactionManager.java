@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 the original author or authors.
+ * Copyright 2018-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,12 +18,9 @@ package org.springframework.kafka.transaction;
 
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.ResourceTransactionManager;
 
 /**
  * A transaction manager that can provide a {@link ProducerFactory}.
- * Currently a sub-interface of {@link ResourceTransactionManager}
- * for backwards compatibility.
  *
  * @param <K> the key type.
  * @param <V> the value type.

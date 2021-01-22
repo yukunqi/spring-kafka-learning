@@ -23,7 +23,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.regex.Pattern;
 
 import org.aopalliance.aop.Advice;
@@ -32,7 +31,6 @@ import org.springframework.aop.framework.Advised;
 import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.core.task.AsyncListenableTaskExecutor;
-import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
 import org.springframework.scheduling.TaskScheduler;
@@ -369,7 +367,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 * <ul>
 	 * <li>this property</li>
 	 * <li>{@code ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG} in
-	 * {@link #setKafkaConsumerProperties(Properties)}</li>
+	 * {@link #setKafkaConsumerProperties(java.util.Properties)}</li>
 	 * <li>{@code ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG} in the consumer factory
 	 * properties</li>
 	 * <li>60 seconds</li>
@@ -640,9 +638,11 @@ public class ContainerProperties extends ConsumerProperties {
 	}
 
 	/**
-	 * Set to true to populate the {@link KafkaHeaders#DELIVERY_ATTEMPT} header when the
-	 * error handler or after rollback processor implements {@code DeliveryAttemptAware}.
-	 * There is a small overhead so this is false by default.
+	 * Set to true to populate the
+	 * {@link org.springframework.kafka.support.KafkaHeaders#DELIVERY_ATTEMPT} header when
+	 * the error handler or after rollback processor implements
+	 * {@code DeliveryAttemptAware}. There is a small overhead so this is false by
+	 * default.
 	 * @param deliveryAttemptHeader true to populate
 	 * @since 2.5
 	 */

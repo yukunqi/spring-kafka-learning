@@ -24,7 +24,6 @@ import java.util.List;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.kafka.annotation.KafkaListenerAnnotationBeanPostProcessor;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
 import org.springframework.messaging.handler.invocation.HandlerMethodArgumentResolver;
@@ -91,7 +90,8 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 	}
 
 	/**
-	 * Add custom methods arguments resolvers to {@link KafkaListenerAnnotationBeanPostProcessor}
+	 * Add custom methods arguments resolvers to
+	 * {@link org.springframework.kafka.annotation.KafkaListenerAnnotationBeanPostProcessor}
 	 * Default empty list.
 	 * @param methodArgumentResolvers the methodArgumentResolvers to assign.
 	 * @since 2.4.2

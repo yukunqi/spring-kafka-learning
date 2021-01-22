@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2020 the original author or authors.
+ * Copyright 2017-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@ import java.util.function.BiConsumer;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
-import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.lang.Nullable;
 import org.springframework.util.backoff.BackOff;
 
@@ -85,9 +84,9 @@ public class SeekToCurrentErrorHandler extends FailedRecordProcessor implements 
 
 	/**
 	 * {@inheritDoc}
-	 * The container
-	 * must be configured with {@link AckMode#MANUAL_IMMEDIATE}. Whether or not
-	 * the commit is sync or async depends on the container's syncCommits
+	 * The container must be configured with
+	 * {@link org.springframework.kafka.listener.ContainerProperties.AckMode#MANUAL_IMMEDIATE}.
+	 * Whether or not the commit is sync or async depends on the container's syncCommits
 	 * property.
 	 * @param commitRecovered true to commit.
 	 */
