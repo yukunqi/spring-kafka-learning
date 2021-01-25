@@ -59,30 +59,31 @@ public class ContainerProperties extends ConsumerProperties {
 	public enum AckMode {
 
 		/**
-		 * Commit after each record is processed by the listener.
+		 * Commit the offset after each record is processed by the listener.
 		 */
 		RECORD,
 
 		/**
-		 * Commit whatever has already been processed before the next poll.
+		 * Commit the offsets of all records returned by the previous poll after they all
+		 * have been processed by the listener.
 		 */
 		BATCH,
 
 		/**
-		 * Commit pending updates after
+		 * Commit pending offsets after
 		 * {@link ContainerProperties#setAckTime(long) ackTime} has elapsed.
 		 */
 		TIME,
 
 		/**
-		 * Commit pending updates after
+		 * Commit pending offsets after
 		 * {@link ContainerProperties#setAckCount(int) ackCount} has been
 		 * exceeded.
 		 */
 		COUNT,
 
 		/**
-		 * Commit pending updates after
+		 * Commit pending offsets  after
 		 * {@link ContainerProperties#setAckCount(int) ackCount} has been
 		 * exceeded or after {@link ContainerProperties#setAckTime(long)
 		 * ackTime} has elapsed.
@@ -90,15 +91,21 @@ public class ContainerProperties extends ConsumerProperties {
 		COUNT_TIME,
 
 		/**
-		 * User takes responsibility for acks using an
-		 * {@link AcknowledgingMessageListener}.
+		 * Listener is responsible for acking - use a
+		 * {@link org.springframework.kafka.listener.AcknowledgingMessageListener}; acks
+		 * will be queued and offsets will be committed when all the records returned by
+		 * the previous poll have been processed by the listener.
 		 */
 		MANUAL,
 
 		/**
-		 * User takes responsibility for acks using an
-		 * {@link AcknowledgingMessageListener}. The consumer
-		 * immediately processes the commit.
+		 * Listener is responsible for acking - use a
+		 * {@link org.springframework.kafka.listener.AcknowledgingMessageListener}; the
+		 * commit will be performed immediately if the {@code Acknowledgment} is
+		 * acknowledged on the calling consumer thread; otherwise, the acks will be queued
+		 * and offsets will be committed when all the records returned by the previous
+		 * poll have been processed by the listener; results will be indeterminate if you
+		 * sometimes acknowledge on the calling thread and sometimes not.
 		 */
 		MANUAL_IMMEDIATE,
 
@@ -179,14 +186,29 @@ public class ContainerProperties extends ConsumerProperties {
 	/**
 	 * The ack mode to use when auto ack (in the configuration properties) is false.
 	 * <ul>
-	 * <li>RECORD: Ack after each record has been passed to the listener.</li>
-	 * <li>BATCH: Ack after each batch of records received from the consumer has been
-	 * passed to the listener</li>
-	 * <li>TIME: Ack after this number of milliseconds; (should be greater than
+	 * <li>RECORD: Commit the offset after each record has been processed by the
+	 * listener.</li>
+	 * <li>BATCH: Commit the offsets for each batch of records received from the consumer
+	 * when they all have been processed by the listener</li>
+	 * <li>TIME: Commit pending offsets after {@link #setAckTime(long) ackTime} number of
+	 * milliseconds; (should be greater than
 	 * {@code #setPollTimeout(long) pollTimeout}.</li>
-	 * <li>COUNT: Ack after at least this number of records have been received</li>
+	 * <li>COUNT: Commit pending offsets after at least {@link #setAckCount(int) ackCount}
+	 * number of records have been processed</li>
+	 * <li>COUNT_TIME: Commit pending offsets after {@link #setAckTime(long) ackTime}
+	 * number of milliseconds or at least {@link #setAckCount(int) ackCount} number of
+	 * records have been processed</li>
 	 * <li>MANUAL: Listener is responsible for acking - use a
-	 * {@link org.springframework.kafka.listener.AcknowledgingMessageListener}.
+	 * {@link org.springframework.kafka.listener.AcknowledgingMessageListener}. Acks will
+	 * be queued and offsets will be committed when all the records returned by the
+	 * previous poll have been processed by the listener.</li>
+	 * <li>MANUAL_IMMDEDIATE: Listener is responsible for acking - use a
+	 * {@link org.springframework.kafka.listener.AcknowledgingMessageListener}. The commit
+	 * will be performed immediately if the {@code Acknowledgment} is acknowledged on the
+	 * calling consumer thread. Otherwise, the acks will be queued and offsets will be
+	 * committed when all the records returned by the previous poll have been processed by
+	 * the listener. Results will be indeterminate if you sometimes acknowledge on the
+	 * calling thread and sometimes not.</li>
 	 * </ul>
 	 */
 	private AckMode ackMode = AckMode.BATCH;
@@ -302,22 +324,30 @@ public class ContainerProperties extends ConsumerProperties {
 	/**
 	 * Set the ack mode to use when auto ack (in the configuration properties) is false.
 	 * <ul>
-	 * <li>RECORD: Ack after each record has been passed to the listener.</li>
-	 * <li>BATCH: Ack after each batch of records received from the consumer has been
-	 * passed to the listener</li>
-	 * <li>TIME: Ack after this number of milliseconds; (should be greater than
+	 * <li>RECORD: Commit the offset after each record has been processed by the
+	 * listener.</li>
+	 * <li>BATCH: Commit the offsets for each batch of records received from the consumer
+	 * when they all have been processed by the listener</li>
+	 * <li>TIME: Commit pending offsets after {@link #setAckTime(long) ackTime} number of
+	 * milliseconds; (should be greater than
 	 * {@code #setPollTimeout(long) pollTimeout}.</li>
-	 * <li>COUNT: Ack after at least this number of records have been received</li>
+	 * <li>COUNT: Commit pending offsets after at least {@link #setAckCount(int) ackCount}
+	 * number of records have been processed</li>
+	 * <li>COUNT_TIME: Commit pending offsets after {@link #setAckTime(long) ackTime}
+	 * number of milliseconds or at least {@link #setAckCount(int) ackCount} number of
+	 * records have been processed</li>
 	 * <li>MANUAL: Listener is responsible for acking - use a
-	 * {@link org.springframework.kafka.listener.AcknowledgingMessageListener}.
+	 * {@link org.springframework.kafka.listener.AcknowledgingMessageListener}. Acks will
+	 * be queued and offsets will be committed when all the records returned by the
+	 * previous poll have been processed by the listener.</li>
+	 * <li>MANUAL_IMMDEDIATE: Listener is responsible for acking - use a
+	 * {@link org.springframework.kafka.listener.AcknowledgingMessageListener}. The commit
+	 * will be performed immediately if the {@code Acknowledgment} is acknowledged on the
+	 * calling consumer thread. Otherwise, the acks will be queued and offsets will be
+	 * committed when all the records returned by the previous poll have been processed by
+	 * the listener. Results will be indeterminate if you sometimes acknowledge on the
+	 * calling thread and sometimes not.</li>
 	 * </ul>
-	 * Ignored when transactions are being used. Transactional consumers commit offsets
-	 * with semantics equivalent to {@code RECORD} or {@code BATCH}, depending on
-	 * the listener type.
-	 * However, setting it to {@code MANUAL} will provide access to an
-	 * {@code Acknowledgement} in the listener; when calling its
-	 * {@code nack(index, sleeptime)} method, the container will send the offsets of
-	 * the succcessfully processed records in the batch to the transaction.
 	 * @param ackMode the {@link AckMode}; default BATCH.
 	 * @see #setTransactionManager(PlatformTransactionManager)
 	 */
