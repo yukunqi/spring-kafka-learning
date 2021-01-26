@@ -161,12 +161,12 @@ public final class ListenerUtils {
 	 * @deprecated in favor of
 	 * {@link #unrecoverableBackOff(BackOff, ThreadLocal, ThreadLocal, MessageListenerContainer)}.
 	 */
-	@Deprecated
+	@Deprecated(since = "2.7")
 	public static void unrecoverableBackOff(BackOff backOff, ThreadLocal<BackOffExecution> executions,
 			ThreadLocal<Long> lastIntervals) {
 
 		try {
-			unrecoverableBackOff(backOff, executions, lastIntervals, new MessageListenerContainer() {
+			unrecoverableBackOff(backOff, executions, lastIntervals, new MessageListenerContainer() { // NOSONAR
 
 				@Override
 				public void stop() {
