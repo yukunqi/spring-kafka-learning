@@ -26,6 +26,10 @@ See <<container-props>> for more information.
 When the container is configured to publish `ListenerContainerIdleEvent` s, it now publishes a `ListenerContainerNoLongerIdleEvent` when a record is received after publishing an idle event.
 See <<events>> and <<idle-containers>> for more information.
 
+The `RecordInterceptor` now has additional methods called after the listener returns (normally, or by throwing an exception).
+In addition, there is now a `BatchInterceptor` for batch listeners.
+See <<message-listener-container>> for more information.
+
 ==== @KafkaListener Changes
 
 When using manual partition assignment, you can now specify a wildcard for determining which partitions should be reset to the initial offset.
