@@ -257,7 +257,7 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 	protected Consumer<K, V> createKafkaConsumer(@Nullable String groupId, @Nullable String clientIdPrefixArg,
 			@Nullable String clientIdSuffixArg, @Nullable Properties properties) {
 
-		boolean overrideClientIdPrefix = StringUtils.hasText(clientIdPrefix);
+		boolean overrideClientIdPrefix = StringUtils.hasText(clientIdPrefixArg);
 		String clientIdPrefix = clientIdPrefixArg;
 		String clientIdSuffix = clientIdSuffixArg;
 		if (clientIdPrefix == null) {
