@@ -582,7 +582,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	}
 
 	private Callback buildCallback(final ProducerRecord<K, V> producerRecord, final Producer<K, V> producer,
-			final SettableListenableFuture<SendResult<K, V>> future, Object sample) {
+			final SettableListenableFuture<SendResult<K, V>> future, @Nullable Object sample) {
 
 		return (metadata, exception) -> {
 			try {

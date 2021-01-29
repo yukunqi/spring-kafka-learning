@@ -254,11 +254,15 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 		return createKafkaConsumer(groupId, clientIdPrefix, clientIdSuffixArg, properties);
 	}
 
-	protected Consumer<K, V> createKafkaConsumer(@Nullable String groupId, @Nullable String clientIdPrefix,
+	protected Consumer<K, V> createKafkaConsumer(@Nullable String groupId, @Nullable String clientIdPrefixArg,
 			@Nullable String clientIdSuffixArg, @Nullable Properties properties) {
 
 		boolean overrideClientIdPrefix = StringUtils.hasText(clientIdPrefix);
+		String clientIdPrefix = clientIdPrefixArg;
 		String clientIdSuffix = clientIdSuffixArg;
+		if (clientIdPrefix == null) {
+			clientIdPrefix = "";
+		}
 		if (clientIdSuffix == null) {
 			clientIdSuffix = "";
 		}
@@ -275,8 +279,8 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 		}
 	}
 
-	private Consumer<K, V> createConsumerWithAdjustedProperties(String groupId, String clientIdPrefix,
-			Properties properties, boolean overrideClientIdPrefix, String clientIdSuffix,
+	private Consumer<K, V> createConsumerWithAdjustedProperties(@Nullable String groupId, String clientIdPrefix,
+			@Nullable Properties properties, boolean overrideClientIdPrefix, String clientIdSuffix,
 			boolean shouldModifyClientId) {
 
 		Map<String, Object> modifiedConfigs = new HashMap<>(this.configs);
