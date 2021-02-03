@@ -4041,7 +4041,7 @@ Refer to the https://github.com/spring-projects/spring-retry[spring-retry] proje
 [[messaging-message-conversion]]
 ===== Spring Messaging Message Conversion
 
-Although the `Serializer` and `Deserializer` API is quite simple and flexible from the low-level Kafka `Consumer` and `Producer` perspective, you might need more flexibility at the Spring Messaging level, when using either `@KafkaListener` or <<si-kafka,Spring Integration>>.
+Although the `Serializer` and `Deserializer` API is quite simple and flexible from the low-level Kafka `Consumer` and `Producer` perspective, you might need more flexibility at the Spring Messaging level, when using either `@KafkaListener` or https://docs.spring.io/spring-integration/docs/current/reference/html/kafka.html#kafka[[Spring Integration's Apache Kafka Support].
 To let you easily convert to and from `org.springframework.messaging.Message`, Spring for Apache Kafka provides a `MessageConverter` abstraction with the `MessagingMessageConverter` implementation and its `JsonMessageConverter` (and subclasses) customization.
 You can inject the `MessageConverter` into a `KafkaTemplate` instance directly and by using `AbstractKafkaListenerContainerFactory` bean definition for the `@KafkaListener.containerFactory()` property.
 The following example shows how to do so:
@@ -4216,7 +4216,7 @@ consumerProps.put(ErrorHandlingDeserializer.VALUE_FUNCTION, FailedFooProvider.cl
 ===== Payload Conversion with Batch Listeners
 
 You can also use a `JsonMessageConverter` within a `BatchMessagingMessageConverter` to convert batch messages when you use a batch listener container factory.
-See <<serdes>> and <<message-conversion>> for more information.
+See <<serdes>> and <<messaging-message-conversion>> for more information.
 
 By default, the type for the conversion is inferred from the listener argument.
 If you configure the `JsonMessageConverter` with a `DefaultJackson2TypeMapper` that has its `TypePrecedence` set to `TYPE_ID` (instead of the default `INFERRED`), the converter uses the type information in headers (if present) instead.

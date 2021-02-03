@@ -278,7 +278,7 @@ public interface MessagingFunction {
 
 Spring Integration automatically provides an implementation using its `GatewayProxyFactoryBean`.
 It also requires a `MessagingMessageConverter` to convert the key, value and metadata (including headers) to/from a Spring Messaging `Message<?>`.
-See <<streams-integration>> for more information.
+See https://docs.spring.io/spring-integration/docs/current/reference/html/kafka.html#streams-integration[[Calling a Spring Integration Flow from a `KStream`]] for more information.
 
 [[streams-deser-recovery]]
 ==== Recovery from Deserialization Exceptions

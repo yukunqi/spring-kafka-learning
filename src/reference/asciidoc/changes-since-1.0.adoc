@@ -50,8 +50,6 @@ See <<producer-factory>> for more information.
 This section covers the changes made from version 2.4 to version 2.5.
 For changes in earlier version, see <<history>>.
 
-Also see <<new-in-sik>>.
-
 [[x25-factory-listeners]]
 ==== Consumer/Producer Factory Changes
 
@@ -225,8 +223,6 @@ See <<streams-spring>> for more information.
 
 This section covers the changes made from version 2.2 to version 2.3.
 
-Also see <<new-in-sik>>.
-
 ==== Tips, Tricks and Examples
 
 A new chapter <<tips-n-tricks>> has been added.
@@ -331,7 +327,7 @@ See <<streams-header-enricher>> for more information.
 
 The `MessagingTransformer` has been provided.
 This allows a Kafka streams topology to interact with a spring-messaging component, such as a Spring Integration flow.
-See <<streams-messaging>> and <<streams-integration>> for more information.
+See <<streams-messaging>> and See https://docs.spring.io/spring-integration/docs/current/reference/html/kafka.html#streams-integration[[Calling a Spring Integration Flow from a `KStream`]] for more information.
 
 ==== JSON Component Changes
 
@@ -490,10 +486,6 @@ This change allows proper fencing of zombies, https://www.confluent.io/blog/tran
 ==== Kafka Client Version
 
 This version requires the 1.0.0 `kafka-clients` or higher.
-
-NOTE: The 1.1.x client is supported with version 2.1.5, but you need to override dependencies as described in <<deps-for-11x>>.
-
-// TODO: No topic marked deps-for-11x exists in any of the files in the directory that contains this file.
 
 The 1.1.x client is supported natively in version 2.2.
 
