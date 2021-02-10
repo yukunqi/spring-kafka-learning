@@ -5140,8 +5140,10 @@ As <<stateful-retry,discussed earlier>>, you can configure the `SeekToCurrentErr
 The framework provides the `DeadLetterPublishingRecoverer`, which publishes the failed message to another topic.
 The recoverer requires a `KafkaTemplate<Object, Object>`, which is used to send the record.
 You can also, optionally, configure it with a `BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition>`, which is called to resolve the destination topic and partition.
-By default, the dead-letter record is sent to a topic named `<originalTopic>.DLT` (the original topic name suffixed with `.DLT`) and to the same partition as the original record.
-Therefore, when you use the default resolver, the dead-letter topic must have at least as many partitions as the original topic.
+
+IMPORTANT: By default, the dead-letter record is sent to a topic named `<originalTopic>.DLT` (the original topic name suffixed with `.DLT`) and to the same partition as the original record.
+Therefore, when you use the default resolver, the dead-letter topic **must have at least as many partitions as the original topic.**
+
 If the returned `TopicPartition` has a negative partition, the partition is not set in the `ProducerRecord`, so the partition is selected by Kafka.
 Starting with version 2.2.4, any `ListenerExecutionFailedException` (thrown, for example, when an exception is detected in a `@KafkaListener` method) is enhanced with the `groupId` property.
 This allows the destination resolver to use this, in addition to the information in the `ConsumerRecord` to select the dead letter topic.
