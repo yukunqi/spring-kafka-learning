@@ -221,6 +221,16 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 		ProducerRecord<Object, Object> outRecord = createProducerRecord(record, tp, headers,
 				kDeserEx == null ? null : kDeserEx.getData(), vDeserEx == null ? null : vDeserEx.getData());
 		KafkaOperations<Object, Object> kafkaTemplate = findTemplateForValue(outRecord.value());
+		send(outRecord, kafkaTemplate);
+	}
+
+	/**
+	 * Send the record.
+	 * @param outRecord the record.
+	 * @param kafkaTemplate the template.
+	 * @since 2.7
+	 */
+	protected void send(ProducerRecord<Object, Object> outRecord, KafkaOperations<Object, Object> kafkaTemplate) {
 		if (this.transactional && !kafkaTemplate.inTransaction() && !kafkaTemplate.isAllowNonTransactional()) {
 			kafkaTemplate.executeInTransaction(t -> {
 				publish(outRecord, t);
