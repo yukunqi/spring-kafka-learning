@@ -358,6 +358,10 @@ project ('spring-kafka-docs') {
 		}
 	}
 
+	sonarqube {
+		skipProject = true
+	}
+
 }
 
 sonarqube {
