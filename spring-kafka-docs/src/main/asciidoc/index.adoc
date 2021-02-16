@@ -43,6 +43,8 @@ include::streams.adoc[]
 
 include::testing.adoc[]
 
+include::retrytopic.adoc[]
+
 [[tips-n-tricks]]
 == Tips, Tricks and Examples
 

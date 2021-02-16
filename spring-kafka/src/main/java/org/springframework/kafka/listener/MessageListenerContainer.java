@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@ import org.springframework.lang.Nullable;
  * @author Stephane Nicoll
  * @author Gary Russell
  * @author Vladimir Tsanev
+ * @author Tomaz Fernandes
  */
 public interface MessageListenerContainer extends SmartLifecycle {
 
@@ -101,6 +102,36 @@ public interface MessageListenerContainer extends SmartLifecycle {
 	}
 
 	/**
+	 * Pause this partition before the next poll(). This is a thread-safe operation, the
+	 * actual pause is processed by the consumer thread.
+	 * @param topicPartition the topicPartition to pause.
+	 * @since 2.7
+	 */
+	default void pausePartition(TopicPartition topicPartition) {
+		throw new UnsupportedOperationException("This container doesn't support pausing a partition");
+	}
+
+	/**
+	 * Resume this partition, if paused, after the next poll(). This is a thread-safe operation, the
+	 * actual pause is processed by the consumer thread.
+	 * @param topicPartition the topicPartition to resume.
+	 * @since 2.7
+	 */
+	default void resumePartition(TopicPartition topicPartition) {
+		throw new UnsupportedOperationException("This container doesn't support resuming a partition");
+	}
+
+	/**
+	 * Whether or not this topic's partition pause has been requested.
+	 * @param topicPartition the topic partition to check
+	 * @return true if pause for this TopicPartition has been requested
+	 * @since 2.7
+	 */
+	default boolean isPartitionPauseRequested(TopicPartition topicPartition) {
+		throw new UnsupportedOperationException("This container doesn't support pausing a partition");
+	}
+
+	/**
 	 * Return true if {@link #pause()} has been called; the container might not have actually
 	 * paused yet.
 	 * @return true if pause has been requested.
@@ -150,5 +181,4 @@ public interface MessageListenerContainer extends SmartLifecycle {
 	default String getListenerId() {
 		throw new UnsupportedOperationException("This container does not support retrieving the listener id");
 	}
-
 }

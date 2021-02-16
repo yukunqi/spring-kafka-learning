@@ -33,6 +33,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -49,6 +50,7 @@ import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.ObjectFactory;
 import org.springframework.beans.factory.SmartInitializingSingleton;
+import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 import org.springframework.beans.factory.config.BeanExpressionContext;
 import org.springframework.beans.factory.config.BeanExpressionResolver;
 import org.springframework.beans.factory.config.BeanPostProcessor;
@@ -74,6 +76,10 @@ import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
 import org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
+import org.springframework.kafka.retrytopic.RetryTopicBootstrapper;
+import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
+import org.springframework.kafka.retrytopic.RetryTopicConfigurationProvider;
+import org.springframework.kafka.retrytopic.RetryTopicConfigurer;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
@@ -117,6 +123,7 @@ import org.springframework.validation.Validator;
  * @author Venil Noronha
  * @author Dimitri Penner
  * @author Filip Halemba
+ * @author Tomaz Fernandes
  *
  * @see KafkaListener
  * @see KafkaListenerErrorHandler
@@ -379,7 +386,48 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		Method methodToUse = checkProxy(method, bean);
 		MethodKafkaListenerEndpoint<K, V> endpoint = new MethodKafkaListenerEndpoint<>();
 		endpoint.setMethod(methodToUse);
-		processListener(endpoint, kafkaListener, bean, methodToUse, beanName);
+
+		if (!processMainAndRetryListeners(kafkaListener, bean, beanName, methodToUse, endpoint)) {
+			processListener(endpoint, kafkaListener, bean, methodToUse, beanName);
+		}
+	}
+
+	private boolean processMainAndRetryListeners(KafkaListener kafkaListener, Object bean, String beanName,
+												Method methodToUse, MethodKafkaListenerEndpoint<K, V> endpoint) {
+
+		RetryTopicConfiguration retryTopicConfiguration = new RetryTopicConfigurationProvider(this.beanFactory)
+				.findRetryConfigurationFor(kafkaListener.topics(), methodToUse, bean);
+
+		if (retryTopicConfiguration == null) {
+			this.logger.debug("No retry topic configuration found for topics " + kafkaListener.topics() + ".");
+			return false;
+		}
+
+		RetryTopicConfigurer.EndpointProcessor endpointProcessor = (endpointToProcess, customizerHolder) ->
+				this.processListener(endpointToProcess, kafkaListener, bean, methodToUse, beanName,
+						customizerHolder.getEndpointCustomizer(), customizerHolder.getFactoryCustomizer());
+
+		getRetryTopicConfigurer()
+				.processMainAndRetryListeners(endpointProcessor, endpoint, retryTopicConfiguration);
+		return true;
+	}
+
+	private RetryTopicConfigurer getRetryTopicConfigurer() {
+		RetryTopicConfigurer retryTopicConfigurer;
+		try {
+			return this.beanFactory.getBean(RetryTopicConfigurer.class);
+		}
+		catch (NoSuchBeanDefinitionException e) {
+			if (!(this.beanFactory instanceof AutowireCapableBeanFactory)) {
+				throw new IllegalStateException("BeanFactory must be an instance of "
+						+ AutowireCapableBeanFactory.class.getSimpleName()
+						+ " Provided beanFactory: " + this.beanFactory.getClass().getSimpleName());
+			}
+			((AutowireCapableBeanFactory) this.beanFactory)
+					.createBean(RetryTopicBootstrapper.class)
+					.bootstrapRetryTopic();
+			return this.beanFactory.getBean(RetryTopicConfigurer.class);
+		}
 	}
 
 	private Method checkProxy(Method methodArg, Object bean) {
@@ -417,7 +465,15 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	}
 
 	protected void processListener(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener,
-			Object bean, Object adminTarget, String beanName) {
+								Object bean, Object adminTarget, String beanName) {
+		processListener(endpoint, kafkaListener, bean, adminTarget, beanName,
+				listenerEndpoint -> listenerEndpoint, factory -> factory);
+	}
+
+	protected void processListener(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener,
+								Object bean, Object adminTarget, String beanName,
+								Function<MethodKafkaListenerEndpoint<?, ?>, MethodKafkaListenerEndpoint<?, ?>> endpointCustomizer,
+								Function<KafkaListenerContainerFactory<?>, KafkaListenerContainerFactory<?>> containerFactoryCustomizer) {
 
 		String beanRef = kafkaListener.beanRef();
 		if (StringUtils.hasText(beanRef)) {
@@ -449,13 +505,13 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		resolveKafkaProperties(endpoint, kafkaListener.properties());
 		endpoint.setSplitIterables(kafkaListener.splitIterables());
 
+		endpoint = endpointCustomizer.apply(endpoint);
+
 		String containerFactory = resolve(kafkaListener.containerFactory());
-		if (StringUtils.hasText(containerFactory)) {
-			this.registrar.registerEndpoint(endpoint, resolveContainerFactory(kafkaListener, containerFactory, beanName));
-		}
-		else {
-			this.registrar.registerEndpoint(endpoint);
-		}
+		KafkaListenerContainerFactory<?> containerFactoryInstanceOrNull = containerFactoryCustomizer
+				.apply(resolveContainerFactory(kafkaListener, containerFactory, beanName));
+
+		this.registrar.registerEndpoint(endpoint, containerFactoryInstanceOrNull);
 
 		endpoint.setBeanFactory(this.beanFactory);
 		String errorHandlerBeanName = resolveExpressionAsString(kafkaListener.errorHandler(), "errorHandler");
@@ -484,13 +540,18 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	@Nullable
 	private KafkaListenerContainerFactory<?> resolveContainerFactory(KafkaListener kafkaListener,
 			Object factoryTarget, String beanName) {
+		String containerFactory = kafkaListener.containerFactory();
+		if (!StringUtils.hasText(containerFactory)) {
+			return null;
+		}
 
 		KafkaListenerContainerFactory<?> factory = null;
-		Object resolved = resolveExpression(kafkaListener.containerFactory());
+
+		Object resolved = resolveExpression(containerFactory);
 		if (resolved instanceof KafkaListenerContainerFactory) {
 			return (KafkaListenerContainerFactory<?>) resolved;
 		}
-		String containerFactoryBeanName = resolveExpressionAsString(kafkaListener.containerFactory(),
+		String containerFactoryBeanName = resolveExpressionAsString(containerFactory,
 				"containerFactory");
 		if (StringUtils.hasText(containerFactoryBeanName)) {
 			assertBeanFactory();

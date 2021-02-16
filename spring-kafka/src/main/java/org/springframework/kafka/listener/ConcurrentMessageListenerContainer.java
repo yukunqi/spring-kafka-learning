@@ -51,6 +51,7 @@ import org.springframework.util.Assert;
  * @author Jerome Mirc
  * @author Artem Bilan
  * @author Vladimir Tsanev
+ * @author Tomaz Fernandes
  */
 public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageListenerContainer<K, V> {
 
@@ -285,6 +286,33 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 			super.resume();
 			this.containers.forEach(AbstractMessageListenerContainer::resume);
 		}
+	}
+
+	@Override
+	public void pausePartition(TopicPartition topicPartition) {
+		synchronized (this.lifecycleMonitor) {
+			super.pausePartition(topicPartition);
+			this.containers
+					.stream()
+					.filter(container -> containsPartition(topicPartition, container))
+					.forEach(container -> container.pausePartition(topicPartition));
+		}
+	}
+
+	@Override
+	public void resumePartition(TopicPartition topicPartition) {
+		synchronized (this.lifecycleMonitor) {
+			super.resumePartition(topicPartition);
+			this.containers
+					.stream()
+					.filter(container -> containsPartition(topicPartition, container))
+					.forEach(container -> container.resumePartition(topicPartition));
+		}
+	}
+
+	private boolean containsPartition(TopicPartition topicPartition, KafkaMessageListenerContainer<K, V> container) {
+		Collection<TopicPartition> assignedPartitions = container.getAssignedPartitions();
+		return assignedPartitions != null && assignedPartitions.contains(topicPartition);
 	}
 
 	@Override

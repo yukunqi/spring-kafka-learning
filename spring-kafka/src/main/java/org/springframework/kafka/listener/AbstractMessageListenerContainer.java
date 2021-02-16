@@ -18,9 +18,11 @@ package org.springframework.kafka.listener;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -57,6 +59,7 @@ import org.springframework.util.StringUtils;
  * @author Gary Russell
  * @author Marius Bogoevici
  * @author Artem Bilan
+ * @author Tomaz Fernandes
  */
 public abstract class AbstractMessageListenerContainer<K, V>
 		implements GenericMessageListenerContainer<K, V>, BeanNameAware, ApplicationEventPublisherAware,
@@ -105,6 +108,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private ApplicationContext applicationContext;
 
+	private final Set<TopicPartition> pausedPartitions;
+
 	/**
 	 * Construct an instance with the provided factory and properties.
 	 * @param consumerFactory the factory.
@@ -145,6 +150,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		if (this.containerProperties.getConsumerRebalanceListener() == null) {
 			this.containerProperties.setConsumerRebalanceListener(createSimpleLoggingConsumerRebalanceListener());
 		}
+
+		this.pausedPartitions = new HashSet<>();
 	}
 
 	@Override
@@ -231,6 +238,27 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	protected boolean isPaused() {
 		return this.paused;
+	}
+
+	@Override
+	public boolean isPartitionPauseRequested(TopicPartition topicPartition) {
+		synchronized (this.pausedPartitions) {
+			return this.pausedPartitions.contains(topicPartition);
+		}
+	}
+
+	@Override
+	public void pausePartition(TopicPartition topicPartition) {
+		synchronized (this.pausedPartitions) {
+			this.pausedPartitions.add(topicPartition);
+		}
+	}
+
+	@Override
+	public void resumePartition(TopicPartition topicPartition) {
+		synchronized (this.pausedPartitions) {
+			this.pausedPartitions.remove(topicPartition);
+		}
 	}
 
 	@Override

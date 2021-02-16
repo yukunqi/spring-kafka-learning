@@ -245,6 +245,8 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private Long idleEventInterval;
 
+	private Long idlePartitionEventInterval;
+
 	private PlatformTransactionManager transactionManager;
 
 	private int monitorInterval = DEFAULT_MONITOR_INTERVAL;
@@ -419,6 +421,15 @@ public class ContainerProperties extends ConsumerProperties {
 		this.idleEventInterval = idleEventInterval;
 	}
 
+	/**
+	 * Set the idle partition event interval; when set, an event is emitted if a poll returns
+	 * no records for a partition and this interval has elapsed since a record was returned.
+	 * @param idlePartitionEventInterval the interval.
+	 */
+	public void setIdlePartitionEventInterval(Long idlePartitionEventInterval) {
+		this.idlePartitionEventInterval = idlePartitionEventInterval;
+	}
+
 	public AckMode getAckMode() {
 		return this.ackMode;
 	}
@@ -445,6 +456,10 @@ public class ContainerProperties extends ConsumerProperties {
 
 	public Long getIdleEventInterval() {
 		return this.idleEventInterval;
+	}
+
+	public Long getIdlePartitionEventInterval() {
+		return this.idlePartitionEventInterval;
 	}
 
 	public PlatformTransactionManager getTransactionManager() {
@@ -828,6 +843,8 @@ public class ContainerProperties extends ConsumerProperties {
 				+ ", shutdownTimeout=" + this.shutdownTimeout
 				+ ", idleEventInterval="
 				+ (this.idleEventInterval == null ? "not enabled" : this.idleEventInterval)
+				+ ", idlePartitionEventInterval="
+				+ (this.idlePartitionEventInterval == null ? "not enabled" : this.idlePartitionEventInterval)
 				+ (this.transactionManager != null
 						? ", transactionManager=" + this.transactionManager
 						: "")

@@ -75,6 +75,8 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaResourceHolder;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.event.ConsumerFailedToStartEvent;
+import org.springframework.kafka.event.ConsumerPartitionPausedEvent;
+import org.springframework.kafka.event.ConsumerPartitionResumedEvent;
 import org.springframework.kafka.event.ConsumerPausedEvent;
 import org.springframework.kafka.event.ConsumerResumedEvent;
 import org.springframework.kafka.event.ConsumerStartedEvent;
@@ -84,6 +86,8 @@ import org.springframework.kafka.event.ConsumerStoppedEvent.Reason;
 import org.springframework.kafka.event.ConsumerStoppingEvent;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.event.ListenerContainerNoLongerIdleEvent;
+import org.springframework.kafka.event.ListenerContainerPartitionIdleEvent;
+import org.springframework.kafka.event.ListenerContainerPartitionNoLongerIdleEvent;
 import org.springframework.kafka.event.NonResponsiveConsumerEvent;
 import org.springframework.kafka.listener.ConsumerSeekAware.ConsumerSeekCallback;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
@@ -116,6 +120,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.ListenableFutureCallback;
 
+
 /**
  * Single-threaded Message listener container using the Java {@link Consumer} supporting
  * auto-partition assignment or user-configured assignment.
@@ -136,6 +141,7 @@ import org.springframework.util.concurrent.ListenableFutureCallback;
  * @author Yang Qiju
  * @author Tom van den Berge
  * @author Lukasz Kaminski
+ * @author Tomaz Fernandes
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> {
@@ -354,6 +360,20 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 	}
 
+	private void publishIdlePartitionEvent(long idleTime, TopicPartition topicPartition, Consumer<K, V> consumer, boolean paused) {
+		if (getApplicationEventPublisher() != null) {
+			getApplicationEventPublisher().publishEvent(new ListenerContainerPartitionIdleEvent(this,
+					this.thisOrParentContainer, idleTime, getBeanName(), topicPartition, consumer, paused));
+		}
+	}
+
+	private void publishNoLongerIdlePartitionEvent(long idleTime, Consumer<K, V> consumer, TopicPartition topicPartition) {
+		if (getApplicationEventPublisher() != null) {
+			getApplicationEventPublisher().publishEvent(new ListenerContainerPartitionNoLongerIdleEvent(this,
+					this.thisOrParentContainer, idleTime, getBeanName(), topicPartition, consumer));
+		}
+	}
+
 	private void publishIdleContainerEvent(long idleTime, Consumer<?, ?> consumer, boolean paused) {
 		if (getApplicationEventPublisher() != null) {
 			getApplicationEventPublisher().publishEvent(new ListenerContainerIdleEvent(this,
@@ -387,6 +407,20 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		if (getApplicationEventPublisher() != null) {
 			getApplicationEventPublisher().publishEvent(new ConsumerResumedEvent(this, this.thisOrParentContainer,
 					Collections.unmodifiableCollection(partitions)));
+		}
+	}
+
+	private void publishConsumerPartitionPausedEvent(TopicPartition partition) {
+		if (getApplicationEventPublisher() != null) {
+			getApplicationEventPublisher().publishEvent(new ConsumerPartitionPausedEvent(this, this.thisOrParentContainer,
+					partition));
+		}
+	}
+
+	private void publishConsumerPartitionResumedEvent(TopicPartition partition) {
+		if (getApplicationEventPublisher() != null) {
+			getApplicationEventPublisher().publishEvent(new ConsumerPartitionResumedEvent(this, this.thisOrParentContainer,
+					partition));
 		}
 	}
 
@@ -618,6 +652,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private long lastAlertAt = this.lastReceive;
 
+		private final Map<TopicPartition, Long> lastReceivePartition;
+
+		private final Map<TopicPartition, Long> lastAlertPartition;
+
 		private long nackSleep = -1;
 
 		private int nackIndex;
@@ -633,6 +671,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private boolean commitRecovered;
 
 		private boolean wasIdle;
+
+		private final Map<TopicPartition, Boolean> wasIdlePartition;
 
 		private boolean batchFailed;
 
@@ -726,6 +766,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.micrometerHolder = obtainMicrometerHolder();
 			this.deliveryAttemptAware = setupDeliveryAttemptAware();
 			this.subBatchPerPartition = setupSubBatchPerPartition();
+			this.lastReceivePartition = new HashMap<>();
+			this.lastAlertPartition = new HashMap<>();
+			this.wasIdlePartition = new HashMap<>();
 		}
 
 		private Properties propertiesFromProperties() {
@@ -1166,6 +1209,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				processSeeks();
 			}
 			pauseConsumerIfNecessary();
+			pausePartitionsIfNecessary();
 			this.lastPoll = System.currentTimeMillis();
 			if (!isRunning()) {
 				return;
@@ -1183,15 +1227,58 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				return;
 			}
 			resumeConsumerIfNeccessary();
+			resumePartitionsIfNecessary();
 			debugRecords(records);
 			if (records != null && records.count() > 0) {
 				savePositionsIfNeeded(records);
 				notIdle();
+				notIdlePartitions(records.partitions());
 				invokeListener(records);
 			}
 			else {
 				checkIdle();
+				checkIdlePartitions();
 			}
+		}
+
+		private void checkIdlePartitions() {
+			Set<TopicPartition> partitions = this.consumer.assignment();
+			partitions.forEach(this::checkIdlePartition);
+		}
+
+		private void checkIdlePartition(TopicPartition topicPartition) {
+			if (this.containerProperties.getIdlePartitionEventInterval() != null) {
+				long now = System.currentTimeMillis();
+				Long lastReceive = this.lastReceivePartition.computeIfAbsent(topicPartition, newTopicPartition -> now);
+				Long lastAlertAt = this.lastAlertPartition.computeIfAbsent(topicPartition, newTopicPartition -> now);
+				if (now > lastReceive + this.containerProperties.getIdlePartitionEventInterval()
+						&& now > lastAlertAt + this.containerProperties.getIdlePartitionEventInterval()) {
+					this.wasIdlePartition.put(topicPartition, true);
+					publishIdlePartitionEvent(now - lastReceive, topicPartition, this.consumer,
+							isPartitionPauseRequested(topicPartition));
+					this.lastAlertPartition.put(topicPartition, now);
+					if (this.consumerSeekAwareListener != null) {
+						seekPartitions(Collections.singletonList(topicPartition), true);
+					}
+				}
+			}
+		}
+
+		private void notIdlePartitions(Set<TopicPartition> partitions) {
+			if (this.containerProperties.getIdlePartitionEventInterval() != null) {
+				partitions.forEach(this::notIdlePartition);
+			}
+		}
+
+		private void notIdlePartition(TopicPartition topicPartition) {
+			long now = System.currentTimeMillis();
+			Boolean wasIdle = this.wasIdlePartition.get(topicPartition);
+			if (wasIdle != null && wasIdle) {
+				this.wasIdlePartition.put(topicPartition, false);
+				Long lastReceive = this.lastReceivePartition.computeIfAbsent(topicPartition, newTopicPartition -> now);
+				publishNoLongerIdlePartitionEvent(now - this.lastReceive, this.consumer, topicPartition);
+			}
+			this.lastReceivePartition.put(topicPartition, now);
 		}
 
 		private void notIdle() {
@@ -1343,6 +1430,34 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.consumer.resume(paused);
 				this.consumerPaused = false;
 				publishConsumerResumedEvent(paused);
+			}
+		}
+
+		private void pausePartitionsIfNecessary() {
+			Set<TopicPartition> pausedPartitions = this.consumer.paused();
+			List<TopicPartition> partitionsToPause = this
+					.assignedPartitions
+					.stream()
+					.filter(tp -> isPartitionPauseRequested(tp) && !pausedPartitions.contains(tp))
+					.collect(Collectors.toList());
+			if (partitionsToPause.size() > 0) {
+				this.consumer.pause(partitionsToPause);
+				this.logger.debug(() -> "Paused consumption from " + partitionsToPause);
+				partitionsToPause.forEach(KafkaMessageListenerContainer.this::publishConsumerPartitionPausedEvent);
+			}
+		}
+
+		private void resumePartitionsIfNecessary() {
+			Set<TopicPartition> pausedPartitions = this.consumer.paused();
+			List<TopicPartition> partitionsToResume = this
+					.assignedPartitions
+					.stream()
+					.filter(tp -> !isPartitionPauseRequested(tp) && pausedPartitions.contains(tp))
+					.collect(Collectors.toList());
+			if (partitionsToResume.size() > 0) {
+				this.consumer.resume(partitionsToResume);
+				this.logger.debug(() -> "Resumed consumption from " + partitionsToResume);
+				partitionsToResume.forEach(KafkaMessageListenerContainer.this::publishConsumerPartitionResumedEvent);
 			}
 		}
 
@@ -2915,6 +3030,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 	}
+
 
 	private static final class OffsetMetadata {
 

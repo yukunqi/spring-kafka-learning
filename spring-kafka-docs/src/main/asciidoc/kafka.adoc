@@ -2345,6 +2345,10 @@ The time to process a batch of records plus this value must be less than the `ma
 |`null`
 |When set, enables publication of `ListenerContainerIdleEvent` s, see <<events>> and <<idle-containers>>.
 
+|idlePartitionEventInterval
+|`null`
+|When set, enables publication of `ListenerContainerIdlePartitionEvent` s, see <<events>> and <<idle-containers>>.
+
 |kafkaConsumerProperties
 |None
 |Used to override any arbitrary consumer properties configured on the consumer factory.
@@ -2578,7 +2582,11 @@ This event might signal that the configured task executor has insufficient threa
 An error message is also logged when this condition occurs.
 * `ListenerContainerIdleEvent`: published when no messages have been received in `idleInterval` (if configured).
 * `ListenerContainerNoLongerIdleEvent`: published when a record is consumed after previously publishing a `ListenerContainerIdleEvent`.
+* `ListenerContainerPartitionIdleEvent`: published when no messages have been received from that partition in `idlePartitionEventInterval` (if configured).
+* `ListenerContainerPartitionNoLongerIdleEvent`: published when a record is consumed from a partition that has previously published a `ListenerContainerPartitionIdleEvent`.
 * `NonResponsiveConsumerEvent`: published when the consumer appears to be blocked in the `poll` method.
+* `ConsumerPartitionPausedEvent`: published by each consumer when a partition is paused.
+* `ConsumerPartitionResumedEvent`: published by each consumer when a partition is resumed.
 * `ConsumerPausedEvent`: published by each consumer when the container is paused.
 * `ConsumerResumedEvent`: published by each consumer when the container is resumed.
 * `ConsumerStoppingEvent`: published by each consumer just before stopping.
@@ -2603,6 +2611,22 @@ See <<pause-resume>> for more information.
 
 The `ListenerContainerNoLongerIdleEvent` has the same properties, except `idleTime` and `paused`.
 
+
+The `ListenerContainerPartitionIdleEvent` has the following properties:
+
+* `source`: The listener container instance that published the event.
+* `container`: The listener container or the parent listener container, if the source container is a child.
+* `id`: The listener ID (or container bean name).
+* `idleTime`: The time partition consumption had been idle when the event was published.
+* `topicPartition`: The topic and partition that triggered the event.
+* `consumer`: A reference to the Kafka `Consumer` object.
+For example, if the consumer's `pause()` method was previously called, it can `resume()` when the event is received.
+* `paused`: Whether that partition consumption is currently paused for that consumer.
+See <<pause-resume>> for more information.
+
+The `ListenerContainerPartitionNoLongerIdleEvent` has the same properties, except `idleTime` and `paused`.
+
+
 The `NonResponsiveConsumerEvent` has the following properties:
 
 * `source`: The listener container instance that published the event.
@@ -2620,6 +2644,12 @@ The `ConsumerPausedEvent`, `ConsumerResumedEvent`, and `ConsumerStopping` events
 * `source`: The listener container instance that published the event.
 * `container`: The listener container or the parent listener container, if the source container is a child.
 * `partitions`: The `TopicPartition` instances involved.
+
+The `ConsumerPartitionPausedEvent`, `ConsumerPartitionResumedEvent` events have the following properties:
+
+* `source`: The listener container instance that published the event.
+* `container`: The listener container or the parent listener container, if the source container is a child.
+* `partition`: The `TopicPartition` instance involved.
 
 The `ConsumerStartingEvent`, `ConsumerStartingEvent`, `ConsumerFailedToStartEvent`, `ConsumerStoppedEvent` and `ContainerStoppedEvent` events have the following properties:
 
@@ -3629,6 +3659,16 @@ ConsumerResumedEvent [partitions=[pause.resume.topic-1, pause.resume.topic-0]]
 thing2
 ----
 ====
+
+[[pause-resume-partitions]]
+==== Pausing and Resuming Partitions on Listener Containers
+
+Since version 2.7 you can pause and resume the consumption of specific partitions assigned to that consumer by using the `pausePartition(TopicPartition topicPartition)` and `resumePartition(TopicPartition topicPartition)` methods in the listener containers.
+The pausing and resuming takes place before and after the `poll()` similar to the `pause()` and `resume()` methods.
+The `isPartitionConsumerPaused()` method returns true if pause for that partition has been requested.
+
+Also since version 2.7 `ConsumerPartitionPausedEvent` and `ConsumerPartitionResumedEvent` instances are published with the container as the `source` property and the `TopicPartition` instance.
+
 
 [[serdes]]
 ==== Serialization, Deserialization, and Message Conversion
