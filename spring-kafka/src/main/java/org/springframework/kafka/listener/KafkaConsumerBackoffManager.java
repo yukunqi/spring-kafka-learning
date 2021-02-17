@@ -22,28 +22,24 @@ import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationListener;
-import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.event.ListenerContainerPartitionIdleEvent;
 
 /**
  *
- * A manager that backs off consumption for a given topic if the timestamp provided is not due.
- * Use with {@link SeekToCurrentErrorHandler} to guarantee that the message is read again after
- * partition consumption is resumed (or seek it manually by other means).
+ * A manager that backs off consumption for a given topic if the timestamp provided is not
+ * due. Use with {@link SeekToCurrentErrorHandler} to guarantee that the message is read
+ * again after partition consumption is resumed (or seek it manually by other means).
  *
  * @author Tomaz Fernandes
  * @since 2.7
  * @see SeekToCurrentErrorHandler
  */
 public class KafkaConsumerBackoffManager implements ApplicationListener<ListenerContainerPartitionIdleEvent> {
-
-	private static final LogAccessor logger = new LogAccessor(LogFactory.getLog(KafkaConsumerBackoffManager.class));
 
 	/**
 	 * Internal Back Off Clock Bean Name.
@@ -121,17 +117,17 @@ public class KafkaConsumerBackoffManager implements ApplicationListener<Listener
 		/**
 		 * The time after which the message should be processed.
 		 */
-		final long dueTimestamp;
+		final long dueTimestamp; // NOSONAR
 
 		/**
 		 * The id for the listener that should be paused.
 		 */
-		final String listenerId;
+		final String listenerId; // NOSONAR
 
 		/**
 		 * The topic that contains the partition to be paused.
 		 */
-		final TopicPartition topicPartition;
+		final TopicPartition topicPartition; // NOSONAR
 
 		Context(long dueTimestamp, String listenerId, TopicPartition topicPartition) {
 			this.dueTimestamp = dueTimestamp;

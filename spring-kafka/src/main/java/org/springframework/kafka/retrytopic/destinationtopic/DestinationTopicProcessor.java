@@ -34,14 +34,35 @@ import java.util.function.Consumer;
  */
 public interface DestinationTopicProcessor {
 
+	/**
+	 * Process the destination properties.
+	 * @param destinationPropertiesProcessor the processor.
+	 * @param context the context.
+	 */
 	void processDestinationProperties(Consumer<DestinationTopic.Properties> destinationPropertiesProcessor, Context context);
+
+	/**
+	 * Process the registered destinations.
+	 * @param topicsConsumer the consumer.
+	 * @param context the context.
+	 */
 	void processRegisteredDestinations(Consumer<Collection<String>> topicsConsumer, Context context);
+
+	/**
+	 * Register the destination topic.
+	 * @param mainTopicName the main topic name.
+	 * @param destinationTopicName the destination topic name.
+	 * @param destinationTopicProperties the destination topic properties.
+	 * @param context the context.
+	 */
 	void registerDestinationTopic(String mainTopicName, String destinationTopicName,
-								DestinationTopic.Properties destinationTopicProperties, Context context);
+			DestinationTopic.Properties destinationTopicProperties, Context context);
 
 	class Context {
-		protected final Map<String, List<DestinationTopic>> destinationsByTopicMap;
-		protected final List<DestinationTopic.Properties> properties;
+
+		protected final Map<String, List<DestinationTopic>> destinationsByTopicMap; // NOSONAR
+
+		protected final List<DestinationTopic.Properties> properties; // NOSONAR
 
 		public Context(List<DestinationTopic.Properties> properties) {
 
@@ -50,4 +71,5 @@ public interface DestinationTopicProcessor {
 			this.properties = properties;
 		}
 	}
+
 }

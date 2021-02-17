@@ -49,9 +49,9 @@ public class BackOffValuesGenerator {
 
 	public BackOffValuesGenerator(int providedMaxAttempts, BackOffPolicy providedBackOffPolicy) {
 		this.numberOfvaluesToCreate = getMaxAttemps(providedMaxAttempts) - 1;
-		BackOffPolicy backOffPolicy = providedBackOffPolicy != null ? providedBackOffPolicy : DEFAULT_BACKOFF_POLICY;
-		checkBackOffPolicyTipe(backOffPolicy);
-		this.backOffPolicy = backOffPolicy;
+		BackOffPolicy policy = providedBackOffPolicy != null ? providedBackOffPolicy : DEFAULT_BACKOFF_POLICY;
+		checkBackOffPolicyTipe(policy);
+		this.backOffPolicy = policy;
 	}
 
 	public int getMaxAttemps(int providedMaxAttempts) {

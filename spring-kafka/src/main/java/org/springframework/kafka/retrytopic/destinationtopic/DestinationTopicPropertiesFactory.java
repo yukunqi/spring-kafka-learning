@@ -43,7 +43,7 @@ import org.springframework.util.StringUtils;
  */
 public class DestinationTopicPropertiesFactory {
 
-	private final static String MAIN_TOPIC_SUFFIX = "";
+	private static final String MAIN_TOPIC_SUFFIX = "";
 
 	private final DestinationTopicSuffixes destinationTopicSuffixes;
 
@@ -66,12 +66,13 @@ public class DestinationTopicPropertiesFactory {
 	private final long timeout;
 
 	public DestinationTopicPropertiesFactory(String retryTopicSuffix, String dltSuffix, int maxAttempts,
-											BackOffPolicy backOffPolicy, BinaryExceptionClassifier exceptionClassifier,
-											int numPartitions, KafkaOperations<?, ?> kafkaOperations,
-											FixedDelayStrategy fixedDelayStrategy,
-											DltStrategy dltStrategy,
-											TopicSuffixingStrategy topicSuffixingStrategy,
-											long timeout) {
+			BackOffPolicy backOffPolicy, BinaryExceptionClassifier exceptionClassifier,
+			int numPartitions, KafkaOperations<?, ?> kafkaOperations,
+			FixedDelayStrategy fixedDelayStrategy,
+			DltStrategy dltStrategy,
+			TopicSuffixingStrategy topicSuffixingStrategy,
+			long timeout) {
+
 		this.dltStrategy = dltStrategy;
 		this.kafkaOperations = kafkaOperations;
 		this.exceptionClassifier = exceptionClassifier;
@@ -153,7 +154,7 @@ public class DestinationTopicPropertiesFactory {
 					? joinWithRetrySuffix(indexInBackoffValues)
 					: hasDuplicates(thisBackOffValue)
 						? joinWithRetrySuffix(thisBackOffValue)
-						.concat("-" + String.valueOf(getIndexInBackoffValues(indexInBackoffValues, thisBackOffValue)))
+						.concat("-" + getIndexInBackoffValues(indexInBackoffValues, thisBackOffValue))
 						: joinWithRetrySuffix(thisBackOffValue);
 	}
 

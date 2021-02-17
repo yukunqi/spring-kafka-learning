@@ -51,7 +51,7 @@ public class RetryTopicConfigurationProvider {
 
 	private final BeanFactory beanFactory;
 
-	private static final LogAccessor logger = new LogAccessor(LogFactory.getLog(RetryTopicConfigurationProvider.class));
+	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(RetryTopicConfigurationProvider.class));
 
 	public RetryTopicConfigurationProvider(BeanFactory beanFactory) {
 		this.beanFactory = beanFactory;
@@ -66,7 +66,7 @@ public class RetryTopicConfigurationProvider {
 
 	private RetryTopicConfiguration maybeGetFromContext(String[] topics) {
 		if (this.beanFactory == null || !ListableBeanFactory.class.isAssignableFrom(this.beanFactory.getClass())) {
-			logger.warn("No ListableBeanFactory found, skipping RetryTopic configuration.");
+			LOGGER.warn("No ListableBeanFactory found, skipping RetryTopic configuration.");
 			return null;
 		}
 

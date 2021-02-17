@@ -688,7 +688,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private volatile long lastPoll = System.currentTimeMillis();
 
-		private Set<TopicPartition> pausedPartitions;
+		private final Set<TopicPartition> pausedPartitions;
 
 		@SuppressWarnings(UNCHECKED)
 		ListenerConsumer(GenericMessageListener<?> listener, ListenerType listenerType) {
@@ -1262,12 +1262,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void checkIdlePartition(TopicPartition topicPartition) {
 			if (this.containerProperties.getIdlePartitionEventInterval() != null) {
 				long now = System.currentTimeMillis();
-				Long lastReceive = this.lastReceivePartition.computeIfAbsent(topicPartition, newTopicPartition -> now);
-				Long lastAlertAt = this.lastAlertPartition.computeIfAbsent(topicPartition, newTopicPartition -> now);
-				if (now > lastReceive + this.containerProperties.getIdlePartitionEventInterval()
-						&& now > lastAlertAt + this.containerProperties.getIdlePartitionEventInterval()) {
+				Long lstReceive = this.lastReceivePartition.computeIfAbsent(topicPartition, newTopicPartition -> now);
+				Long lstAlertAt = this.lastAlertPartition.computeIfAbsent(topicPartition, newTopicPartition -> now);
+				if (now > lstReceive + this.containerProperties.getIdlePartitionEventInterval()
+						&& now > lstAlertAt + this.containerProperties.getIdlePartitionEventInterval()) {
 					this.wasIdlePartition.put(topicPartition, true);
-					publishIdlePartitionEvent(now - lastReceive, topicPartition, this.consumer,
+					publishIdlePartitionEvent(now - lstReceive, topicPartition, this.consumer,
 							isPartitionPauseRequested(topicPartition));
 					this.lastAlertPartition.put(topicPartition, now);
 					if (this.consumerSeekAwareListener != null) {
@@ -1285,11 +1285,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private void notIdlePartition(TopicPartition topicPartition) {
 			long now = System.currentTimeMillis();
-			Boolean wasIdle = this.wasIdlePartition.get(topicPartition);
-			if (wasIdle != null && wasIdle) {
+			Boolean partitionWasIdle = this.wasIdlePartition.get(topicPartition);
+			if (partitionWasIdle != null && partitionWasIdle) {
 				this.wasIdlePartition.put(topicPartition, false);
-				Long lastReceive = this.lastReceivePartition.computeIfAbsent(topicPartition, newTopicPartition -> now);
-				publishNoLongerIdlePartitionEvent(now - this.lastReceive, this.consumer, topicPartition);
+				Long lstReceive = this.lastReceivePartition.computeIfAbsent(topicPartition, newTopicPartition -> now);
+				publishNoLongerIdlePartitionEvent(now - lstReceive, this.consumer, topicPartition);
 			}
 			this.lastReceivePartition.put(topicPartition, now);
 		}

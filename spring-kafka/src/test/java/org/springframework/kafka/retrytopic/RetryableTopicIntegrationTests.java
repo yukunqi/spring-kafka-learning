@@ -65,31 +65,28 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  */
 @SpringJUnitConfig
 @DirtiesContext
-@EmbeddedKafka(brokerProperties = { "listeners=PLAINTEXT://localhost:9092", "port=9092" })
+@EmbeddedKafka(topics = { RetryableTopicIntegrationTests.FIRST_TOPIC,
+		RetryableTopicIntegrationTests.SECOND_TOPIC,
+		RetryableTopicIntegrationTests.THIRD_TOPIC,
+		RetryableTopicIntegrationTests.FOURTH_TOPIC }, partitions = 1)
 public class RetryableTopicIntegrationTests {
 
 	private static final Logger logger = LoggerFactory.getLogger(RetryableTopicIntegrationTests.class);
 
-	private final static String FIRST_TOPIC = "myRetryTopic1";
+	public final static String FIRST_TOPIC = "myRetryTopic1";
 
-	private final static String SECOND_TOPIC = "myRetryTopic2";
+	public final static String SECOND_TOPIC = "myRetryTopic2";
 
-	private final static String THIRD_TOPIC = "myRetryTopic3";
+	public final static String THIRD_TOPIC = "myRetryTopic3";
 
-	private final static String FOURTH_TOPIC = "myRetryTopic4";
+	public final static String FOURTH_TOPIC = "myRetryTopic4";
 
-	private final static String NOT_RETRYABLE_EXCEPTION_TOPIC = "noRetryTopic";
+	public final static String NOT_RETRYABLE_EXCEPTION_TOPIC = "noRetryTopic";
 
 	private final static String MAIN_TOPIC_CONTAINER_FACTORY = "kafkaListenerContainerFactory";
 
 	@Autowired
 	private KafkaTemplate<String, String> kafkaTemplate;
-
-	@Autowired
-	private EmbeddedKafkaBroker embeddedKafka;
-
-	@Autowired
-	private KafkaAdmin kafkaAdmin;
 
 	@Autowired
 	private CountDownLatchContainer latchContainer;
@@ -202,7 +199,8 @@ public class RetryableTopicIntegrationTests {
 		@Autowired
 		CountDownLatchContainer container;
 
-		@RetryableTopic(dltStrategy = DltStrategy.NO_DLT, attempts = 4, backoff = @Backoff(50), kafkaTemplate = "kafkaTemplate")
+		@RetryableTopic(dltStrategy = DltStrategy.NO_DLT, attempts = 4, backoff = @Backoff(50),
+				kafkaTemplate = "kafkaTemplate")
 		@KafkaListener(topics = FOURTH_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
 		public void listenNoDlt(String message) {
 			logger.debug("Message {} received in topic {} ", message, FOURTH_TOPIC);
@@ -363,12 +361,15 @@ public class RetryableTopicIntegrationTests {
 	@Configuration
 	public static class KafkaProducerConfig {
 
+		@Autowired
+		EmbeddedKafkaBroker broker;
+
 		@Bean
 		public ProducerFactory<String, String> producerFactory() {
 			Map<String, Object> configProps = new HashMap<>();
 			configProps.put(
 					ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
-					"localhost:9092");
+					this.broker.getBrokersAsString());
 			configProps.put(
 					ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
 					StringSerializer.class);
@@ -388,10 +389,13 @@ public class RetryableTopicIntegrationTests {
 	@Configuration
 	public static class KafkaConsumerConfig {
 
+		@Autowired
+		EmbeddedKafkaBroker broker;
+
 		@Bean
 		public KafkaAdmin kafkaAdmin() {
 			Map<String, Object> configs = new HashMap<>();
-			configs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+			configs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, this.broker.getBrokersAsString());
 			return new KafkaAdmin(configs);
 		}
 
@@ -400,7 +404,7 @@ public class RetryableTopicIntegrationTests {
 			Map<String, Object> props = new HashMap<>();
 			props.put(
 					ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
-					"localhost:9092");
+					this.broker.getBrokersAsString());
 			props.put(
 					ConsumerConfig.GROUP_ID_CONFIG,
 					"groupId");

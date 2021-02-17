@@ -26,6 +26,7 @@ import java.util.Optional;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
+import org.springframework.lang.Nullable;
 import org.springframework.util.StringUtils;
 
 /**
@@ -40,8 +41,6 @@ import org.springframework.util.StringUtils;
  *
  */
 public class ListenerContainerFactoryResolver {
-
-	private final static ConcurrentKafkaListenerContainerFactory<?, ?> NO_CANDIDATE = null;
 
 	private final BeanFactory beanFactory;
 
@@ -93,11 +92,12 @@ public class ListenerContainerFactoryResolver {
 	}
 
 	private ConcurrentKafkaListenerContainerFactory<?, ?> resolveFactory(List<FactoryResolver> factoryResolvers,
-												KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotation,
-												Configuration config) {
-		ConcurrentKafkaListenerContainerFactory<?, ?> verifiedFactoryFromKafkaListenerAnnotation =
-				verifyClass(factoryFromKafkaListenerAnnotation);
-		ConcurrentKafkaListenerContainerFactory<?, ?> containerFactory = factoryResolvers
+			KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotation,
+			Configuration config) {
+
+		ConcurrentKafkaListenerContainerFactory<?, ?> verifiedFactoryFromKafkaListenerAnnotation = verifyClass(
+				factoryFromKafkaListenerAnnotation);
+		return factoryResolvers
 				.stream()
 				.map(resolver -> Optional.ofNullable(
 						resolver.resolveFactory(verifiedFactoryFromKafkaListenerAnnotation, config)))
@@ -108,20 +108,21 @@ public class ListenerContainerFactoryResolver {
 						"ConcurrentKafkaListenerContainerFactory to configure the retry topic. " +
 						"Try creating a bean with name " +
 						RetryTopicInternalBeanNames.DEFAULT_LISTENER_FACTORY_BEAN_NAME));
-		return containerFactory;
 	}
 
+	@Nullable
 	private ConcurrentKafkaListenerContainerFactory<?, ?> verifyClass(KafkaListenerContainerFactory<?> fromKafkaListenerAnnotationFactory) {
-		return fromKafkaListenerAnnotationFactory != NO_CANDIDATE
+		return fromKafkaListenerAnnotationFactory != null
 				&& ConcurrentKafkaListenerContainerFactory.class.isAssignableFrom(fromKafkaListenerAnnotationFactory.getClass())
 				? (ConcurrentKafkaListenerContainerFactory<?, ?>) fromKafkaListenerAnnotationFactory
-				: NO_CANDIDATE;
+				: null;
 	}
 
+	@Nullable
 	private ConcurrentKafkaListenerContainerFactory<?, ?> fromBeanName(String factoryBeanName) {
 		return StringUtils.hasText(factoryBeanName)
 				? this.beanFactory.getBean(factoryBeanName, ConcurrentKafkaListenerContainerFactory.class)
-				: NO_CANDIDATE;
+				: null;
 	}
 
 	private interface FactoryResolver {
@@ -130,7 +131,9 @@ public class ListenerContainerFactoryResolver {
 	}
 
 	static class Configuration {
+
 		private final ConcurrentKafkaListenerContainerFactory<?, ?> factoryFromRetryTopicConfiguration;
+
 		private final String listenerContainerFactoryName;
 
 		Configuration(ConcurrentKafkaListenerContainerFactory<?, ?> factoryFromRetryTopicConfiguration,
@@ -156,6 +159,7 @@ public class ListenerContainerFactoryResolver {
 		public int hashCode() {
 			return Objects.hash(this.factoryFromRetryTopicConfiguration, this.listenerContainerFactoryName);
 		}
+
 	}
 
 	static class Cache {
@@ -189,8 +193,10 @@ public class ListenerContainerFactoryResolver {
 			return new Key(factoryFromKafkaListenerAnnotation, config);
 		}
 
-		class Key {
+		static class Key {
+
 			private final KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotation;
+
 			private final Configuration config;
 
 			Key(KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotation, Configuration config) {
@@ -216,5 +222,7 @@ public class ListenerContainerFactoryResolver {
 				return Objects.hash(this.factoryFromKafkaListenerAnnotation, this.config);
 			}
 		}
+
 	}
+
 }

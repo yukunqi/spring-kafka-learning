@@ -58,9 +58,12 @@ public class DeadLetterPublishingRecovererFactory {
 	@SuppressWarnings("unchecked")
 	public DeadLetterPublishingRecoverer create(Configuration configuration) {
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(configuration.template,
-					((cr, e) -> this.resolveDestination(cr, e, configuration))) {
+					((cr, e) -> this.resolveDestination(cr, e))) {
+
 			@Override
-			protected void publish(ProducerRecord<Object, Object> outRecord, KafkaOperations<Object, Object> kafkaTemplate) {
+			protected void publish(ProducerRecord<Object, Object> outRecord,
+					KafkaOperations<Object, Object> kafkaTemplate) {
+
 				if (NO_OPS_RETRY_TOPIC.equals(outRecord.topic())) {
 					this.logger.warn(() -> "Processing failed for last topic, giving up.");
 					return;
@@ -72,6 +75,7 @@ public class DeadLetterPublishingRecovererFactory {
 								.getKafkaOperations();
 				super.publish(outRecord, kafkaOperationsForTopic);
 			}
+
 		};
 
 		recoverer.setHeadersFunction((consumerRecord, e) -> addHeaders(consumerRecord, e, getAttempts(consumerRecord)));
@@ -83,7 +87,7 @@ public class DeadLetterPublishingRecovererFactory {
 		this.recovererCustomizer = customizer;
 	}
 
-	private TopicPartition resolveDestination(ConsumerRecord<?, ?> cr, Exception e, Configuration configuration) {
+	private TopicPartition resolveDestination(ConsumerRecord<?, ?> cr, Exception e) {
 		if (isBackoffException(e)) {
 			throw (NestedRuntimeException) e; // Necessary to not commit the offset and seek to current again
 		}

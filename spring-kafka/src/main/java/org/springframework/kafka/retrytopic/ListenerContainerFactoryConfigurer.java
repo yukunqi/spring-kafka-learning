@@ -57,10 +57,12 @@ public class ListenerContainerFactoryConfigurer {
 		configuredFactoriesCache = new HashSet<>();
 	}
 
-	private final static String INTERNAL_KAFKA_CONSUMER_BACKOFF_BEAN_NAME = "kafkaconsumerbackoff-internal";
-	private final static long DEFAULT_IDLE_PARTITION_EVENT_INTERVAL = 1000L;
+	private static final long DEFAULT_IDLE_PARTITION_EVENT_INTERVAL = 1000L;
+
 	private final DeadLetterPublishingRecovererFactory deadLetterPublishingRecovererFactory;
+
 	private Consumer<ConcurrentMessageListenerContainer<?, ?>> containerCustomizer = container -> { };
+
 	private Consumer<ErrorHandler> errorHandlerCustomizer = errorHandler -> { };
 
 	ListenerContainerFactoryConfigurer(KafkaConsumerBackoffManager kafkaConsumerBackoffManager,
@@ -94,6 +96,7 @@ public class ListenerContainerFactoryConfigurer {
 	}
 
 	public void setContainerCustomizer(Consumer<ConcurrentMessageListenerContainer<?, ?>> containerCustomizer) {
+		Assert.notNull(containerCustomizer, "'containerCustomizer' cannot be null");
 		this.containerCustomizer = containerCustomizer;
 	}
 

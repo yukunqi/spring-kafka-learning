@@ -45,15 +45,17 @@ import org.springframework.util.Assert;
  */
 public class RetryTopicConfigurationBuilder {
 
+	private static final String ALREADY_SELECTED = "You have already selected backoff policy";
+
+	private final List<String> includeTopicNames = new ArrayList<>();
+
+	private final List<String> excludeTopicNames = new ArrayList<>();
+
 	private int maxAttempts = RetryTopicConstants.NOT_SET;
 
 	private BackOffPolicy backOffPolicy;
 
 	private RetryTopicConfigurer.EndpointHandlerMethod dltHandlerMethod;
-
-	private List<String> includeTopicNames = new ArrayList<>();
-
-	private List<String> excludeTopicNames = new ArrayList<>();
 
 	private String retryTopicSuffix;
 
@@ -67,11 +69,9 @@ public class RetryTopicConfigurationBuilder {
 
 	private BinaryExceptionClassifierBuilder classifierBuilder;
 
-	private FixedDelayStrategy fixedDelayStrategy =
-			FixedDelayStrategy.MULTIPLE_TOPICS;
+	private FixedDelayStrategy fixedDelayStrategy = FixedDelayStrategy.MULTIPLE_TOPICS;
 
-	private DltStrategy dltStrategy =
-			DltStrategy.ALWAYS_RETRY_ON_ERROR;
+	private DltStrategy dltStrategy = DltStrategy.ALWAYS_RETRY_ON_ERROR;
 
 	private long timeout = RetryTopicConstants.NOT_SET;
 	private TopicSuffixingStrategy topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_DELAY_VALUE;
@@ -168,8 +168,9 @@ public class RetryTopicConfigurationBuilder {
 	}
 
 	public RetryTopicConfigurationBuilder exponentialBackoff(long initialInterval, double multiplier, long maxInterval,
-															boolean withRandom) {
-		Assert.isNull(this.backOffPolicy, "You have already selected backoff policy");
+			boolean withRandom) {
+
+		Assert.isNull(this.backOffPolicy, ALREADY_SELECTED);
 		Assert.isTrue(initialInterval >= 1, "Initial interval should be >= 1");
 		Assert.isTrue(multiplier > 1, "Multiplier should be > 1");
 		Assert.isTrue(maxInterval > initialInterval, "Max interval should be > than initial interval");
@@ -183,7 +184,7 @@ public class RetryTopicConfigurationBuilder {
 	}
 
 	public RetryTopicConfigurationBuilder fixedBackOff(long interval) {
-		Assert.isNull(this.backOffPolicy, "You have already selected backoff policy");
+		Assert.isNull(this.backOffPolicy, ALREADY_SELECTED);
 		Assert.isTrue(interval >= 1, "Interval should be >= 1");
 		FixedBackOffPolicy policy = new FixedBackOffPolicy();
 		policy.setBackOffPeriod(interval);
@@ -192,7 +193,7 @@ public class RetryTopicConfigurationBuilder {
 	}
 
 	public RetryTopicConfigurationBuilder uniformRandomBackoff(long minInterval, long maxInterval) {
-		Assert.isNull(this.backOffPolicy, "You have already selected backoff policy");
+		Assert.isNull(this.backOffPolicy, ALREADY_SELECTED);
 		Assert.isTrue(minInterval >= 1, "Min interval should be >= 1");
 		Assert.isTrue(maxInterval >= 1, "Max interval should be >= 1");
 		Assert.isTrue(maxInterval > minInterval, "Max interval should be > than min interval");
@@ -204,22 +205,22 @@ public class RetryTopicConfigurationBuilder {
 	}
 
 	public RetryTopicConfigurationBuilder noBackoff() {
-		Assert.isNull(this.backOffPolicy, "You have already selected backoff policy");
+		Assert.isNull(this.backOffPolicy, ALREADY_SELECTED);
 		this.backOffPolicy = new NoBackOffPolicy();
 		return this;
 	}
 
 	public RetryTopicConfigurationBuilder customBackoff(SleepingBackOffPolicy<?> backOffPolicy) {
-		Assert.isNull(this.backOffPolicy, "You have already selected backoff policy");
+		Assert.isNull(this.backOffPolicy, ALREADY_SELECTED);
 		Assert.notNull(backOffPolicy, "You should provide non null custom policy");
 		this.backOffPolicy = backOffPolicy;
 		return this;
 	}
 
 	public RetryTopicConfigurationBuilder fixedBackOff(int interval) {
-		FixedBackOffPolicy backOffPolicy = new FixedBackOffPolicy();
-		backOffPolicy.setBackOffPeriod(interval);
-		this.backOffPolicy = backOffPolicy;
+		FixedBackOffPolicy policy = new FixedBackOffPolicy();
+		policy.setBackOffPeriod(interval);
+		this.backOffPolicy = policy;
 		return this;
 	}
 
@@ -308,7 +309,7 @@ public class RetryTopicConfigurationBuilder {
 
 	// The templates are configured per ListenerContainerFactory. Only the first configured ones will be used.
 	public RetryTopicConfiguration create(KafkaOperations<?, ?> sendToTopicKafkaTemplate) {
-		ListenerContainerFactoryResolver.Configuration listenerContainerFactory =
+		ListenerContainerFactoryResolver.Configuration containerFactory =
 				new ListenerContainerFactoryResolver.Configuration(this.listenerContainerFactory,
 						this.listenerContainerFactoryName);
 		DeadLetterPublishingRecovererFactory.Configuration deadLetterProviderConfig =
@@ -322,7 +323,7 @@ public class RetryTopicConfigurationBuilder {
 						this.topicSuffixingStrategy, this.timeout)
 						.createProperties();
 		return new RetryTopicConfiguration(destinationTopicProperties, deadLetterProviderConfig,
-				this.dltHandlerMethod, this.topicCreationConfiguration, allowListManager, listenerContainerFactory);
+				this.dltHandlerMethod, this.topicCreationConfiguration, allowListManager, containerFactory);
 	}
 
 	private BinaryExceptionClassifier buildClassifier() {

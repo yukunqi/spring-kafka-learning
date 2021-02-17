@@ -20,7 +20,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.context.ApplicationListener;
@@ -128,10 +127,6 @@ public class DestinationTopicContainer implements DestinationTopicResolver, Appl
 	private DestinationsHolder doGetDestinationFor(String topic) {
 		return Objects.requireNonNull(this.destinationsHolderMap.get(topic),
 				() -> "No destination found for topic: " + topic);
-	}
-
-	private Optional<DestinationsHolder> maybeGetDestinationFor(String topic) {
-		return Optional.ofNullable(this.destinationsHolderMap.get(topic));
 	}
 
 	@Override

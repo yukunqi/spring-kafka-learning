@@ -19,15 +19,12 @@ package org.springframework.kafka.retrytopic;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 
-import org.apache.commons.logging.LogFactory;
-
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanInitializationException;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.expression.BeanFactoryResolver;
 import org.springframework.core.annotation.AnnotationUtils;
-import org.springframework.core.log.LogAccessor;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.kafka.annotation.DltHandler;
@@ -55,13 +52,7 @@ import org.springframework.util.StringUtils;
  */
 public class RetryableTopicAnnotationProcessor {
 
-	private static final LogAccessor logger = new LogAccessor(LogFactory.getLog(RetryableTopicAnnotationProcessor.class));
-
 	private static final SpelExpressionParser PARSER;
-
-	private static final RetryTopicConfiguration NO_CONFIGURATION = null;
-
-	private static final BeanFactory NO_SUITABLE_FACTORY_INSTANCE = null;
 
 	private final BeanFactory beanFactory;
 
@@ -73,7 +64,9 @@ public class RetryableTopicAnnotationProcessor {
 		this.beanFactory = beanFactory;
 	}
 
-	public RetryTopicConfiguration processAnnotation(String[] topics, Method method, RetryableTopic annotation, Object bean) {
+	public RetryTopicConfiguration processAnnotation(String[] topics, Method method, RetryableTopic annotation,
+			Object bean) {
+
 		return RetryTopicConfiguration.builder()
 				.maxAttempts(annotation.attempts())
 				.customBackoff(createBackoffFromAnnotation(annotation.backoff(), this.beanFactory))
@@ -93,27 +86,29 @@ public class RetryableTopicAnnotationProcessor {
 				.create(getKafkaTemplate(annotation.kafkaTemplate(), topics));
 	}
 
-	private SleepingBackOffPolicy<?> createBackoffFromAnnotation(Backoff backoff, BeanFactory beanFactory) {
+	private SleepingBackOffPolicy<?> createBackoffFromAnnotation(Backoff backoff, BeanFactory beanFactory) { // NOSONAR
 		StandardEvaluationContext evaluationContext = new StandardEvaluationContext();
 		evaluationContext.setBeanResolver(new BeanFactoryResolver(beanFactory));
 
 		// Code from Spring Retry
-		long min = backoff.delay() == 0 ? backoff.value() : backoff.delay();
+		Long min = backoff.delay() == 0 ? backoff.value() : backoff.delay();
 		if (StringUtils.hasText(backoff.delayExpression())) {
 			min = PARSER.parseExpression(resolve(backoff.delayExpression(), beanFactory), AdapterUtils.PARSER_CONTEXT)
 					.getValue(evaluationContext, Long.class);
 		}
-		long max = backoff.maxDelay();
+		Long max = backoff.maxDelay();
 		if (StringUtils.hasText(backoff.maxDelayExpression())) {
-			max = PARSER.parseExpression(resolve(backoff.maxDelayExpression(), beanFactory), AdapterUtils.PARSER_CONTEXT)
+			max = PARSER
+					.parseExpression(resolve(backoff.maxDelayExpression(), beanFactory), AdapterUtils.PARSER_CONTEXT)
 					.getValue(evaluationContext, Long.class);
 		}
-		double multiplier = backoff.multiplier();
+		Double multiplier = backoff.multiplier();
 		if (StringUtils.hasText(backoff.multiplierExpression())) {
-			multiplier = PARSER.parseExpression(resolve(backoff.multiplierExpression(), beanFactory), AdapterUtils.PARSER_CONTEXT)
+			multiplier = PARSER
+					.parseExpression(resolve(backoff.multiplierExpression(), beanFactory), AdapterUtils.PARSER_CONTEXT)
 					.getValue(evaluationContext, Double.class);
 		}
-		if (multiplier > 0) {
+		if (multiplier != null && multiplier > 0) {
 			ExponentialBackOffPolicy policy = new ExponentialBackOffPolicy();
 			if (backoff.random()) {
 				policy = new ExponentialRandomBackOffPolicy();
@@ -123,14 +118,16 @@ public class RetryableTopicAnnotationProcessor {
 			policy.setMaxInterval(max > min ? max : ExponentialBackOffPolicy.DEFAULT_MAX_INTERVAL);
 			return policy;
 		}
-		if (max > min) {
+		if (max != null && min != null && max > min) {
 			UniformRandomBackOffPolicy policy = new UniformRandomBackOffPolicy();
 			policy.setMinBackOffPeriod(min);
 			policy.setMaxBackOffPeriod(max);
 			return policy;
 		}
 		FixedBackOffPolicy policy = new FixedBackOffPolicy();
-		policy.setBackOffPeriod(min);
+		if (min != null) {
+			policy.setBackOffPeriod(min);
+		}
 		return policy;
 	}
 
@@ -157,7 +154,8 @@ public class RetryableTopicAnnotationProcessor {
 				return this.beanFactory.getBean(kafkaTemplateName, KafkaOperations.class);
 			}
 			catch (NoSuchBeanDefinitionException ex) {
-				throw new BeanInitializationException("Could not register Kafka listener endpoint for topics " + topics + ", no " + KafkaOperations.class.getSimpleName()
+				throw new BeanInitializationException("Could not register Kafka listener endpoint for topics "
+						+ Arrays.asList(topics) + ", no " + KafkaOperations.class.getSimpleName()
 						+ " with id '" + kafkaTemplateName + "' was found in the application context", ex);
 			}
 		}
