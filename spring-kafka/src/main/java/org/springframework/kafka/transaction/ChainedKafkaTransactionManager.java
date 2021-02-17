@@ -16,25 +16,25 @@
 
 package org.springframework.kafka.transaction;
 
-import org.springframework.data.transaction.ChainedTransactionManager;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.util.Assert;
 
 /**
- * A {@link ChainedTransactionManager} that has exactly one
- * {@link KafkaAwareTransactionManager} in the chain.
+ * A {@link org.springframework.data.transaction.ChainedTransactionManager} that has
+ * exactly one {@link KafkaAwareTransactionManager} in the chain.
  *
  * @param <K> the key type.
  * @param <V> the value type.
  *
  * @author Gary Russell
  * @since 2.1.3
- * @deprecated Refer to the {@link ChainedTransactionManager} javadocs.
+ * @deprecated Refer to the
+ * {@link org.springframework.data.transaction.ChainedTransactionManager} javadocs.
  *
  */
 @Deprecated
-public class ChainedKafkaTransactionManager<K, V> extends ChainedTransactionManager
+public class ChainedKafkaTransactionManager<K, V> extends org.springframework.data.transaction.ChainedTransactionManager
 		implements KafkaAwareTransactionManager<K, V> {
 
 	private final KafkaAwareTransactionManager<K, V> kafkaTransactionManager;
