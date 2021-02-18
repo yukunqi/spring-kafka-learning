@@ -34,14 +34,13 @@ import org.springframework.util.backoff.FixedBackOff;
 
 /**
  *
- * Configures the provided {@link ConcurrentKafkaListenerContainerFactory} with
- * a {@link SeekToCurrentErrorHandler}, the {@link DeadLetterPublishingRecoverer} created
- * by the {@link DeadLetterPublishingRecovererFactory}.
+ * Configures the provided {@link ConcurrentKafkaListenerContainerFactory} with a
+ * {@link SeekToCurrentErrorHandler}, the {@link DeadLetterPublishingRecoverer} created by
+ * the {@link DeadLetterPublishingRecovererFactory}.
  *
  * Mind that the same factory can be used by many different
- * {@link org.springframework.kafka.annotation.RetryableTopic}s
- * but should not be shared with non retryable topics as some of
- * their configurations will be overriden.
+ * {@link org.springframework.kafka.annotation.RetryableTopic}s but should not be shared
+ * with non retryable topics as some of their configurations will be overriden.
  *
  * @author Tomaz Fernandes
  * @since 2.7
@@ -61,24 +60,29 @@ public class ListenerContainerFactoryConfigurer {
 
 	private final DeadLetterPublishingRecovererFactory deadLetterPublishingRecovererFactory;
 
-	private Consumer<ConcurrentMessageListenerContainer<?, ?>> containerCustomizer = container -> { };
+	private Consumer<ConcurrentMessageListenerContainer<?, ?>> containerCustomizer = container -> {
+	};
 
-	private Consumer<ErrorHandler> errorHandlerCustomizer = errorHandler -> { };
+	private Consumer<ErrorHandler> errorHandlerCustomizer = errorHandler -> {
+	};
 
 	ListenerContainerFactoryConfigurer(KafkaConsumerBackoffManager kafkaConsumerBackoffManager,
-									DeadLetterPublishingRecovererFactory deadLetterPublishingRecovererFactory) {
+			DeadLetterPublishingRecovererFactory deadLetterPublishingRecovererFactory) {
+
 		this.kafkaConsumerBackoffManager = kafkaConsumerBackoffManager;
 		this.deadLetterPublishingRecovererFactory = deadLetterPublishingRecovererFactory;
 	}
 
-	ConcurrentKafkaListenerContainerFactory<?, ?> configure(ConcurrentKafkaListenerContainerFactory<?, ?> containerFactory,
-															DeadLetterPublishingRecovererFactory.Configuration configuration) {
+	ConcurrentKafkaListenerContainerFactory<?, ?> configure(
+			ConcurrentKafkaListenerContainerFactory<?, ?> containerFactory,
+			DeadLetterPublishingRecovererFactory.Configuration configuration) {
 		if (existsInCache(containerFactory)) {
 			return containerFactory;
 		}
 		containerFactory.setContainerCustomizer(container -> setupBackoffAwareMessageListenerAdapter(container));
 		containerFactory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
-		containerFactory.setErrorHandler(createErrorHandler(this.deadLetterPublishingRecovererFactory.create(configuration)));
+		containerFactory
+				.setErrorHandler(createErrorHandler(this.deadLetterPublishingRecovererFactory.create(configuration)));
 		addToFactoriesCache(containerFactory);
 		return containerFactory;
 	}
@@ -114,8 +118,9 @@ public class ListenerContainerFactoryConfigurer {
 
 	private void setupBackoffAwareMessageListenerAdapter(ConcurrentMessageListenerContainer<?, ?> container) {
 		AcknowledgingConsumerAwareMessageListener<?, ?> listener = checkAndCast(container.getContainerProperties()
-						.getMessageListener(), AcknowledgingConsumerAwareMessageListener.class);
-		if (container.getContainerProperties().getIdlePartitionEventInterval() == null) {
+				.getMessageListener(), AcknowledgingConsumerAwareMessageListener.class);
+		Long idlePartitionEventInterval = container.getContainerProperties().getIdlePartitionEventInterval();
+		if (idlePartitionEventInterval == null) {
 			container.getContainerProperties().setIdlePartitionEventInterval(DEFAULT_IDLE_PARTITION_EVENT_INTERVAL);
 		}
 		container.setupMessageListener(new KafkaBackoffAwareMessageListenerAdapter<>(listener,

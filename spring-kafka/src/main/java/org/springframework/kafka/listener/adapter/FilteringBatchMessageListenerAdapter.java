@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import org.springframework.kafka.listener.BatchAcknowledgingConsumerAwareMessage
 import org.springframework.kafka.listener.BatchMessageListener;
 import org.springframework.kafka.listener.ListenerType;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.lang.Nullable;
 
 /**
  * A {@link BatchMessageListener} adapter that implements filter logic
@@ -71,7 +72,7 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 	}
 
 	@Override
-	public void onMessage(List<ConsumerRecord<K, V>> consumerRecords, Acknowledgment acknowledgment,
+	public void onMessage(List<ConsumerRecord<K, V>> consumerRecords, @Nullable Acknowledgment acknowledgment,
 			Consumer<?, ?> consumer) {
 		Iterator<ConsumerRecord<K, V>> iterator = consumerRecords.iterator();
 		while (iterator.hasNext()) {
@@ -120,12 +121,12 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 
 	@Override
 	public void onMessage(List<ConsumerRecord<K, V>> data) {
-		onMessage(data, null, null);
+		onMessage(data, null, null); // NOSONAR
 	}
 
 	@Override
 	public void onMessage(List<ConsumerRecord<K, V>> data, Acknowledgment acknowledgment) {
-		onMessage(data, acknowledgment, null);
+		onMessage(data, acknowledgment, null); // NOSONAR
 	}
 
 	@Override

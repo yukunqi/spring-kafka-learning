@@ -58,7 +58,9 @@ public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessag
 		this(bean, method, null);
 	}
 
-	public RecordMessagingMessageListenerAdapter(Object bean, Method method, KafkaListenerErrorHandler errorHandler) {
+	public RecordMessagingMessageListenerAdapter(Object bean, Method method,
+			@Nullable KafkaListenerErrorHandler errorHandler) {
+
 		super(bean, method);
 		this.errorHandler = errorHandler;
 	}

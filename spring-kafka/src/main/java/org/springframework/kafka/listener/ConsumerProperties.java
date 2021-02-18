@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2020 the original author or authors.
+ * Copyright 2019-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -198,6 +198,11 @@ public class ConsumerProperties {
 		this.groupId = groupId;
 	}
 
+	/**
+	 * Return the container's group id.
+	 * @return the group id.
+	 */
+	@Nullable
 	public String getGroupId() {
 		return this.groupId;
 	}
@@ -229,6 +234,11 @@ public class ConsumerProperties {
 		this.consumerRebalanceListener = consumerRebalanceListener;
 	}
 
+	/**
+	 * Return the rebalance listener.
+	 * @return the listener.
+	 */
+	@Nullable
 	public ConsumerRebalanceListener getConsumerRebalanceListener() {
 		return this.consumerRebalanceListener;
 	}
@@ -243,6 +253,11 @@ public class ConsumerProperties {
 		this.syncCommitTimeout = syncCommitTimeout;
 	}
 
+	/**
+	 * Return the sync commit timeout.
+	 * @return the timeout.
+	 */
+	@Nullable
 	public Duration getSyncCommitTimeout() {
 		return this.syncCommitTimeout;
 	}
@@ -258,6 +273,11 @@ public class ConsumerProperties {
 		this.commitCallback = commitCallback;
 	}
 
+	/**
+	 * Return the commit callback.
+	 * @return the callback.
+	 */
+	@Nullable
 	public OffsetCommitCallback getCommitCallback() {
 		return this.commitCallback;
 	}

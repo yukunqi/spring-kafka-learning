@@ -80,7 +80,9 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 	 * @param method the listener method.
 	 * @param errorHandler the error handler.
 	 */
-	public BatchMessagingMessageListenerAdapter(Object bean, Method method, KafkaListenerErrorHandler errorHandler) {
+	public BatchMessagingMessageListenerAdapter(Object bean, Method method,
+			@Nullable KafkaListenerErrorHandler errorHandler) {
+
 		super(bean, method);
 		this.errorHandler = errorHandler;
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package org.springframework.kafka.listener;
 import org.apache.kafka.clients.consumer.Consumer;
 
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.lang.Nullable;
 
 /**
  * Top level interface for listeners.
@@ -44,7 +45,7 @@ public interface GenericMessageListener<T> {
 	 * @param data the data to be processed.
 	 * @param acknowledgment the acknowledgment.
 	 */
-	default void onMessage(T data, Acknowledgment acknowledgment) {
+	default void onMessage(T data, @Nullable Acknowledgment acknowledgment) {
 		throw new UnsupportedOperationException("Container should never call this");
 	}
 
@@ -67,7 +68,7 @@ public interface GenericMessageListener<T> {
 	 * @param consumer the consumer.
 	 * @since 2.0
 	 */
-	default void onMessage(T data, Acknowledgment acknowledgment, Consumer<?, ?> consumer) {
+	default void onMessage(T data, @Nullable Acknowledgment acknowledgment, Consumer<?, ?> consumer) {
 		throw new UnsupportedOperationException("Container should never call this");
 	}
 

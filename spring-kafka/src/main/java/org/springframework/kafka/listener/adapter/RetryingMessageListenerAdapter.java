@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.listener.AcknowledgingConsumerAwareMessageListener;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.lang.Nullable;
 import org.springframework.retry.RecoveryCallback;
 import org.springframework.retry.RetryState;
 import org.springframework.retry.support.DefaultRetryState;
@@ -78,7 +79,8 @@ public class RetryingMessageListenerAdapter<K, V>
 	 * thrown to the container after retries are exhausted.
 	 */
 	public RetryingMessageListenerAdapter(MessageListener<K, V> messageListener, RetryTemplate retryTemplate,
-			RecoveryCallback<? extends Object> recoveryCallback) {
+			@Nullable RecoveryCallback<? extends Object> recoveryCallback) {
+
 		this(messageListener, retryTemplate, recoveryCallback, false);
 	}
 
@@ -142,12 +144,12 @@ public class RetryingMessageListenerAdapter<K, V>
 
 	@Override
 	public void onMessage(ConsumerRecord<K, V> data) {
-		onMessage(data, null, null);
+		onMessage(data, null, null); // NOSONAR
 	}
 
 	@Override
 	public void onMessage(ConsumerRecord<K, V> data, Acknowledgment acknowledgment) {
-		onMessage(data, acknowledgment, null);
+		onMessage(data, acknowledgment, null); // NOSONAR
 	}
 
 	@Override

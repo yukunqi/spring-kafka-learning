@@ -25,6 +25,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.commons.logging.LogFactory;
@@ -120,18 +121,26 @@ public abstract class AbstractMessageListenerContainer<K, V>
 			ContainerProperties containerProperties) {
 
 		Assert.notNull(containerProperties, "'containerProperties' cannot be null");
+		Assert.notNull(consumerFactory, "'consumerFactory' cannot be null");
 		this.consumerFactory = (ConsumerFactory<K, V>) consumerFactory;
-		if (containerProperties.getTopics() != null) {
-			this.containerProperties = new ContainerProperties(containerProperties.getTopics());
-		}
-		else if (containerProperties.getTopicPattern() != null) {
-			this.containerProperties = new ContainerProperties(containerProperties.getTopicPattern());
-		}
-		else if (containerProperties.getTopicPartitions() != null) {
-			this.containerProperties = new ContainerProperties(containerProperties.getTopicPartitions());
+		String[] topics = containerProperties.getTopics();
+		if (topics != null) {
+			this.containerProperties = new ContainerProperties(topics);
 		}
 		else {
-			throw new IllegalStateException("topics, topicPattern, or topicPartitions must be provided");
+			Pattern topicPattern = containerProperties.getTopicPattern();
+			if (topicPattern != null) {
+				this.containerProperties = new ContainerProperties(topicPattern);
+			}
+			else {
+				TopicPartitionOffset[] topicPartitions = containerProperties.getTopicPartitions();
+				if (topicPartitions != null) {
+					this.containerProperties = new ContainerProperties(topicPartitions);
+				}
+				else {
+					throw new IllegalStateException("topics, topicPattern, or topicPartitions must be provided");
+				}
+			}
 		}
 
 		BeanUtils.copyProperties(containerProperties, this.containerProperties,
@@ -159,6 +168,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		this.applicationContext = applicationContext;
 	}
 
+	@Nullable
 	protected ApplicationContext getApplicationContext() {
 		return this.applicationContext;
 	}
@@ -168,6 +178,11 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		this.beanName = name;
 	}
 
+	/**
+	 * Return the bean name.
+	 * @return the bean name.
+	 */
+	@Nullable
 	public String getBeanName() {
 		return this.beanName;
 	}
@@ -177,6 +192,11 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		this.applicationEventPublisher = applicationEventPublisher;
 	}
 
+	/**
+	 * Get the event publisher.
+	 * @return the publisher
+	 */
+	@Nullable
 	public ApplicationEventPublisher getApplicationEventPublisher() {
 		return this.applicationEventPublisher;
 	}
@@ -213,6 +233,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * @return the error handler.
 	 * @since 2.2
 	 */
+	@Nullable
 	public GenericErrorHandler<?> getGenericErrorHandler() {
 		return this.errorHandler;
 	}
@@ -302,6 +323,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	}
 
 	@Override
+	@Nullable
 	public String getGroupId() {
 		return this.containerProperties.getGroupId() == null
 				? (String) this.consumerFactory.getConfigurationProperties().get(ConsumerConfig.GROUP_ID_CONFIG)

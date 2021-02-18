@@ -31,8 +31,11 @@ import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.TopicPartition;
 
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.support.TopicPartitionOffset;
+import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
@@ -182,24 +185,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 			for (int i = 0; i < this.concurrency; i++) {
 				KafkaMessageListenerContainer<K, V> container =
 						constructContainer(containerProperties, topicPartitions, i);
-				String beanName = getBeanName();
-				container.setBeanName((beanName != null ? beanName : "consumer") + "-" + i);
-				container.setApplicationContext(getApplicationContext());
-				if (getApplicationEventPublisher() != null) {
-					container.setApplicationEventPublisher(getApplicationEventPublisher());
-				}
-				container.setClientIdSuffix(this.concurrency > 1 || this.alwaysClientIdSuffix ? "-" + i : "");
-				container.setGenericErrorHandler(getGenericErrorHandler());
-				container.setAfterRollbackProcessor(getAfterRollbackProcessor());
-				container.setRecordInterceptor(getRecordInterceptor());
-				container.setBatchInterceptor(getBatchInterceptor());
-				container.setInterceptBeforeTx(isInterceptBeforeTx());
-				container.setEmergencyStop(() -> {
-					stop(() -> {
-						// NOSONAR
-					});
-					publishContainerStoppedEvent();
-				});
+				configurreChildContainer(i, container);
 				if (isPaused()) {
 					container.pause();
 				}
@@ -209,37 +195,63 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 		}
 	}
 
+	private void configurreChildContainer(int index, KafkaMessageListenerContainer<K, V> container) {
+		String beanName = getBeanName();
+		container.setBeanName((beanName != null ? beanName : "consumer") + "-" + index);
+		ApplicationContext applicationContext = getApplicationContext();
+		if (applicationContext != null) {
+			container.setApplicationContext(applicationContext);
+		}
+		ApplicationEventPublisher publisher = getApplicationEventPublisher();
+		if (publisher != null) {
+			container.setApplicationEventPublisher(publisher);
+		}
+		container.setClientIdSuffix(this.concurrency > 1 || this.alwaysClientIdSuffix ? "-" + index : "");
+		container.setGenericErrorHandler(getGenericErrorHandler());
+		container.setAfterRollbackProcessor(getAfterRollbackProcessor());
+		container.setRecordInterceptor(getRecordInterceptor());
+		container.setBatchInterceptor(getBatchInterceptor());
+		container.setInterceptBeforeTx(isInterceptBeforeTx());
+		container.setEmergencyStop(() -> {
+			stop(() -> {
+				// NOSONAR
+			});
+			publishContainerStoppedEvent();
+		});
+	}
+
 	private KafkaMessageListenerContainer<K, V> constructContainer(ContainerProperties containerProperties,
-			TopicPartitionOffset[] topicPartitions, int i) {
+			@Nullable TopicPartitionOffset[] topicPartitions, int i) {
+
 		KafkaMessageListenerContainer<K, V> container;
 		if (topicPartitions == null) {
-			container = new KafkaMessageListenerContainer<>(this, this.consumerFactory, containerProperties);
+			container = new KafkaMessageListenerContainer<>(this, this.consumerFactory, containerProperties); // NOSONAR
 		}
 		else {
-			container = new KafkaMessageListenerContainer<>(this, this.consumerFactory,
+			container = new KafkaMessageListenerContainer<>(this, this.consumerFactory, // NOSONAR
 					containerProperties, partitionSubset(containerProperties, i));
 		}
 		return container;
 	}
 
-	private TopicPartitionOffset[] partitionSubset(ContainerProperties containerProperties, int i) {
+	private TopicPartitionOffset[] partitionSubset(ContainerProperties containerProperties, int index) {
 		TopicPartitionOffset[] topicPartitions = containerProperties.getTopicPartitions();
 		if (this.concurrency == 1) {
-			return topicPartitions;
+			return topicPartitions; // NOSONAR
 		}
 		else {
-			int numPartitions = topicPartitions.length;
+			int numPartitions = topicPartitions.length; // NOSONAR
 			if (numPartitions == this.concurrency) {
-				return new TopicPartitionOffset[] { topicPartitions[i] };
+				return new TopicPartitionOffset[] { topicPartitions[index] };
 			}
 			else {
 				int perContainer = numPartitions / this.concurrency;
 				TopicPartitionOffset[] subset;
-				if (i == this.concurrency - 1) {
-					subset = Arrays.copyOfRange(topicPartitions, i * perContainer, topicPartitions.length);
+				if (index == this.concurrency - 1) {
+					subset = Arrays.copyOfRange(topicPartitions, index * perContainer, topicPartitions.length);
 				}
 				else {
-					subset = Arrays.copyOfRange(topicPartitions, i * perContainer, (i + 1) * perContainer);
+					subset = Arrays.copyOfRange(topicPartitions, index * perContainer, (index + 1) * perContainer);
 				}
 				return subset;
 			}

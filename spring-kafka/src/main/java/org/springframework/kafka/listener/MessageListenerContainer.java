@@ -177,6 +177,7 @@ public interface MessageListenerContainer extends SmartLifecycle {
 	 * @return the group id.
 	 * @since 2.2.5
 	 */
+	@Nullable
 	default String getGroupId() {
 		throw new UnsupportedOperationException("This container does not support retrieving the group id");
 	}
@@ -191,4 +192,5 @@ public interface MessageListenerContainer extends SmartLifecycle {
 	default String getListenerId() {
 		throw new UnsupportedOperationException("This container does not support retrieving the listener id");
 	}
+
 }

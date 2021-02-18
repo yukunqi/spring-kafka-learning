@@ -446,6 +446,11 @@ public class ContainerProperties extends ConsumerProperties {
 		return this.messageListener;
 	}
 
+	/**
+	 * Return the consumer task executor.
+	 * @return the executor.
+	 */
+	@Nullable
 	public AsyncListenableTaskExecutor getConsumerTaskExecutor() {
 		return this.consumerTaskExecutor;
 	}
@@ -458,6 +463,11 @@ public class ContainerProperties extends ConsumerProperties {
 		return this.idleEventInterval;
 	}
 
+	/**
+	 * Return the idle partition event interval.
+	 * @return the interval.
+	 */
+	@Nullable
 	public Long getIdlePartitionEventInterval() {
 		return this.idlePartitionEventInterval;
 	}
@@ -492,6 +502,11 @@ public class ContainerProperties extends ConsumerProperties {
 		this.monitorInterval = monitorInterval;
 	}
 
+	/**
+	 * Return the task scheduler, if present.
+	 * @return the scheduler.
+	 */
+	@Nullable
 	public TaskScheduler getScheduler() {
 		return this.scheduler;
 	}

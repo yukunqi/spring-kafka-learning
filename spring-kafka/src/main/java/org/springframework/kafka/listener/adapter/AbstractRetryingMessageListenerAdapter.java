@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.listener.adapter;
 
+import org.springframework.lang.Nullable;
 import org.springframework.retry.RecoveryCallback;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
@@ -55,7 +56,8 @@ public abstract class AbstractRetryingMessageListenerAdapter<K, V, T>
 	 * thrown to the container after retries are exhausted.
 	 */
 	public AbstractRetryingMessageListenerAdapter(T delegate, RetryTemplate retryTemplate,
-			RecoveryCallback<? extends Object> recoveryCallback) {
+			@Nullable RecoveryCallback<? extends Object> recoveryCallback) {
+
 		super(delegate);
 		Assert.notNull(retryTemplate, "'retryTemplate' cannot be null");
 		this.retryTemplate = retryTemplate;

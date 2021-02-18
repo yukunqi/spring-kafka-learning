@@ -264,7 +264,8 @@ public class DelegatingInvocableHandler {
 		this.handlerReturnsMessage.put(handler, KafkaUtils.returnTypeMessageOrCollectionOf(method));
 	}
 
-	private String extractSendTo(String element, SendTo ann) {
+	@Nullable
+	private String extractSendTo(String element, @Nullable SendTo ann) {
 		String replyTo = null;
 		if (ann != null) {
 			String[] destinations = ann.value();

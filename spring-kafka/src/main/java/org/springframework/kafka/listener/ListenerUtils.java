@@ -51,6 +51,11 @@ public final class ListenerUtils {
 
 	private static final int SLEEP_INTERVAL = 100;
 
+	/**
+	 * Determine the type of the listener.
+	 * @param listener the listener.
+	 * @return the {@link ListenerType}.
+	 */
 	public static ListenerType determineListenerType(Object listener) {
 		Assert.notNull(listener, "Listener cannot be null");
 		ListenerType listenerType;
@@ -187,7 +192,7 @@ public final class ListenerUtils {
 
 				@Override
 				public Map<String, Map<MetricName, ? extends Metric>> metrics() {
-					return null;
+					return null; // NOSONAR
 				}
 			});
 		}

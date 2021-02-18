@@ -378,6 +378,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 				? ((InvocationResult) resultArg).isMessageReturnType() : this.messageReturnType);
 	}
 
+	@Nullable
 	private String evaluateReplyTopic(Object request, Object source, Object result) {
 		String replyTo = null;
 		if (result instanceof InvocationResult) {
@@ -403,7 +404,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 								+ value.getClass().getName());
 			}
 			if (isByteArray) {
-				return new String((byte[]) value, StandardCharsets.UTF_8);
+				return new String((byte[]) value, StandardCharsets.UTF_8); // NOSONAR
 			}
 			return (String) value;
 		}
