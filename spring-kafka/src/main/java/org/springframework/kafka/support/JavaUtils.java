@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+import org.springframework.lang.Nullable;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
@@ -65,7 +66,7 @@ public final class JavaUtils {
 	 * @param <T> the value type.
 	 * @return this.
 	 */
-	public <T> JavaUtils acceptIfNotNull(T value, Consumer<T> consumer) {
+	public <T> JavaUtils acceptIfNotNull(@Nullable T value, Consumer<T> consumer) {
 		if (value != null) {
 			consumer.accept(value);
 		}

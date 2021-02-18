@@ -178,14 +178,15 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 					"Another endpoint is already registered with id '" + id + "'");
 			MessageListenerContainer container = createListenerContainer(endpoint, factory);
 			this.listenerContainers.put(id, container);
-			if (StringUtils.hasText(endpoint.getGroup()) && this.applicationContext != null) {
+			ConfigurableApplicationContext appContext = this.applicationContext;
+			if (StringUtils.hasText(endpoint.getGroup()) && appContext != null) {
 				List<MessageListenerContainer> containerGroup;
-				if (this.applicationContext.containsBean(endpoint.getGroup())) {
-					containerGroup = this.applicationContext.getBean(endpoint.getGroup(), List.class);
+				if (appContext.containsBean(endpoint.getGroup())) { // NOSONAR - hasText
+					containerGroup = appContext.getBean(endpoint.getGroup(), List.class); // NOSONAR - hasText
 				}
 				else {
 					containerGroup = new ArrayList<MessageListenerContainer>();
-					this.applicationContext.getBeanFactory().registerSingleton(endpoint.getGroup(), containerGroup);
+					appContext.getBeanFactory().registerSingleton(endpoint.getGroup(), containerGroup); // NOSONAR - hasText
 				}
 				containerGroup.add(container);
 			}

@@ -66,7 +66,7 @@ public class ConcurrentKafkaListenerContainerFactory<K, V>
 		}
 		else {
 			Collection<String> topics = endpoint.getTopics();
-			if (!topics.isEmpty()) {
+			if (!topics.isEmpty()) { // NOSONAR
 				ContainerProperties properties = new ContainerProperties(topics.toArray(new String[0]));
 				return new ConcurrentMessageListenerContainer<>(getConsumerFactory(), properties);
 			}
@@ -82,8 +82,9 @@ public class ConcurrentKafkaListenerContainerFactory<K, V>
 			KafkaListenerEndpoint endpoint) {
 
 		super.initializeContainer(instance, endpoint);
-		if (endpoint.getConcurrency() != null) {
-			instance.setConcurrency(endpoint.getConcurrency());
+		Integer conc = endpoint.getConcurrency();
+		if (conc != null) {
+			instance.setConcurrency(conc);
 		}
 		else if (this.concurrency != null) {
 			instance.setConcurrency(this.concurrency);

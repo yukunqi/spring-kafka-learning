@@ -76,6 +76,7 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 	 * @return the {@link KafkaListenerEndpointRegistry} instance for this
 	 * registrar, may be {@code null}.
 	 */
+	@Nullable
 	public KafkaListenerEndpointRegistry getEndpointRegistry() {
 		return this.endpointRegistry;
 	}
@@ -121,6 +122,7 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 	 * Return the custom {@link MessageHandlerMethodFactory} to use, if any.
 	 * @return the custom {@link MessageHandlerMethodFactory} to use, if any.
 	 */
+	@Nullable
 	public MessageHandlerMethodFactory getMessageHandlerMethodFactory() {
 		return this.messageHandlerMethodFactory;
 	}
@@ -226,7 +228,7 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 	 * @param endpoint the {@link KafkaListenerEndpoint} instance to register.
 	 * @param factory the {@link KafkaListenerContainerFactory} to use.
 	 */
-	public void registerEndpoint(KafkaListenerEndpoint endpoint, KafkaListenerContainerFactory<?> factory) {
+	public void registerEndpoint(KafkaListenerEndpoint endpoint, @Nullable KafkaListenerContainerFactory<?> factory) {
 		Assert.notNull(endpoint, "Endpoint must be set");
 		Assert.hasText(endpoint.getId(), "Endpoint id must be set");
 		// Factory may be null, we defer the resolution right before actually creating the container
@@ -261,7 +263,8 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 		private final KafkaListenerContainerFactory<?> containerFactory;
 
 		private KafkaListenerEndpointDescriptor(KafkaListenerEndpoint endpoint,
-							KafkaListenerContainerFactory<?> containerFactory) {
+				@Nullable KafkaListenerContainerFactory<?> containerFactory) {
+
 			this.endpoint = endpoint;
 			this.containerFactory = containerFactory;
 		}

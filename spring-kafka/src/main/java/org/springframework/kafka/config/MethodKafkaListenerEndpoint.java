@@ -21,9 +21,13 @@ import java.util.Arrays;
 
 import org.apache.commons.logging.LogFactory;
 
+import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.config.BeanExpressionContext;
+import org.springframework.beans.factory.config.BeanExpressionResolver;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.log.LogAccessor;
+import org.springframework.expression.BeanResolver;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.listener.adapter.BatchMessagingMessageListenerAdapter;
@@ -34,6 +38,7 @@ import org.springframework.kafka.support.JavaUtils;
 import org.springframework.kafka.support.converter.BatchMessageConverter;
 import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
+import org.springframework.lang.Nullable;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
@@ -107,6 +112,7 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 		this.errorHandler = errorHandler;
 	}
 
+	@Nullable
 	private String getReplyTopic() {
 		Method replyingMethod = getMethod();
 		if (replyingMethod != null) {
@@ -124,8 +130,9 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 							+ replyingMethod + "' one destination must be set (got " + Arrays.toString(destinations) + ")");
 				}
 				String topic = destinations.length == 1 ? destinations[0] : "";
-				if (getBeanFactory() instanceof ConfigurableListableBeanFactory) {
-					topic = ((ConfigurableListableBeanFactory) getBeanFactory()).resolveEmbeddedValue(topic);
+				BeanFactory beanFactory = getBeanFactory();
+				if (beanFactory instanceof ConfigurableListableBeanFactory) {
+					topic = ((ConfigurableListableBeanFactory) beanFactory).resolveEmbeddedValue(topic);
 					if (topic != null) {
 						topic = resolve(topic);
 					}
@@ -200,15 +207,19 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 			}
 			listener = messageListener;
 		}
-		if (getBeanResolver() != null) {
-			listener.setBeanResolver(getBeanResolver());
+		BeanResolver resolver = getBeanResolver();
+		if (resolver != null) {
+			listener.setBeanResolver(resolver);
 		}
 		return listener;
 	}
 
+	@SuppressWarnings("null")
 	private String resolve(String value) {
-		if (getResolver() != null) {
-			Object newValue = getResolver().evaluate(value, getBeanExpressionContext());
+		BeanExpressionContext beanExpressionContext = getBeanExpressionContext();
+		BeanExpressionResolver resolver = getResolver();
+		if (resolver != null && beanExpressionContext != null) {
+			Object newValue = resolver.evaluate(value, beanExpressionContext);
 			Assert.isInstanceOf(String.class, newValue, "Invalid @SendTo expression");
 			return (String) newValue;
 		}

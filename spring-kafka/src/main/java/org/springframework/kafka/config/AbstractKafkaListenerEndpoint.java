@@ -129,18 +129,22 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		this.beanResolver = new BeanFactoryResolver(beanFactory);
 	}
 
+	@Nullable
 	protected BeanFactory getBeanFactory() {
 		return this.beanFactory;
 	}
 
+	@Nullable
 	protected BeanExpressionResolver getResolver() {
 		return this.resolver;
 	}
 
+	@Nullable
 	protected BeanExpressionContext getBeanExpressionContext() {
 		return this.expressionContext;
 	}
 
+	@Nullable
 	protected BeanResolver getBeanResolver() {
 		return this.beanResolver;
 	}
@@ -149,6 +153,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		this.id = id;
 	}
 
+	@Nullable
 	@Override
 	public String getId() {
 		return this.id;
@@ -164,6 +169,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		this.groupId = groupId;
 	}
 
+	@Nullable
 	@Override
 	public String getGroupId() {
 		return this.groupId;
@@ -211,6 +217,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * @return the topicPartitions for this endpoint.
 	 * @since 2.3
 	 */
+	@Nullable
 	@Override
 	public TopicPartitionOffset[] getTopicPartitionsToAssign() {
 		return this.topicPartitions.toArray(new TopicPartitionOffset[0]);
@@ -231,11 +238,13 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * Return the topicPattern for this endpoint.
 	 * @return the topicPattern for this endpoint.
 	 */
+	@Nullable
 	@Override
 	public Pattern getTopicPattern() {
 		return this.topicPattern;
 	}
 
+	@Nullable
 	@Override
 	public String getGroup() {
 		return this.group;
@@ -276,10 +285,12 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		this.replyTemplate = replyTemplate;
 	}
 
+	@Nullable
 	protected KafkaTemplate<?, ?> getReplyTemplate() {
 		return this.replyTemplate;
 	}
 
+	@Nullable
 	protected RecordFilterStrategy<? super K, ? super V> getRecordFilterStrategy() {
 		return this.recordFilterStrategy;
 	}
@@ -305,6 +316,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		this.ackDiscarded = ackDiscarded;
 	}
 
+	@Nullable
 	protected RetryTemplate getRetryTemplate() {
 		return this.retryTemplate;
 	}
@@ -317,6 +329,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		this.retryTemplate = retryTemplate;
 	}
 
+	@Nullable
 	protected RecoveryCallback<?> getRecoveryCallback() {
 		return this.recoveryCallback;
 	}
@@ -346,6 +359,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		this.statefulRetry = statefulRetry;
 	}
 
+	@Nullable
 	@Override
 	public String getClientIdPrefix() {
 		return this.clientIdPrefix;
@@ -362,6 +376,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	}
 
 	@Override
+	@Nullable
 	public Integer getConcurrency() {
 		return this.concurrency;
 	}
@@ -376,6 +391,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	}
 
 	@Override
+	@Nullable
 	public Boolean getAutoStartup() {
 		return this.autoStartup;
 	}
@@ -434,6 +450,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		this.splitIterables = splitIterables;
 	}
 
+	@Nullable
 	protected BatchToRecordAdapter<K, V> getBatchToRecordAdapter() {
 		return this.batchToRecordAdapter;
 	}

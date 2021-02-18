@@ -26,24 +26,24 @@ import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
-import org.springframework.kafka.retrytopic.RetryTopicConfigurer;
 
 
 /**
  *
- * Attempts to provide an instance of {@link RetryTopicConfigurer} by either creating one
- * from a {@link RetryableTopic} annotation, or from the bean container if no annotation
- * is available.
+ * Attempts to provide an instance of
+ * {@link org.springframework.kafka.retrytopic.RetryTopicConfigurer} by either creating
+ * one from a {@link RetryableTopic} annotation, or from the bean container if no
+ * annotation is available.
  *
- * If beans are found in the container there's a check to determine whether or not
- * the provided topics topics should be handled by any of such instances.
+ * If beans are found in the container there's a check to determine whether or not the
+ * provided topics topics should be handled by any of such instances.
  *
- * If the annotation is provided, a {@link org.springframework.kafka.annotation.DltHandler}
- * annotated method is looked up.
+ * If the annotation is provided, a
+ * {@link org.springframework.kafka.annotation.DltHandler} annotated method is looked up.
  *
  * @author Tomaz Fernandes
  * @since 2.7
- * @see RetryTopicConfigurer
+ * @see org.springframework.kafka.retrytopic.RetryTopicConfigurer
  * @see RetryableTopic
  * @see org.springframework.kafka.annotation.DltHandler
  *

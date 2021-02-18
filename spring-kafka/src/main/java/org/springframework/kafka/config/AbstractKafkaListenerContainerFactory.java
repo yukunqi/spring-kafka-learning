@@ -413,8 +413,9 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 						properties::setSubBatchPerPartition)
 				.acceptIfNotNull(this.errorHandler, instance::setGenericErrorHandler)
 				.acceptIfNotNull(this.missingTopicsFatal, instance.getContainerProperties()::setMissingTopicsFatal);
-		if (endpoint.getAutoStartup() != null) {
-			instance.setAutoStartup(endpoint.getAutoStartup());
+		Boolean autoStart = endpoint.getAutoStartup();
+		if (autoStart != null) {
+			instance.setAutoStartup(autoStart);
 		}
 		else if (this.autoStartup != null) {
 			instance.setAutoStartup(this.autoStartup);

@@ -42,6 +42,7 @@ public interface KafkaListenerEndpoint {
 	 * container.
 	 * @see KafkaListenerContainerFactory#createListenerContainer
 	 */
+	@Nullable
 	String getId();
 
 	/**
@@ -50,12 +51,14 @@ public interface KafkaListenerEndpoint {
 	 * @return the group id; may be null.
 	 * @since 1.3
 	 */
+	@Nullable
 	String getGroupId();
 
 	/**
 	 * Return the group of this endpoint or null if not in a group.
 	 * @return the group of this endpoint or null if not in a group.
 	 */
+	@Nullable
 	String getGroup();
 
 	/**
@@ -69,12 +72,14 @@ public interface KafkaListenerEndpoint {
 	 * @return the topicPartitions for this endpoint.
 	 * @since 2.3
 	 */
+	@Nullable
 	TopicPartitionOffset[] getTopicPartitionsToAssign();
 
 	/**
 	 * Return the topicPattern for this endpoint.
 	 * @return the topicPattern for this endpoint.
 	 */
+	@Nullable
 	Pattern getTopicPattern();
 
 
@@ -84,6 +89,7 @@ public interface KafkaListenerEndpoint {
 	 * @return the client id prefix.
 	 * @since 2.1.1
 	 */
+	@Nullable
 	String getClientIdPrefix();
 
 	/**
@@ -91,6 +97,7 @@ public interface KafkaListenerEndpoint {
 	 * @return the concurrency.
 	 * @since 2.2
 	 */
+	@Nullable
 	Integer getConcurrency();
 
 	/**
@@ -98,6 +105,7 @@ public interface KafkaListenerEndpoint {
 	 * @return the autoStartup.
 	 * @since 2.2
 	 */
+	@Nullable
 	Boolean getAutoStartup();
 
 	/**

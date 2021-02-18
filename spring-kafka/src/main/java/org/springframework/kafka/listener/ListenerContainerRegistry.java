@@ -19,8 +19,6 @@ package org.springframework.kafka.listener;
 import java.util.Collection;
 import java.util.Set;
 
-import org.springframework.kafka.config.KafkaListenerEndpoint;
-
 /**
  * A registry for listener containers.
  *
@@ -35,7 +33,7 @@ public interface ListenerContainerRegistry {
 	 * {@code null} if no such container exists.
 	 * @param id the id of the container
 	 * @return the container or {@code null} if no container with that id exists
-	 * @see KafkaListenerEndpoint#getId()
+	 * @see org.springframework.kafka.config.KafkaListenerEndpoint#getId()
 	 * @see #getListenerContainerIds()
 	 */
 	MessageListenerContainer getListenerContainer(String id);
