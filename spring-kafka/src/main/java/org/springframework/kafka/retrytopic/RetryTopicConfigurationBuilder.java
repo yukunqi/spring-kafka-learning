@@ -317,8 +317,6 @@ public class RetryTopicConfigurationBuilder {
 		ListenerContainerFactoryResolver.Configuration containerFactory =
 				new ListenerContainerFactoryResolver.Configuration(this.listenerContainerFactory,
 						this.listenerContainerFactoryName);
-		DeadLetterPublishingRecovererFactory.Configuration deadLetterProviderConfig =
-				new DeadLetterPublishingRecovererFactory.Configuration(sendToTopicKafkaTemplate);
 		AllowDenyCollectionManager<String> allowListManager =
 				new AllowDenyCollectionManager<>(this.includeTopicNames, this.excludeTopicNames);
 		List<DestinationTopic.Properties> destinationTopicProperties =
@@ -327,7 +325,7 @@ public class RetryTopicConfigurationBuilder {
 						sendToTopicKafkaTemplate, this.fixedDelayStrategy, this.dltStrategy,
 						this.topicSuffixingStrategy, this.timeout)
 						.createProperties();
-		return new RetryTopicConfiguration(destinationTopicProperties, deadLetterProviderConfig,
+		return new RetryTopicConfiguration(destinationTopicProperties,
 				this.dltHandlerMethod, this.topicCreationConfiguration, allowListManager, containerFactory);
 	}
 

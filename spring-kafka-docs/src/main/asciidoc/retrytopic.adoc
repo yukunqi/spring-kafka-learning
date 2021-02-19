@@ -19,7 +19,9 @@ The framework also takes care of creating the topics and setting up and configur
 
 IMPORTANT: By using this strategy you lose Kafka's ordering guarantees for that topic.
 
-IMPORTANT: At this time this functionality only supports ConcurrentKafkaListenerContainerFactory factories and doesn't support class level `@KafkaListener` annotations
+IMPORTANT: You can set the `AckMode` mode you prefer, but `RECORD` is suggested.
+
+IMPORTANT: At this time this functionality doesn't support class level `@KafkaListener` annotations
 
 
 === Configuration

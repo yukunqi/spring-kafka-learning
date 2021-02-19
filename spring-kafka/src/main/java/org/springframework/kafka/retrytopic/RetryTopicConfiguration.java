@@ -36,24 +36,20 @@ public class RetryTopicConfiguration {
 
 	private final AllowDenyCollectionManager<String> topicAllowListManager;
 
-	private final DeadLetterPublishingRecovererFactory.Configuration deadLetterProviderConfiguration;
-
 	private final RetryTopicConfigurer.EndpointHandlerMethod dltHandlerMethod;
 
-	private final TopicCreation kafkaTopicAutoCreation;
+	private final TopicCreation kafkaTopicAutoCreationConfig;
 
 	private final ListenerContainerFactoryResolver.Configuration factoryResolverConfig;
 
 	RetryTopicConfiguration(List<DestinationTopic.Properties> destinationTopicProperties,
-								DeadLetterPublishingRecovererFactory.Configuration deadLetterProviderConfiguration,
 								RetryTopicConfigurer.EndpointHandlerMethod dltHandlerMethod,
-								TopicCreation kafkaTopicAutoCreation,
+								TopicCreation kafkaTopicAutoCreationConfig,
 								AllowDenyCollectionManager<String> topicAllowListManager,
 								ListenerContainerFactoryResolver.Configuration factoryResolverConfig) {
 		this.destinationTopicProperties = destinationTopicProperties;
-		this.deadLetterProviderConfiguration = deadLetterProviderConfiguration;
 		this.dltHandlerMethod = dltHandlerMethod;
-		this.kafkaTopicAutoCreation = kafkaTopicAutoCreation;
+		this.kafkaTopicAutoCreationConfig = kafkaTopicAutoCreationConfig;
 		this.topicAllowListManager = topicAllowListManager;
 		this.factoryResolverConfig = factoryResolverConfig;
 	}
@@ -63,11 +59,7 @@ public class RetryTopicConfiguration {
 	}
 
 	public TopicCreation forKafkaTopicAutoCreation() {
-		return this.kafkaTopicAutoCreation;
-	}
-
-	public DeadLetterPublishingRecovererFactory.Configuration forDeadLetterFactory() {
-		return this.deadLetterProviderConfiguration;
+		return this.kafkaTopicAutoCreationConfig;
 	}
 
 	public ListenerContainerFactoryResolver.Configuration forContainerFactoryResolver() {

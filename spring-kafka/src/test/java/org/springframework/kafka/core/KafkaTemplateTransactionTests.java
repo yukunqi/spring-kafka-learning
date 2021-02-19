@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2020 the original author or authors.
+ * Copyright 2017-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -327,10 +327,12 @@ public class KafkaTemplateTransactionTests {
 		((KafkaTemplate<Object, Object>) template).setDefaultTopic(STRING_KEY_TOPIC);
 
 		KafkaTransactionManager<Object, Object> tm = new KafkaTransactionManager<>(pf);
+		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
+		recoverer.setFailIfSendResultIsError(false);
 
 		new TransactionTemplate(tm)
 				.execute(s -> {
-					new DeadLetterPublishingRecoverer(template).accept(
+					recoverer.accept(
 							new ConsumerRecord<>(STRING_KEY_TOPIC, 0, 0L, "key", "foo"),
 							new RuntimeException("foo"));
 					return null;

@@ -31,7 +31,7 @@ import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
 /**
  *
  * Attempts to provide an instance of
- * {@link org.springframework.kafka.retrytopic.RetryTopicConfigurer} by either creating
+ * {@link org.springframework.kafka.retrytopic.RetryTopicConfiguration} by either creating
  * one from a {@link RetryableTopic} annotation, or from the bean container if no
  * annotation is available.
  *

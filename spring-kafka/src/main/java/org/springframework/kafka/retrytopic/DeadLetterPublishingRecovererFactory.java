@@ -30,7 +30,7 @@ import org.springframework.core.NestedRuntimeException;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.KafkaBackoffException;
-import org.springframework.util.Assert;
+import org.springframework.kafka.support.KafkaHeaders;
 
 /**
  *
@@ -43,8 +43,6 @@ import org.springframework.util.Assert;
  */
 public class DeadLetterPublishingRecovererFactory {
 
-	private static final String NO_OPS_RETRY_TOPIC = "internal-kafka-noOpsRetry";
-
 	private final DestinationTopicResolver destinationTopicResolver;
 
 	private Consumer<DeadLetterPublishingRecoverer> recovererCustomizer = recoverer -> { };
@@ -54,31 +52,43 @@ public class DeadLetterPublishingRecovererFactory {
 	}
 
 	@SuppressWarnings("unchecked")
-	public DeadLetterPublishingRecoverer create(Configuration configuration) {
-		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(configuration.template,
-					((cr, e) -> this.resolveDestination(cr, e))) {
+	public DeadLetterPublishingRecoverer create() {
+		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer( // NOSONAR anon. class size
+				this::resolveTemplate,
+				false, (this::resolveDestination)) {
 
 			@Override
-			protected void publish(ProducerRecord<Object, Object> outRecord,
-					KafkaOperations<Object, Object> kafkaTemplate) {
-
-				if (NO_OPS_RETRY_TOPIC.equals(outRecord.topic())) {
-					this.logger.warn(() -> "Processing failed for last topic, giving up.");
-					return;
-				}
-
-				KafkaOperations<Object, Object> kafkaOperationsForTopic = (KafkaOperations<Object, Object>)
-						DeadLetterPublishingRecovererFactory.this.destinationTopicResolver
-								.getCurrentTopic(outRecord.topic())
-								.getKafkaOperations();
-				super.publish(outRecord, kafkaOperationsForTopic);
+			protected DeadLetterPublishingRecoverer.HeaderNames getHeaderNames() {
+				return DeadLetterPublishingRecoverer.HeaderNames.Builder
+						.original()
+							.offsetHeader(KafkaHeaders.ORIGINAL_OFFSET)
+							.timestampHeader(KafkaHeaders.ORIGINAL_TIMESTAMP)
+							.timestampTypeHeader(KafkaHeaders.ORIGINAL_TIMESTAMP_TYPE)
+							.topicHeader(KafkaHeaders.ORIGINAL_TOPIC)
+							.partitionHeader(KafkaHeaders.ORIGINAL_PARTITION)
+						.exception()
+							.keyExceptionFqcn(KafkaHeaders.KEY_EXCEPTION_FQCN)
+							.exceptionFqcn(KafkaHeaders.EXCEPTION_FQCN)
+							.keyExceptionMessage(KafkaHeaders.KEY_EXCEPTION_MESSAGE)
+							.exceptionMessage(KafkaHeaders.EXCEPTION_MESSAGE)
+							.keyExceptionStacktrace(KafkaHeaders.KEY_EXCEPTION_STACKTRACE)
+							.exceptionStacktrace(KafkaHeaders.EXCEPTION_STACKTRACE)
+						.build();
 			}
-
 		};
 
 		recoverer.setHeadersFunction((consumerRecord, e) -> addHeaders(consumerRecord, e, getAttempts(consumerRecord)));
+		recoverer.setFailIfSendResultIsError(true);
+		recoverer.setReplaceOriginalHeaders(false);
+		recoverer.setThrowIfNoDestinationReturned(false);
 		this.recovererCustomizer.accept(recoverer);
 		return recoverer;
+	}
+
+	private KafkaOperations<?, ?> resolveTemplate(ProducerRecord<?, ?> outRecord) {
+		return this.destinationTopicResolver
+						.getCurrentTopic(outRecord.topic())
+						.getKafkaOperations();
 	}
 
 	public void setDeadLetterPublishingRecovererCustomizer(Consumer<DeadLetterPublishingRecoverer> customizer) {
@@ -97,7 +107,7 @@ public class DeadLetterPublishingRecovererFactory {
 				cr.topic(), attempt, e, originalTimestamp.longValue());
 
 		return nextDestination.isNoOpsTopic()
-					? new TopicPartition(NO_OPS_RETRY_TOPIC, 0)
+					? null
 					: new TopicPartition(nextDestination.getDestinationName(),
 				cr.partition() % nextDestination.getDestinationPartitions());
 	}
@@ -140,15 +150,6 @@ public class DeadLetterPublishingRecovererFactory {
 				? currentOriginalTimestampHeader.value()
 				: BigInteger.valueOf(consumerRecord.timestamp()).toByteArray();
 	}
-
-	public static class Configuration {
-
-		private final KafkaOperations<?, ?> template;
-
-		Configuration(KafkaOperations<?, ?> template) {
-			Assert.notNull(template,
-					() -> "You need to provide a KafkaOperations instance.");
-			this.template = template;
-		}
-	}
 }
+
+

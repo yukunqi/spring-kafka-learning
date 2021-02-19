@@ -5282,6 +5282,9 @@ A `LinkedHashMap` is recommended so that the keys are examined in order.
 
 When publishing `null` values, when there are multiple templates, the recoverer will look for a template for the `Void` class; if none is present, the first template from the `values().iterator()` will be used.
 
+Since 2.7 you can use the `setFailIfSendResultIsError` method so that an exception is thrown when message publishing fails.
+You can also set a timeout for the verification of the sender success with `setWaitForSendResultTimeout`.
+
 IMPORTANT: If the recoverer fails (throws an exception), the failed record will be included in the seeks.
 Starting with version 2.5.5, if the recoverer fails, the `BackOff` will be reset by default and redeliveries will again go through the back offs before recovery is attempted again.
 With earlier versions, the `BackOff` was not reset and recovery was re-attempted on the next failure.

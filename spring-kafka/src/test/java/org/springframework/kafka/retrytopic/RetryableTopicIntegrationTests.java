@@ -285,6 +285,8 @@ public class RetryableTopicIntegrationTests {
 	@Configuration
 	static class RetryTopicConfigurations {
 
+		private static final String DLT_METHOD_NAME = "processDltMessage";
+
 		@Bean
 		public RetryTopicConfiguration firstRetryTopic(KafkaTemplate<String, String> template) {
 			return RetryTopicConfiguration
@@ -294,7 +296,7 @@ public class RetryableTopicIntegrationTests {
 					.useSingleTopicForFixedDelays()
 					.includeTopic(FIRST_TOPIC)
 					.doNotRetryOnDltFailure()
-					.dltHandlerMethod(MyCustomDltProcessor.class, "processDltMessage")
+					.dltHandlerMethod(MyCustomDltProcessor.class, DLT_METHOD_NAME)
 					.create(template);
 		}
 
@@ -307,7 +309,7 @@ public class RetryableTopicIntegrationTests {
 					.traversingCauses()
 					.includeTopic(SECOND_TOPIC)
 					.doNotRetryOnDltFailure()
-					.dltHandlerMethod(MyCustomDltProcessor.class, "processDltMessage")
+					.dltHandlerMethod(MyCustomDltProcessor.class, DLT_METHOD_NAME)
 					.create(template);
 		}
 

@@ -185,7 +185,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 			for (int i = 0; i < this.concurrency; i++) {
 				KafkaMessageListenerContainer<K, V> container =
 						constructContainer(containerProperties, topicPartitions, i);
-				configurreChildContainer(i, container);
+				configureChildContainer(i, container);
 				if (isPaused()) {
 					container.pause();
 				}
@@ -195,7 +195,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 		}
 	}
 
-	private void configurreChildContainer(int index, KafkaMessageListenerContainer<K, V> container) {
+	private void configureChildContainer(int index, KafkaMessageListenerContainer<K, V> container) {
 		String beanName = getBeanName();
 		container.setBeanName((beanName != null ? beanName : "consumer") + "-" + index);
 		ApplicationContext applicationContext = getApplicationContext();

@@ -55,7 +55,7 @@ class DefaultDestinationTopicProcessorTests extends DestinationTopicTests {
 		List<DestinationTopic.Properties> processedProps = new ArrayList<>();
 
 		// when
-		destinationTopicProcessor.processDestinationProperties(props -> processedProps.add(props), context);
+		destinationTopicProcessor.processDestinationTopicProperties(props -> processedProps.add(props), context);
 
 		// then
 		assertEquals(allProps, processedProps);

@@ -222,4 +222,72 @@ public abstract class KafkaHeaders {
 	 */
 	public static final String DELIVERY_ATTEMPT = PREFIX + "deliveryAttempt";
 
+	/**
+	 * Exception class name for a record published sent to another topic.
+	 * @since 2.2
+	 */
+	public static final String EXCEPTION_FQCN = PREFIX + "exception-fqcn";
+
+	/**
+	 * Exception stack trace for a record published to another topic.
+	 * @since 2.2
+	 */
+	public static final String EXCEPTION_STACKTRACE = PREFIX + "exception-stacktrace";
+
+	/**
+	 * Exception message for a record published to another topic.
+	 * @since 2.2
+	 */
+	public static final String EXCEPTION_MESSAGE = PREFIX + "exception-message";
+
+	/**
+	 * Exception stack trace for a record published to another topic with a key
+	 * deserialization exception.
+	 * @since 2.7
+	 */
+	public static final String KEY_EXCEPTION_STACKTRACE = PREFIX + "key-exception-stacktrace";
+
+	/**
+	 * Exception message for a record published to another topic with a key
+	 * deserialization exception.
+	 * @since 2.7
+	 */
+	public static final String KEY_EXCEPTION_MESSAGE = PREFIX + "key-exception-message";
+
+	/**
+	 * Exception class name for a record published sent to another topic with a key
+	 * deserialization exception.
+	 * @since 2.7
+	 */
+	public static final String KEY_EXCEPTION_FQCN = PREFIX + "key-exception-fqcn";
+
+	/**
+	 * Original topic for a record published to another topic.
+	 * @since 2.2
+	 */
+	public static final String ORIGINAL_TOPIC = PREFIX + "original-topic";
+
+	/**
+	 * Original partition for a record published to another topic.
+	 * @since 2.2
+	 */
+	public static final String ORIGINAL_PARTITION = PREFIX + "original-partition";
+
+	/**
+	 * Original offset for a record published to another topic.
+	 * @since 2.2
+	 */
+	public static final String ORIGINAL_OFFSET = PREFIX + "original-offset";
+
+	/**
+	 * Original timestamp for a record published to another topic.
+	 * @since 2.2
+	 */
+	public static final String ORIGINAL_TIMESTAMP = PREFIX + "original-timestamp";
+
+	/**
+	 * Original timestamp type for a record published to another topic.
+	 * @since 2.2
+	 */
+	public static final String ORIGINAL_TIMESTAMP_TYPE = PREFIX + "original-timestamp-type";
 }

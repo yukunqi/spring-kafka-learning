@@ -26,27 +26,25 @@ import org.apache.kafka.common.TopicPartition;
 import org.springframework.kafka.listener.AcknowledgingConsumerAwareMessageListener;
 import org.springframework.kafka.listener.KafkaBackoffException;
 import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
-import org.springframework.kafka.listener.ListenerType;
+import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.retrytopic.RetryTopicHeaders;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.lang.Nullable;
 
 /**
  *
- * An {@link AcknowledgingConsumerAwareMessageListener} implementation that looks for a
- * backoff timestamp header and passes to a {@link KafkaConsumerBackoffManager} instance
- * that will backoff if necessary.
+ * A {@link AcknowledgingConsumerAwareMessageListener} implementation that looks for a
+ * backoff dueTimestamp header and invokes a {@link KafkaConsumerBackoffManager} instance
+ * that will back off if necessary.
  *
  * @param <K> the record key type.
  * @param <V> the record value type.
- *
  * @author Tomaz Fernandes
- *
  * @since 2.7
  *
  */
 public class KafkaBackoffAwareMessageListenerAdapter<K, V>
-		extends AbstractDelegatingMessageListenerAdapter<AcknowledgingConsumerAwareMessageListener<K, V>>
+		extends AbstractDelegatingMessageListenerAdapter<MessageListener<K, V>>
 		implements AcknowledgingConsumerAwareMessageListener<K, V> {
 
 	private final String listenerId;
@@ -55,7 +53,17 @@ public class KafkaBackoffAwareMessageListenerAdapter<K, V>
 
 	private final KafkaConsumerBackoffManager kafkaConsumerBackoffManager;
 
-	public KafkaBackoffAwareMessageListenerAdapter(AcknowledgingConsumerAwareMessageListener<K, V> delegate,
+	/**
+	 * The configuration for this listener adapter.
+	 *
+	 * @param delegate the MessageListener instance that will handle the messages.
+	 * @param kafkaConsumerBackoffManager the manager that will handle the back off.
+	 * @param listenerId the id of the listener container associated to this adapter.
+	 * @param backoffTimestampHeader the header name that will be looked up in the
+	 * 			incoming record to acquire the timestamp.
+	 * @since 2.7
+	 */
+	public KafkaBackoffAwareMessageListenerAdapter(MessageListener<K, V> delegate,
 			KafkaConsumerBackoffManager kafkaConsumerBackoffManager, String listenerId, String backoffTimestampHeader) {
 		super(delegate);
 		this.listenerId = listenerId;
@@ -63,28 +71,28 @@ public class KafkaBackoffAwareMessageListenerAdapter<K, V>
 		this.backoffTimestampHeader = backoffTimestampHeader;
 	}
 
-	public KafkaBackoffAwareMessageListenerAdapter(AcknowledgingConsumerAwareMessageListener<K, V> adapter,
-			KafkaConsumerBackoffManager kafkaConsumerBackoffManager, String listenerId) {
+	public KafkaBackoffAwareMessageListenerAdapter(MessageListener<K, V> adapter,
+			KafkaConsumerBackoffManager kafkaConsumerBackoffManager, String listenerId) throws KafkaBackoffException {
 		this(adapter, kafkaConsumerBackoffManager, listenerId, RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP);
 	}
 
-	@Override
-	public void onMessage(ConsumerRecord<K, V> data) {
-		throw new UnsupportedOperationException(
-				String.format("%s requires %s or %s listener types.", this.getClass().getSimpleName(),
-						ListenerType.ACKNOWLEDGING, ListenerType.ACKNOWLEDGING_CONSUMER_AWARE));
-	}
-
-	@Override
-	public void onMessage(ConsumerRecord<K, V> data, @Nullable Acknowledgment ack, Consumer<?, ?> consumer)
-			throws KafkaBackoffException {
-
-		maybeGetBackoffTimestamp(data)
+	public void onMessage(ConsumerRecord<K, V> consumerRecord, @Nullable Acknowledgment acknowledgment,
+								@Nullable Consumer<?, ?> consumer) {
+		maybeGetBackoffTimestamp(consumerRecord)
 				.ifPresent(nextExecutionTimestamp -> this.kafkaConsumerBackoffManager
-				.maybeBackoff(createContext(data, nextExecutionTimestamp)));
-		super.getDelegate().onMessage(data, ack, consumer);
-		if (ack != null) {
-			ack.acknowledge();
+						.maybeBackoff(createContext(consumerRecord, nextExecutionTimestamp)));
+		switch (this.delegateType) {
+			case ACKNOWLEDGING_CONSUMER_AWARE:
+				this.delegate.onMessage(consumerRecord, acknowledgment, consumer);
+				break;
+			case ACKNOWLEDGING:
+				this.delegate.onMessage(consumerRecord, acknowledgment);
+				break;
+			case CONSUMER_AWARE:
+				this.delegate.onMessage(consumerRecord, consumer);
+				break;
+			case SIMPLE:
+				this.delegate.onMessage(consumerRecord);
 		}
 	}
 
@@ -93,10 +101,30 @@ public class KafkaBackoffAwareMessageListenerAdapter<K, V>
 				new TopicPartition(data.topic(), data.partition()));
 	}
 
-	private <V, K> Optional<Long> maybeGetBackoffTimestamp(ConsumerRecord<K, V> data) {
+	private Optional<Long> maybeGetBackoffTimestamp(ConsumerRecord<K, V> data) {
 		return Optional
 				.ofNullable(data.headers().lastHeader(this.backoffTimestampHeader))
 				.map(timestampHeader -> new BigInteger(timestampHeader.value()).longValue());
 	}
 
+
+	/*
+	 * Since the container uses the delegate's type to determine which method to call, we
+	 * must implement them all.
+	 */
+
+	@Override
+	public void onMessage(ConsumerRecord<K, V> data) {
+		onMessage(data, null, null); // NOSONAR
+	}
+
+	@Override
+	public void onMessage(ConsumerRecord<K, V> data, Acknowledgment acknowledgment) {
+		onMessage(data, acknowledgment, null); // NOSONAR
+	}
+
+	@Override
+	public void onMessage(ConsumerRecord<K, V> data, Consumer<?, ?> consumer) {
+		onMessage(data, null, consumer);
+	}
 }

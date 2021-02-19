@@ -23,7 +23,6 @@ import java.util.function.Consumer;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.listener.AcknowledgingConsumerAwareMessageListener;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
-import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.ErrorHandler;
 import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
@@ -48,12 +47,12 @@ import org.springframework.util.backoff.FixedBackOff;
  */
 public class ListenerContainerFactoryConfigurer {
 
-	private static Set<ConcurrentKafkaListenerContainerFactory<?, ?>> configuredFactoriesCache;
+	private static final Set<ConcurrentKafkaListenerContainerFactory<?, ?>> CONFIGURED_FACTORIES_CACHE;
 
 	private final KafkaConsumerBackoffManager kafkaConsumerBackoffManager;
 
 	static {
-		configuredFactoriesCache = new HashSet<>();
+		CONFIGURED_FACTORIES_CACHE = new HashSet<>();
 	}
 
 	private static final long DEFAULT_IDLE_PARTITION_EVENT_INTERVAL = 1000L;
@@ -74,28 +73,26 @@ public class ListenerContainerFactoryConfigurer {
 	}
 
 	ConcurrentKafkaListenerContainerFactory<?, ?> configure(
-			ConcurrentKafkaListenerContainerFactory<?, ?> containerFactory,
-			DeadLetterPublishingRecovererFactory.Configuration configuration) {
+			ConcurrentKafkaListenerContainerFactory<?, ?> containerFactory) {
 		if (existsInCache(containerFactory)) {
 			return containerFactory;
 		}
-		containerFactory.setContainerCustomizer(container -> setupBackoffAwareMessageListenerAdapter(container));
-		containerFactory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
+		containerFactory.setContainerCustomizer(this::setupBackoffAwareMessageListenerAdapter);
 		containerFactory
-				.setErrorHandler(createErrorHandler(this.deadLetterPublishingRecovererFactory.create(configuration)));
+				.setErrorHandler(createErrorHandler(this.deadLetterPublishingRecovererFactory.create()));
 		addToFactoriesCache(containerFactory);
 		return containerFactory;
 	}
 
 	private boolean existsInCache(ConcurrentKafkaListenerContainerFactory<?, ?> containerFactory) {
-		synchronized (configuredFactoriesCache) {
-			return configuredFactoriesCache.contains(containerFactory);
+		synchronized (CONFIGURED_FACTORIES_CACHE) {
+			return CONFIGURED_FACTORIES_CACHE.contains(containerFactory);
 		}
 	}
 
 	private void addToFactoriesCache(ConcurrentKafkaListenerContainerFactory<?, ?> containerFactory) {
-		synchronized (configuredFactoriesCache) {
-			configuredFactoriesCache.add(containerFactory);
+		synchronized (CONFIGURED_FACTORIES_CACHE) {
+			CONFIGURED_FACTORIES_CACHE.add(containerFactory);
 		}
 	}
 

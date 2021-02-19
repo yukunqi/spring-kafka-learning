@@ -40,6 +40,7 @@ import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.kafka.annotation.RetryableTopicAnnotationProcessor;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.retry.annotation.Backoff;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.util.ReflectionUtils;
 
 /**
@@ -105,7 +106,8 @@ class RetryableTopicAnnotationProcessorTests {
 
 		// then
 		RetryTopicConfigurer.EndpointHandlerMethod dltHandlerMethod = configuration.getDltHandlerMethod();
-		assertEquals("handleDlt", dltHandlerMethod.getMethod().getName());
+		Method method = (Method) ReflectionTestUtils.getField(dltHandlerMethod, "method");
+		assertEquals("handleDlt", method.getName());
 
 		assertFalse(new DestinationTopic("",
 				configuration.getDestinationTopicProperties().get(0)).isAlwaysRetryOnDltFailure());
@@ -123,8 +125,9 @@ class RetryableTopicAnnotationProcessorTests {
 
 		// then
 		RetryTopicConfigurer.EndpointHandlerMethod dltHandlerMethod = configuration.getDltHandlerMethod();
+		Method method = (Method) ReflectionTestUtils.getField(dltHandlerMethod, "method");
 		assertEquals(RetryTopicConfigurer.LoggingDltListenerHandlerMethod.DEFAULT_DLT_METHOD_NAME,
-				dltHandlerMethod.getMethod().getName());
+				method.getName());
 
 		assertTrue(new DestinationTopic("",
 				configuration.getDestinationTopicProperties().get(0)).isAlwaysRetryOnDltFailure());

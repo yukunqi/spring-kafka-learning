@@ -39,7 +39,7 @@ public interface DestinationTopicProcessor {
 	 * @param destinationPropertiesProcessor the processor.
 	 * @param context the context.
 	 */
-	void processDestinationProperties(Consumer<DestinationTopic.Properties> destinationPropertiesProcessor, Context context);
+	void processDestinationTopicProperties(Consumer<DestinationTopic.Properties> destinationPropertiesProcessor, Context context);
 
 	/**
 	 * Process the registered destinations.

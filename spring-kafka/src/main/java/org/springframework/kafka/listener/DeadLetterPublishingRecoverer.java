@@ -25,7 +25,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -38,19 +42,23 @@ import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 
 import org.springframework.core.log.LogAccessor;
+import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.ObjectUtils;
+import org.springframework.util.concurrent.ListenableFuture;
 
 /**
  * A {@link ConsumerRecordRecoverer} that publishes a failed record to a dead-letter
  * topic.
  *
  * @author Gary Russell
+ * @author Tomaz Fernandes
  * @since 2.2
  *
  */
@@ -63,13 +71,15 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 
 	private static final long FIVE = 5L;
 
-	private final KafkaOperations<Object, Object> template;
+	private static final long THIRTY = 30L;
 
-	private final Map<Class<?>, KafkaOperations<?, ?>> templates;
+	private final HeaderNames headerNames = getHeaderNames();
 
 	private final boolean transactional;
 
 	private final BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver;
+
+	private final Function<ProducerRecord<?, ?>, KafkaOperations<?, ?>> templateResolver;
 
 	private boolean retainExceptionHeader;
 
@@ -78,6 +88,15 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 	private boolean verifyPartition = true;
 
 	private Duration partitionInfoTimeout = Duration.ofSeconds(FIVE);
+
+	private Duration waitForSendResultTimeout = Duration.ofSeconds(THIRTY);
+
+	private boolean replaceOriginalHeaders = true;
+
+	private boolean failIfSendResultIsError = true;
+
+	private boolean throwIfNoDestinationReturned = false;
+
 
 	/**
 	 * Create an instance with the provided template and a default destination resolving
@@ -139,17 +158,41 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 
 		Assert.isTrue(!ObjectUtils.isEmpty(templates), "At least one template is required");
 		Assert.notNull(destinationResolver, "The destinationResolver cannot be null");
-		this.template = templates.size() == 1
-				? (KafkaOperations<Object, Object>) templates.values().iterator().next()
-				: null;
-		this.templates = templates;
-		this.transactional = templates.values().iterator().next().isTransactional();
+		KafkaOperations<?, ?> firstTemplate = templates.values().iterator().next();
+		this.templateResolver = templates.size() == 1
+				? producerRecord -> firstTemplate
+				: producerRecord -> findTemplateForValue(producerRecord.value(), templates);
+		this.transactional = firstTemplate.isTransactional();
 		Boolean tx = this.transactional;
 		Assert.isTrue(templates.values()
 			.stream()
 			.map(t -> t.isTransactional())
 			.allMatch(t -> t.equals(tx)), "All templates must have the same setting for transactional");
 		this.destinationResolver = destinationResolver;
+	}
+
+	/**
+	* Create an instance with a template resolving function that receives the failed
+	* consumer record and the exception and returns a {@link KafkaOperations} and a
+	* flag on whether or not the publishing from this instance will be transactional
+	* or not. Also receives a destination resolving function that works similarly but
+	* returns a {@link TopicPartition} instead. If the partition in the {@link TopicPartition}
+	* is less than 0, no partition is set when publishing to the topic.
+	*
+	* @param templateResolver the function that resolver the {@link KafkaOperations} to use for publishing.
+	* @param transactional whether or not publishing by this instance should be transactional
+	* @param destinationResolver the resolving function.
+	* @since 2.7
+	*/
+	public DeadLetterPublishingRecoverer(Function<ProducerRecord<?, ?>, KafkaOperations<?, ?>> templateResolver,
+										boolean transactional,
+										BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver) {
+
+		Assert.notNull(templateResolver, "The templateResolver cannot be null");
+		Assert.notNull(destinationResolver, "The destinationResolver cannot be null");
+		this.transactional = transactional;
+		this.destinationResolver = destinationResolver;
+		this.templateResolver = templateResolver;
 	}
 
 	/**
@@ -199,9 +242,55 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 		this.partitionInfoTimeout = partitionInfoTimeout;
 	}
 
+	/**
+	 * Set to false if you don't want to replace the dead letter original headers if
+	 * they are already present.
+	 * @param replaceOriginalHeaders set to false not to replace.
+	 * @since 2.7
+	 */
+	public void setReplaceOriginalHeaders(boolean replaceOriginalHeaders) {
+		this.replaceOriginalHeaders = replaceOriginalHeaders;
+	}
+
+	/**
+	 * Set to true to throw an exception if the destination resolver function returns
+	 * a null TopicPartition.
+	 * @param throwIfNoDestinationReturned true to enable.
+	 * @since 2.7
+	 */
+	public void setThrowIfNoDestinationReturned(boolean throwIfNoDestinationReturned) {
+		this.throwIfNoDestinationReturned = throwIfNoDestinationReturned;
+	}
+
+	/**
+	 * Set to true to enable waiting for the send result and throw an exception if it fails.
+	 * It will wait for the milliseconds specified in waitForSendResultTimeout for the result.
+	 * @param failIfSendResultIsError true to enable.
+	 * @since 2.7
+	 * @see #setWaitForSendResultTimeout(Duration)
+	 */
+	public void setFailIfSendResultIsError(boolean failIfSendResultIsError) {
+		this.failIfSendResultIsError = failIfSendResultIsError;
+	}
+
+	/**
+	 * Time to wait for message sending. Default is 30 seconds.
+	 * @param waitForSendResultTimeout the timeout.
+	 * @since 2.7
+	 * @see #setFailIfSendResultIsError(boolean)
+	 */
+	public void setWaitForSendResultTimeout(Duration waitForSendResultTimeout) {
+		this.waitForSendResultTimeout = waitForSendResultTimeout;
+	}
+
+	@SuppressWarnings("unchecked")
 	@Override
 	public void accept(ConsumerRecord<?, ?> record, @Nullable Consumer<?, ?> consumer, Exception exception) {
 		TopicPartition tp = this.destinationResolver.apply(record, exception);
+		if (tp == null) {
+			maybeThrow(record, exception);
+			return;
+		}
 		if (consumer != null && this.verifyPartition) {
 			tp = checkPartition(tp, consumer);
 		}
@@ -220,8 +309,30 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 		enhanceHeaders(headers, record, exception); // NOSONAR headers are never null
 		ProducerRecord<Object, Object> outRecord = createProducerRecord(record, tp, headers,
 				kDeserEx == null ? null : kDeserEx.getData(), vDeserEx == null ? null : vDeserEx.getData());
-		KafkaOperations<Object, Object> kafkaTemplate = findTemplateForValue(outRecord.value());
-		send(outRecord, kafkaTemplate);
+		KafkaOperations<Object, Object> kafkaTemplate =
+				(KafkaOperations<Object, Object>) this.templateResolver.apply(outRecord);
+		sendOrThrow(outRecord, kafkaTemplate);
+	}
+
+	private void sendOrThrow(ProducerRecord<Object, Object> outRecord,
+			@Nullable KafkaOperations<Object, Object> kafkaTemplate) {
+
+		if (kafkaTemplate != null) {
+			send(outRecord, kafkaTemplate);
+		}
+		else {
+			throw new IllegalArgumentException("No kafka template returned for record " + outRecord);
+		}
+	}
+
+	private void maybeThrow(ConsumerRecord<?, ?> record, Exception exception) {
+		String message = String.format("No destination returned for record %s and exception %s. " +
+				"failIfNoDestinationReturned: %s", ListenerUtils.recordToString(record), exception,
+				this.throwIfNoDestinationReturned);
+		this.logger.warn(message);
+		if (this.throwIfNoDestinationReturned) {
+			throw new IllegalArgumentException(message);
+		}
 	}
 
 	/**
@@ -267,28 +378,26 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 	}
 
 	@SuppressWarnings("unchecked")
-	private KafkaOperations<Object, Object> findTemplateForValue(@Nullable Object value) {
-		if (this.template != null) {
-			return this.template;
-		}
+	private KafkaOperations<Object, Object> findTemplateForValue(@Nullable Object value,
+																Map<Class<?>, KafkaOperations<?, ?>> templates) {
 		if (value == null) {
-			KafkaOperations<?, ?> operations = this.templates.get(Void.class);
+			KafkaOperations<?, ?> operations = templates.get(Void.class);
 			if (operations == null) {
-				return (KafkaOperations<Object, Object>) this.templates.values().iterator().next();
+				return (KafkaOperations<Object, Object>) templates.values().iterator().next();
 			}
 			else {
 				return (KafkaOperations<Object, Object>) operations;
 			}
 		}
-		Optional<Class<?>> key = this.templates.keySet()
+		Optional<Class<?>> key = templates.keySet()
 			.stream()
 			.filter((k) -> k.isAssignableFrom(value.getClass()))
 			.findFirst();
 		if (key.isPresent()) {
-			return (KafkaOperations<Object, Object>) this.templates.get(key.get());
+			return (KafkaOperations<Object, Object>) templates.get(key.get());
 		}
 		this.logger.warn(() -> "Failed to find a template for " + value.getClass() + " attempting to use the last entry");
-		return (KafkaOperations<Object, Object>) this.templates.values()
+		return (KafkaOperations<Object, Object>) templates.values()
 				.stream()
 				.reduce((first,  second) -> second)
 				.get();
@@ -325,8 +434,10 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 	 * @since 2.2.5
 	 */
 	protected void publish(ProducerRecord<Object, Object> outRecord, KafkaOperations<Object, Object> kafkaTemplate) {
+		ListenableFuture<SendResult<Object, Object>> sendResult = null;
 		try {
-			kafkaTemplate.send(outRecord).addCallback(result -> {
+			sendResult = kafkaTemplate.send(outRecord);
+			sendResult.addCallback(result -> {
 				this.logger.debug(() -> "Successful dead-letter publication: " + result);
 			}, ex -> {
 				this.logger.error(ex, () -> "Dead-letter publication failed for: " + outRecord);
@@ -335,39 +446,71 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 		catch (Exception e) {
 			this.logger.error(e, () -> "Dead-letter publication failed for: " + outRecord);
 		}
-	}
-
-	private void enhanceHeaders(Headers kafkaHeaders, ConsumerRecord<?, ?> record, Exception exception) {
-		kafkaHeaders.add(
-				new RecordHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC, record.topic().getBytes(StandardCharsets.UTF_8)));
-		kafkaHeaders.add(new RecordHeader(KafkaHeaders.DLT_ORIGINAL_PARTITION,
-				ByteBuffer.allocate(Integer.BYTES).putInt(record.partition()).array()));
-		kafkaHeaders.add(new RecordHeader(KafkaHeaders.DLT_ORIGINAL_OFFSET,
-				ByteBuffer.allocate(Long.BYTES).putLong(record.offset()).array()));
-		kafkaHeaders.add(new RecordHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP,
-				ByteBuffer.allocate(Long.BYTES).putLong(record.timestamp()).array()));
-		kafkaHeaders.add(new RecordHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE,
-				record.timestampType().toString().getBytes(StandardCharsets.UTF_8)));
-		addExceptionInfoHeaders(kafkaHeaders, exception, false);
-		Headers headers = this.headersFunction.apply(record, exception);
-		if (headers != null) {
-			headers.forEach(header -> kafkaHeaders.add(header));
+		if (this.failIfSendResultIsError) {
+			verifySendResult(outRecord, sendResult);
 		}
 	}
 
-	private void addExceptionInfoHeaders(Headers kafkaHeaders, Exception exception, boolean isKey) {
-		kafkaHeaders.add(new RecordHeader(isKey ? KafkaHeaders.DLT_KEY_EXCEPTION_FQCN : KafkaHeaders.DLT_EXCEPTION_FQCN,
+	private void verifySendResult(ProducerRecord<Object, Object> outRecord,
+								@Nullable ListenableFuture<SendResult<Object, Object>> sendResult) {
+		if (sendResult == null) {
+			throw new KafkaException("Dead-letter publication failed for: " + outRecord);
+		}
+		try {
+			sendResult.get(this.waitForSendResultTimeout.toMillis(), TimeUnit.MILLISECONDS);
+		}
+		catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new KafkaException("Publication failed for: " + outRecord, e);
+		}
+		catch (ExecutionException | TimeoutException e) {
+			throw new KafkaException("Publication failed for: " + outRecord, e);
+		}
+	}
+
+	private void enhanceHeaders(Headers kafkaHeaders, ConsumerRecord<?, ?> record, Exception exception) {
+		maybeAddOriginalHeaders(kafkaHeaders, record);
+		addExceptionInfoHeaders(kafkaHeaders, exception, false);
+		Headers headers = this.headersFunction.apply(record, exception);
+		if (headers != null) {
+			headers.forEach(kafkaHeaders::add);
+		}
+	}
+
+	private void maybeAddOriginalHeaders(Headers kafkaHeaders, ConsumerRecord<?, ?> record) {
+		maybeAddHeader(kafkaHeaders, this.headerNames.original.topicHeader,
+				record.topic().getBytes(StandardCharsets.UTF_8));
+		maybeAddHeader(kafkaHeaders, this.headerNames.original.partitionHeader,
+				ByteBuffer.allocate(Integer.BYTES).putInt(record.partition()).array());
+		maybeAddHeader(kafkaHeaders, this.headerNames.original.offsetHeader,
+				ByteBuffer.allocate(Long.BYTES).putLong(record.offset()).array());
+		maybeAddHeader(kafkaHeaders, this.headerNames.original.timestampHeader,
+				ByteBuffer.allocate(Long.BYTES).putLong(record.timestamp()).array());
+		maybeAddHeader(kafkaHeaders, this.headerNames.original.timestampTypeHeader,
+				record.timestampType().toString().getBytes(StandardCharsets.UTF_8));
+	}
+
+	private void maybeAddHeader(Headers kafkaHeaders, String header, byte[] value) {
+		if (this.replaceOriginalHeaders || kafkaHeaders.lastHeader(header) == null) {
+			kafkaHeaders.add(header, value);
+		}
+	}
+
+	void addExceptionInfoHeaders(Headers kafkaHeaders, Exception exception,
+								boolean isKey) {
+		kafkaHeaders.add(new RecordHeader(isKey ? this.headerNames.exceptionInfo.keyExceptionFqcn
+				: this.headerNames.exceptionInfo.exceptionFqcn,
 				exception.getClass().getName().getBytes(StandardCharsets.UTF_8)));
 		String message = exception.getMessage();
 		if (message != null) {
 			kafkaHeaders.add(new RecordHeader(isKey
-						? KafkaHeaders.DLT_KEY_EXCEPTION_MESSAGE
-						: KafkaHeaders.DLT_EXCEPTION_MESSAGE,
+					? this.headerNames.exceptionInfo.keyExceptionMessage
+					: this.headerNames.exceptionInfo.exceptionMessage,
 					exception.getMessage().getBytes(StandardCharsets.UTF_8)));
 		}
 		kafkaHeaders.add(new RecordHeader(isKey
-						? KafkaHeaders.DLT_KEY_EXCEPTION_STACKTRACE
-						: KafkaHeaders.DLT_EXCEPTION_STACKTRACE,
+				? this.headerNames.exceptionInfo.keyExceptionStacktrace
+				: this.headerNames.exceptionInfo.exceptionStacktrace,
 				getStackTraceAsString(exception).getBytes(StandardCharsets.UTF_8)));
 	}
 
@@ -378,4 +521,327 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 		return stringWriter.getBuffer().toString();
 	}
 
+	/**
+	 * Override this if you want different header names to be used
+	 * in the sent record.
+	 * @return the header names.
+	 * @since 2.7
+	 */
+	protected HeaderNames getHeaderNames() {
+		return HeaderNames.Builder
+				.original()
+					.offsetHeader(KafkaHeaders.DLT_ORIGINAL_OFFSET)
+					.timestampHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP)
+					.timestampTypeHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE)
+					.topicHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC)
+					.partitionHeader(KafkaHeaders.DLT_ORIGINAL_PARTITION)
+				.exception()
+					.keyExceptionFqcn(KafkaHeaders.DLT_KEY_EXCEPTION_FQCN)
+					.exceptionFqcn(KafkaHeaders.DLT_EXCEPTION_FQCN)
+					.keyExceptionMessage(KafkaHeaders.DLT_KEY_EXCEPTION_MESSAGE)
+					.exceptionMessage(KafkaHeaders.DLT_EXCEPTION_MESSAGE)
+					.keyExceptionStacktrace(KafkaHeaders.DLT_KEY_EXCEPTION_STACKTRACE)
+					.exceptionStacktrace(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)
+				.build();
+	}
+
+	/**
+	 * Container class for the name of the headers that will
+	 * be added to the produced record.
+	 * @since 2.7
+	 */
+	public static class HeaderNames {
+
+		private final HeaderNames.Original original;
+		private final ExceptionInfo exceptionInfo;
+
+		HeaderNames(HeaderNames.Original original, ExceptionInfo exceptionInfo) {
+			this.original = original;
+			this.exceptionInfo = exceptionInfo;
+		}
+
+		static class Original {
+			private final String offsetHeader;
+			private final String timestampHeader;
+			private final String timestampTypeHeader;
+			private final String topicHeader;
+			private final String partitionHeader;
+
+			Original(String offsetHeader,
+					String timestampHeader,
+					String timestampTypeHeader,
+					String topicHeader,
+					String partitionHeader) {
+				this.offsetHeader = offsetHeader;
+				this.timestampHeader = timestampHeader;
+				this.timestampTypeHeader = timestampTypeHeader;
+				this.topicHeader = topicHeader;
+				this.partitionHeader = partitionHeader;
+			}
+		}
+
+		static class ExceptionInfo {
+
+			private final String keyExceptionFqcn;
+			private final String exceptionFqcn;
+			private final String keyExceptionMessage;
+			private final String exceptionMessage;
+			private final String keyExceptionStacktrace;
+			private final String exceptionStacktrace;
+
+			ExceptionInfo(String keyExceptionFqcn,
+						String exceptionFqcn,
+						String keyExceptionMessage,
+						String exceptionMessage,
+						String keyExceptionStacktrace,
+						String exceptionStacktrace) {
+				this.keyExceptionFqcn = keyExceptionFqcn;
+				this.exceptionFqcn = exceptionFqcn;
+				this.keyExceptionMessage = keyExceptionMessage;
+				this.exceptionMessage = exceptionMessage;
+				this.keyExceptionStacktrace = keyExceptionStacktrace;
+				this.exceptionStacktrace = exceptionStacktrace;
+			}
+		}
+
+
+		/**
+		 * Provides a convenient API for creating
+		 * {@link DeadLetterPublishingRecoverer.HeaderNames}.
+		 *
+		 * @author Tomaz Fernandes
+		 * @since 2.7
+		 * @see HeaderNames
+		 */
+		public static class Builder {
+
+			private final Original original = new Original();
+
+			private final ExceptionInfo exceptionInfo = new ExceptionInfo();
+
+			public static Builder.Original original() {
+				return new Builder().original;
+			}
+
+			/**
+			 * Headers for data relative to the original record.
+			 *
+			 * @author Tomaz Fernandes
+			 * @since 2.7
+			 */
+			public class Original {
+
+				private String offsetHeader;
+
+				private String timestampHeader;
+
+				private String timestampTypeHeader;
+
+				private String topicHeader;
+
+				private String partitionHeader;
+
+				/**
+				 * Sets the name of the header that will be used to store the offset
+				 * of the original record.
+				 * @param offsetHeader the offset header name.
+				 * @return the Original builder instance
+				 * @since 2.7
+				 */
+				public Builder.Original offsetHeader(String offsetHeader) {
+					this.offsetHeader = offsetHeader;
+					return this;
+				}
+
+				/**
+				 * Sets the name of the header that will be used to store the timestamp
+				 * of the original record.
+				 * @param timestampHeader the timestamp header name.
+				 * @return the Original builder instance
+				 * @since 2.7
+				 */
+				public Builder.Original timestampHeader(String timestampHeader) {
+					this.timestampHeader = timestampHeader;
+					return this;
+				}
+
+				/**
+				 * Sets the name of the header that will be used to store the timestampType
+				 * of the original record.
+				 * @param timestampTypeHeader the timestampType header name.
+				 * @return the Original builder instance
+				 * @since 2.7
+				 */
+				public Builder.Original timestampTypeHeader(String timestampTypeHeader) {
+					this.timestampTypeHeader = timestampTypeHeader;
+					return this;
+				}
+
+				/**
+				 * Sets the name of the header that will be used to store the topic
+				 * of the original record.
+				 * @param topicHeader the topic header name.
+				 * @return the Original builder instance
+				 * @since 2.7
+				 */
+				public Builder.Original topicHeader(String topicHeader) {
+					this.topicHeader = topicHeader;
+					return this;
+				}
+
+				/**
+				 * Sets the name of the header that will be used to store the partition
+				 * of the original record.
+				 * @param partitionHeader the partition header name.
+				 * @return the Original builder instance
+				 * @since 2.7
+				 */
+				public Builder.Original partitionHeader(String partitionHeader) {
+					this.partitionHeader = partitionHeader;
+					return this;
+				}
+
+				/**
+				 * Returns the exception builder.
+				 * @return the exception builder.
+				 * @since 2.7
+				 */
+				public ExceptionInfo exception() {
+					return Builder.this.exceptionInfo;
+				}
+
+				/**
+				 * Builds the Original header names, asserting that none of them is null.
+				 * @return the Original header names.
+				 * @since 2.7
+				 */
+				private DeadLetterPublishingRecoverer.HeaderNames.Original build() {
+					Assert.notNull(this.offsetHeader, "offsetHeader header cannot be null");
+					Assert.notNull(this.timestampHeader, "timestampHeader header cannot be null");
+					Assert.notNull(this.timestampTypeHeader, "timestampTypeHeader header cannot be null");
+					Assert.notNull(this.topicHeader, "topicHeader header cannot be null");
+					Assert.notNull(this.partitionHeader, "partitionHeader header cannot be null");
+					return new DeadLetterPublishingRecoverer.HeaderNames.Original(this.offsetHeader,
+							this.timestampHeader,
+							this.timestampTypeHeader,
+							this.topicHeader,
+							this.partitionHeader);
+				}
+			}
+
+			/**
+			 * Headers for data relative to the exception thrown.
+			 *
+			 * @author Tomaz Fernandes
+			 * @since 2.7
+			 */
+			public class ExceptionInfo {
+
+				private String keyExceptionFqcn;
+
+				private String exceptionFqcn;
+
+				private String keyExceptionMessage;
+
+				private String exceptionMessage;
+
+				private String keyExceptionStacktrace;
+
+				private String exceptionStacktrace;
+
+				/**
+				 * Sets the name of the header that will be used to store the keyExceptionFqcn
+				 * of the original record.
+				 * @param keyExceptionFqcn the keyExceptionFqcn header name.
+				 * @return the Exception builder instance
+				 * @since 2.7
+				 */
+				public ExceptionInfo keyExceptionFqcn(String keyExceptionFqcn) {
+					this.keyExceptionFqcn = keyExceptionFqcn;
+					return this;
+				}
+
+				/**
+				 * Sets the name of the header that will be used to store the exceptionFqcn
+				 * of the original record.
+				 * @param exceptionFqcn the exceptionFqcn header name.
+				 * @return the Exception builder instance
+				 * @since 2.7
+				 */
+				public ExceptionInfo exceptionFqcn(String exceptionFqcn) {
+					this.exceptionFqcn = exceptionFqcn;
+					return this;
+				}
+
+				/**
+				 * Sets the name of the header that will be used to store the keyExceptionMessage
+				 * of the original record.
+				 * @param keyExceptionMessage the keyExceptionMessage header name.
+				 * @return the Exception builder instance
+				 * @since 2.7
+				 */
+				public ExceptionInfo keyExceptionMessage(String keyExceptionMessage) {
+					this.keyExceptionMessage = keyExceptionMessage;
+					return this;
+				}
+
+				/**
+				 * Sets the name of the header that will be used to store the exceptionMessage
+				 * of the original record.
+				 * @param exceptionMessage the exceptionMessage header name.
+				 * @return the Exception builder instance
+				 * @since 2.7
+				 */
+				public ExceptionInfo exceptionMessage(String exceptionMessage) {
+					this.exceptionMessage = exceptionMessage;
+					return this;
+				}
+
+				/**
+				 * Sets the name of the header that will be used to store the
+				 * keyExceptionStacktrace of the original record.
+				 * @param keyExceptionStacktrace the keyExceptionStacktrace header name.
+				 * @return the Exception builder instance
+				 * @since 2.7
+				 */
+				public ExceptionInfo keyExceptionStacktrace(String keyExceptionStacktrace) {
+					this.keyExceptionStacktrace = keyExceptionStacktrace;
+					return this;
+				}
+
+				/**
+				 * Sets the name of the header that will be used to store the
+				 * exceptionStacktrace of the original record.
+				 * @param exceptionStacktrace the exceptionStacktrace header name.
+				 * @return the Exception builder instance
+				 * @since 2.7
+				 */
+				public ExceptionInfo exceptionStacktrace(String exceptionStacktrace) {
+					this.exceptionStacktrace = exceptionStacktrace;
+					return this;
+				}
+
+				/**
+				 * Builds the Header Names, asserting that none of them is null.
+				 * @return the HeaderNames instance.
+				 * @since 2.7
+				 */
+				public DeadLetterPublishingRecoverer.HeaderNames build() {
+					Assert.notNull(this.keyExceptionFqcn, "keyExceptionFqcn header cannot be null");
+					Assert.notNull(this.exceptionFqcn, "exceptionFqcn header cannot be null");
+					Assert.notNull(this.keyExceptionMessage, "keyExceptionMessage header cannot be null");
+					Assert.notNull(this.exceptionMessage, "exceptionMessage header cannot be null");
+					Assert.notNull(this.keyExceptionStacktrace, "keyExceptionStacktrace header cannot be null");
+					Assert.notNull(this.exceptionStacktrace, "exceptionStacktrace header cannot be null");
+					return new DeadLetterPublishingRecoverer.HeaderNames(Builder.this.original.build(),
+							new HeaderNames.ExceptionInfo(this.keyExceptionFqcn,
+									this.exceptionFqcn,
+									this.keyExceptionMessage,
+									this.exceptionMessage,
+									this.keyExceptionStacktrace,
+									this.exceptionStacktrace));
+				}
+			}
+		}
+	}
 }

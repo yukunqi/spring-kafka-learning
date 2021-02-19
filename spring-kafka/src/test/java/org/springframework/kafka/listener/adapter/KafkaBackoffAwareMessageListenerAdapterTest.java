@@ -17,7 +17,6 @@
 package org.springframework.kafka.listener.adapter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -45,6 +44,7 @@ import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
 import org.springframework.kafka.retrytopic.RetryTopicHeaders;
 import org.springframework.kafka.support.Acknowledgment;
 
+
 /**
  * @author Tomaz Fernandes
  * @since 2.7
@@ -52,53 +52,47 @@ import org.springframework.kafka.support.Acknowledgment;
 @ExtendWith(MockitoExtension.class)
 class KafkaBackoffAwareMessageListenerAdapterTest {
 
-	private final String testTopic = "testTopic";
-	private final int testPartition = 0;
+	@Mock
+	private AcknowledgingConsumerAwareMessageListener<Object, Object> delegate;
 
 	@Mock
-	AcknowledgingConsumerAwareMessageListener<Object, Object> delegate;
+	private Acknowledgment ack;
 
 	@Mock
-	Acknowledgment ack;
+	private ConsumerRecord<Object, Object> data;
 
 	@Mock
-	ConsumerRecord<Object, Object> data;
+	private Consumer<?, ?> consumer;
 
 	@Mock
-	Consumer<?, ?> consumer;
+	private Headers headers;
 
 	@Mock
-	Headers headers;
-
-	@Mock
-	Header header;
+	private Header header;
 
 	@Captor
-	ArgumentCaptor<Long> timestampCaptor;
+	private ArgumentCaptor<Long> timestampCaptor;
 
 	@Mock
-	KafkaConsumerBackoffManager kafkaConsumerBackoffManager;
-
-	Clock clock = Clock.fixed(Instant.EPOCH, ZoneId.systemDefault());
-
-	private long originalTimestamp = Instant.now(this.clock).toEpochMilli();
-
-	private byte[] originalTimestampBytes = BigInteger.valueOf(originalTimestamp).toByteArray();
+	private KafkaConsumerBackoffManager kafkaConsumerBackoffManager;
 
 	@Mock
-	KafkaConsumerBackoffManager.Context context;
+	private KafkaConsumerBackoffManager.Context context;
 
-	String listenerId = "testListenerId";
+	private final Clock clock = Clock.fixed(Instant.EPOCH, ZoneId.systemDefault());
 
-	@Test
-	void shouldThrowIfMethodWithNoAckInvoked() {
-		// setup
-		KafkaBackoffAwareMessageListenerAdapter<Object, Object> backoffAwareMessageListenerAdapter =
-				new KafkaBackoffAwareMessageListenerAdapter<>(delegate, kafkaConsumerBackoffManager, listenerId);
+	private final long originalTimestamp = Instant.now(this.clock).toEpochMilli();
 
-		// when - then
-		assertThrows(UnsupportedOperationException.class, () ->  backoffAwareMessageListenerAdapter.onMessage(data));
-	}
+	private final byte[] originalTimestampBytes = BigInteger.valueOf(originalTimestamp).toByteArray();
+
+	private final String testTopic = "testTopic";
+
+	private final int testPartition = 0;
+
+	private final TopicPartition topicPartition = new TopicPartition(testTopic, testPartition);
+
+	private final String listenerId = "testListenerId";
+
 
 	@Test
 	void shouldJustDelegateIfNoBackoffHeaderPresent() {
@@ -115,15 +109,9 @@ class KafkaBackoffAwareMessageListenerAdapterTest {
 		then(delegate)
 				.should(times(1))
 				.onMessage(data, ack, consumer);
-		then(ack)
-				.should(times(1))
-				.acknowledge();
 	}
 
-	@Test
-	void shouldCallBackoffManagerIfBackoffHeaderIsPresent() {
-
-		// setup
+	private void setupCallBackOffManager() {
 		given(data.headers()).willReturn(headers);
 		given(headers.lastHeader(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP))
 				.willReturn(header);
@@ -132,15 +120,88 @@ class KafkaBackoffAwareMessageListenerAdapterTest {
 				.willReturn(originalTimestampBytes);
 		given(data.topic()).willReturn(testTopic);
 		given(data.partition()).willReturn(testPartition);
-		TopicPartition topicPartition = new TopicPartition(testTopic, testPartition);
 
 		given(kafkaConsumerBackoffManager.createContext(originalTimestamp, listenerId, topicPartition))
-					.willReturn(context);
+				.willReturn(context);
+	}
+
+	@Test
+	void shouldCallBackoffManagerIfBackoffHeaderIsPresentAndFirstMethodIsCalled() {
+
+		// given
+		setupCallBackOffManager();
 
 		KafkaBackoffAwareMessageListenerAdapter<Object, Object> backoffAwareMessageListenerAdapter =
 				new KafkaBackoffAwareMessageListenerAdapter<>(delegate, kafkaConsumerBackoffManager, listenerId);
 
+		// when
+		backoffAwareMessageListenerAdapter.onMessage(data);
+
+		// then
+		then(kafkaConsumerBackoffManager).should(times(1))
+				.createContext(timestampCaptor.capture(), eq(listenerId), eq(topicPartition));
+		assertEquals(originalTimestamp, timestampCaptor.getValue());
+		then(kafkaConsumerBackoffManager).should(times(1))
+				.maybeBackoff(context);
+
+		then(delegate).should(times(1)).onMessage(data, null, null);
+	}
+
+	@Test
+	void shouldCallBackoffManagerIfBackoffHeaderIsPresentAndSecondMethodIsCalled() {
+
 		// given
+		setupCallBackOffManager();
+
+		KafkaBackoffAwareMessageListenerAdapter<Object, Object> backoffAwareMessageListenerAdapter =
+				new KafkaBackoffAwareMessageListenerAdapter<>(delegate, kafkaConsumerBackoffManager, listenerId);
+
+		// when
+		backoffAwareMessageListenerAdapter.onMessage(data, ack);
+
+		// then
+		then(kafkaConsumerBackoffManager).should(times(1))
+				.createContext(timestampCaptor.capture(), eq(listenerId), eq(topicPartition));
+		assertEquals(originalTimestamp, timestampCaptor.getValue());
+		then(kafkaConsumerBackoffManager).should(times(1))
+				.maybeBackoff(context);
+
+		then(delegate).should(times(1)).onMessage(data, ack, null);
+	}
+
+	@Test
+	void shouldCallBackoffManagerIfBackoffHeaderIsPresentAndThirdMethodIsCalled() {
+
+		// given
+		setupCallBackOffManager();
+
+		KafkaBackoffAwareMessageListenerAdapter<Object, Object> backoffAwareMessageListenerAdapter =
+				new KafkaBackoffAwareMessageListenerAdapter<>(delegate, kafkaConsumerBackoffManager, listenerId);
+
+		// when
+		backoffAwareMessageListenerAdapter.onMessage(data, consumer);
+
+		// then
+		then(kafkaConsumerBackoffManager).should(times(1))
+				.createContext(timestampCaptor.capture(), eq(listenerId), eq(topicPartition));
+		assertEquals(originalTimestamp, timestampCaptor.getValue());
+		then(kafkaConsumerBackoffManager).should(times(1))
+				.maybeBackoff(context);
+
+		then(delegate).should(times(1)).onMessage(data, null, consumer);
+	}
+
+	@Test
+	void shouldCallBackoffManagerIfBackoffHeaderIsPresentAndFourthMethodIsCalled() {
+
+		// setup
+		setupCallBackOffManager();
+
+
+		// given
+		KafkaBackoffAwareMessageListenerAdapter<Object, Object> backoffAwareMessageListenerAdapter =
+				new KafkaBackoffAwareMessageListenerAdapter<>(delegate, kafkaConsumerBackoffManager, listenerId);
+
 		backoffAwareMessageListenerAdapter.onMessage(data, ack, consumer);
 
 		// then
@@ -151,6 +212,6 @@ class KafkaBackoffAwareMessageListenerAdapterTest {
 				.maybeBackoff(context);
 
 		then(delegate).should(times(1)).onMessage(data, ack, consumer);
-		then(ack).should(times(1)).acknowledge();
 	}
+
 }

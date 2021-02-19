@@ -43,8 +43,8 @@ public class DefaultDestinationTopicProcessor implements DestinationTopicProcess
 	}
 
 	@Override
-	public void processDestinationProperties(Consumer<DestinationTopic.Properties> destinationPropertiesProcessor,
-											Context context) {
+	public void processDestinationTopicProperties(Consumer<DestinationTopic.Properties> destinationPropertiesProcessor,
+												Context context) {
 		context
 				.properties
 				.stream()

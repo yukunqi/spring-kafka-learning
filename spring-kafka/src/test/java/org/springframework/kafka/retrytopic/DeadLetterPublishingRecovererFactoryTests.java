@@ -34,6 +34,7 @@ import java.util.function.Consumer;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.record.TimestampType;
 import org.junit.jupiter.api.Test;
@@ -62,15 +63,15 @@ class DeadLetterPublishingRecovererFactoryTests {
 	@Mock
 	private DestinationTopicResolver destinationTopicResolver;
 
-	private String testTopic = "test-topic";
+	private final String testTopic = "test-topic";
 
-	private String testRetryTopic = "test-topic-retry-0";
+	private final String testRetryTopic = "test-topic-retry-0";
 
 	private final Object key = new Object();
 
 	private final Object value = new Object();
 
-	private ConsumerRecord<?, ?> consumerRecord = new ConsumerRecord<>(testTopic, 2, 0, key, value);
+	private final ConsumerRecord<?, ?> consumerRecord = new ConsumerRecord<>(testTopic, 2, 0, key, value);
 
 	@Mock
 	private DestinationTopic destinationTopic;
@@ -90,9 +91,11 @@ class DeadLetterPublishingRecovererFactoryTests {
 	@Mock
 	private Consumer<DeadLetterPublishingRecoverer> dlprCustomizer;
 
-	private long originalTimestamp = Instant.now(this.clock).toEpochMilli();
+	private final long originalTimestamp = Instant.now(this.clock).toEpochMilli();
 
-	private byte[] originalTimestampBytes = BigInteger.valueOf(originalTimestamp).toByteArray();
+	private final byte[] originalTimestampBytes = BigInteger.valueOf(originalTimestamp).toByteArray();
+
+	private final long nowTimestamp = Instant.now(this.clock).toEpochMilli();
 
 	@Test
 	void shouldSendMessage() {
@@ -103,18 +106,16 @@ class DeadLetterPublishingRecovererFactoryTests {
 		given(destinationTopic.getDestinationName()).willReturn(testRetryTopic);
 		given(destinationTopic.getDestinationPartitions()).willReturn(3);
 		given(destinationTopicResolver.resolveDestinationNextExecutionTimestamp(testTopic, 1, e, originalTimestamp))
-				.willReturn(getNowTimestamp());
+				.willReturn(this.nowTimestamp);
 		given(destinationTopicResolver.getCurrentTopic(testRetryTopic)).willReturn(destinationTopic);
 		willReturn(this.kafkaOperations2).given(destinationTopic).getKafkaOperations();
 		given(kafkaOperations2.send(any(ProducerRecord.class))).willReturn(listenableFuture);
 		this.consumerRecord.headers().add(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP, originalTimestampBytes);
 
-		DeadLetterPublishingRecovererFactory.Configuration configuration =
-				new DeadLetterPublishingRecovererFactory.Configuration(this.kafkaOperations);
 		DeadLetterPublishingRecovererFactory factory = new DeadLetterPublishingRecovererFactory(this.destinationTopicResolver);
 
 		// when
-		DeadLetterPublishingRecoverer deadLetterPublishingRecoverer = factory.create(configuration);
+		DeadLetterPublishingRecoverer deadLetterPublishingRecoverer = factory.create();
 		deadLetterPublishingRecoverer.accept(this.consumerRecord, e);
 
 		// then
@@ -131,7 +132,7 @@ class DeadLetterPublishingRecovererFactoryTests {
 		assertEquals(2, attemptsHeader.value()[0]);
 		Header timestampHeader = producerRecord.headers().lastHeader(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP);
 		assertNotNull(timestampHeader);
-		assertEquals(getNowTimestamp(), new BigInteger(timestampHeader.value()).longValue());
+		assertEquals(this.nowTimestamp, new BigInteger(timestampHeader.value()).longValue());
 	}
 
 	@Test
@@ -148,17 +149,15 @@ class DeadLetterPublishingRecovererFactoryTests {
 		given(destinationTopic.getDestinationName()).willReturn(testRetryTopic);
 		given(destinationTopic.getDestinationPartitions()).willReturn(1);
 		given(destinationTopicResolver.resolveDestinationNextExecutionTimestamp(testTopic, 1, e, this.originalTimestamp))
-				.willReturn(getNowTimestamp());
+				.willReturn(this.nowTimestamp);
 		given(destinationTopicResolver.getCurrentTopic(testRetryTopic)).willReturn(destinationTopic);
 		willReturn(this.kafkaOperations2).given(destinationTopic).getKafkaOperations();
 		given(kafkaOperations2.send(any(ProducerRecord.class))).willReturn(listenableFuture);
 
-		DeadLetterPublishingRecovererFactory.Configuration configuration =
-				new DeadLetterPublishingRecovererFactory.Configuration(this.kafkaOperations);
 		DeadLetterPublishingRecovererFactory factory = new DeadLetterPublishingRecovererFactory(this.destinationTopicResolver);
 
 		// when
-		DeadLetterPublishingRecoverer deadLetterPublishingRecoverer = factory.create(configuration);
+		DeadLetterPublishingRecoverer deadLetterPublishingRecoverer = factory.create();
 		deadLetterPublishingRecoverer.accept(consumerRecord, e);
 
 		// then
@@ -182,18 +181,16 @@ class DeadLetterPublishingRecovererFactoryTests {
 		given(destinationTopic.getDestinationName()).willReturn(testRetryTopic);
 		given(destinationTopic.getDestinationPartitions()).willReturn(1);
 		given(destinationTopicResolver.getCurrentTopic(testRetryTopic)).willReturn(destinationTopic);
-		long nextExecutionTimestamp = getNowTimestamp() + destinationTopic.getDestinationDelay();
+		long nextExecutionTimestamp = this.nowTimestamp + destinationTopic.getDestinationDelay();
 		given(destinationTopicResolver.resolveDestinationNextExecutionTimestamp(testTopic, 1, e, this.originalTimestamp))
 				.willReturn(nextExecutionTimestamp);
 		willReturn(this.kafkaOperations2).given(destinationTopic).getKafkaOperations();
 		given(kafkaOperations2.send(any(ProducerRecord.class))).willReturn(listenableFuture);
 
-		DeadLetterPublishingRecovererFactory.Configuration configuration =
-				new DeadLetterPublishingRecovererFactory.Configuration(this.kafkaOperations);
 		DeadLetterPublishingRecovererFactory factory = new DeadLetterPublishingRecovererFactory(this.destinationTopicResolver);
 
 		// when
-		DeadLetterPublishingRecoverer deadLetterPublishingRecoverer = factory.create(configuration);
+		DeadLetterPublishingRecoverer deadLetterPublishingRecoverer = factory.create();
 		deadLetterPublishingRecoverer.accept(consumerRecord, e);
 
 		// then
@@ -201,7 +198,7 @@ class DeadLetterPublishingRecovererFactoryTests {
 		ProducerRecord producerRecord = producerRecordCaptor.getValue();
 		Header originalTimestampHeader = producerRecord.headers().lastHeader(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP);
 		assertNotNull(originalTimestampHeader);
-		assertEquals(getNowTimestamp(),	new BigInteger(originalTimestampHeader.value()).longValue());
+		assertEquals(this.nowTimestamp,	new BigInteger(originalTimestampHeader.value()).longValue());
 	}
 
 	@Test
@@ -218,18 +215,16 @@ class DeadLetterPublishingRecovererFactoryTests {
 		given(destinationTopic.getDestinationName()).willReturn(testRetryTopic);
 		given(destinationTopic.getDestinationPartitions()).willReturn(1);
 		given(destinationTopicResolver.getCurrentTopic(testRetryTopic)).willReturn(destinationTopic);
-		long nextExecutionTimestamp = getNowTimestamp() + destinationTopic.getDestinationDelay();
+		long nextExecutionTimestamp = this.nowTimestamp + destinationTopic.getDestinationDelay();
 		given(destinationTopicResolver.resolveDestinationNextExecutionTimestamp(testTopic, 1, e, timestamp))
 				.willReturn(nextExecutionTimestamp);
 		willReturn(this.kafkaOperations2).given(destinationTopic).getKafkaOperations();
 		given(kafkaOperations2.send(any(ProducerRecord.class))).willReturn(listenableFuture);
 
-		DeadLetterPublishingRecovererFactory.Configuration configuration =
-				new DeadLetterPublishingRecovererFactory.Configuration(this.kafkaOperations);
 		DeadLetterPublishingRecovererFactory factory = new DeadLetterPublishingRecovererFactory(this.destinationTopicResolver);
 
 		// when
-		DeadLetterPublishingRecoverer deadLetterPublishingRecoverer = factory.create(configuration);
+		DeadLetterPublishingRecoverer deadLetterPublishingRecoverer = factory.create();
 		deadLetterPublishingRecoverer.accept(consumerRecord, e);
 
 		// then
@@ -246,16 +241,12 @@ class DeadLetterPublishingRecovererFactoryTests {
 		RuntimeException e = new RuntimeException();
 		given(destinationTopicResolver.resolveNextDestination(testTopic, 1, e, originalTimestamp)).willReturn(destinationTopic);
 		given(destinationTopic.isNoOpsTopic()).willReturn(true);
-		given(destinationTopicResolver.resolveDestinationNextExecutionTimestamp(testTopic, 1, e, originalTimestamp))
-				.willReturn(getNowTimestamp());
 		this.consumerRecord.headers().add(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP, originalTimestampBytes);
 
-		DeadLetterPublishingRecovererFactory.Configuration configuration =
-				new DeadLetterPublishingRecovererFactory.Configuration(this.kafkaOperations);
 		DeadLetterPublishingRecovererFactory factory = new DeadLetterPublishingRecovererFactory(this.destinationTopicResolver);
 
 		// when
-		DeadLetterPublishingRecoverer deadLetterPublishingRecoverer = factory.create(configuration);
+		DeadLetterPublishingRecoverer deadLetterPublishingRecoverer = factory.create();
 		deadLetterPublishingRecoverer.accept(this.consumerRecord, e);
 
 		// then
@@ -265,14 +256,11 @@ class DeadLetterPublishingRecovererFactoryTests {
 	@Test
 	void shouldThrowIfKafkaBackoffException() {
 		// setup
-		RuntimeException e = new KafkaBackoffException("KBEx", null, "test-listener-id", getNowTimestamp());
-
-		DeadLetterPublishingRecovererFactory.Configuration configuration =
-				new DeadLetterPublishingRecovererFactory.Configuration(this.kafkaOperations);
+		RuntimeException e = new KafkaBackoffException("KBEx", new TopicPartition("", 0), "test-listener-id", this.nowTimestamp);
 		DeadLetterPublishingRecovererFactory factory = new DeadLetterPublishingRecovererFactory(this.destinationTopicResolver);
 
 		// when
-		DeadLetterPublishingRecoverer deadLetterPublishingRecoverer = factory.create(configuration);
+		DeadLetterPublishingRecoverer deadLetterPublishingRecoverer = factory.create();
 		assertThrows(NestedRuntimeException.class, () -> deadLetterPublishingRecoverer.accept(this.consumerRecord, e));
 
 		// then
@@ -282,26 +270,14 @@ class DeadLetterPublishingRecovererFactoryTests {
 	@Test
 	void shouldCallDLPRCustomizer() {
 
-		// setup
-		DeadLetterPublishingRecovererFactory.Configuration configuration =
-				new DeadLetterPublishingRecovererFactory.Configuration(this.kafkaOperations);
+		// given
 		DeadLetterPublishingRecovererFactory factory = new DeadLetterPublishingRecovererFactory(this.destinationTopicResolver);
 		factory.setDeadLetterPublishingRecovererCustomizer(dlprCustomizer);
 
 		// when
-		DeadLetterPublishingRecoverer deadLetterPublishingRecoverer = factory.create(configuration);
+		DeadLetterPublishingRecoverer deadLetterPublishingRecoverer = factory.create();
 
 		// then
 		then(dlprCustomizer).should(times(1)).accept(deadLetterPublishingRecoverer);
-	}
-
-
-	@Test
-	void shouldThrowIfNoTemplateProvided() {
-		assertThrows(IllegalArgumentException.class, () -> new DeadLetterPublishingRecovererFactory.Configuration(null));
-	}
-
-	private long getNowTimestamp() {
-		return Instant.now(this.clock).toEpochMilli();
 	}
 }
