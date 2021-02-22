@@ -48,18 +48,6 @@ public class MultiMethodKafkaListenerEndpoint<K, V> extends MethodKafkaListenerE
 	private Validator validator;
 
 	/**
-	 * Construct an instance for the provided methods and bean with no default method.
-	 * @param methods the methods.
-	 * @param bean the bean.
-	 * @deprecated in favor of
-	 * {@link #MultiMethodKafkaListenerEndpoint(List, Method, Object)}.
-	 */
-	@Deprecated
-	public MultiMethodKafkaListenerEndpoint(List<Method> methods, Object bean) {
-		this(methods, null, bean);
-	}
-
-	/**
 	 * Construct an instance for the provided methods, default method and bean.
 	 * @param methods the methods.
 	 * @param defaultMethod the default method.

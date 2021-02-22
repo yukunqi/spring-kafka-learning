@@ -129,33 +129,13 @@ public class DelegatingInvocableHandler {
 	 * @param beanExpressionResolver the resolver.
 	 * @param beanExpressionContext the context.
 	 * @param beanFactory the bean factory.
-	 * @deprecated in favor of
-	 * {@link #DelegatingInvocableHandler(List, InvocableHandlerMethod, Object, BeanExpressionResolver, BeanExpressionContext, BeanFactory, Validator)}
-	 * @since 2.5.11
-	 */
-	@Deprecated
-	public DelegatingInvocableHandler(List<InvocableHandlerMethod> handlers,
-			@Nullable InvocableHandlerMethod defaultHandler,
-			Object bean, BeanExpressionResolver beanExpressionResolver, BeanExpressionContext beanExpressionContext,
-			@Nullable BeanFactory beanFactory) {
-
-		this(handlers, defaultHandler, bean, beanExpressionResolver, beanExpressionContext, beanFactory, null);
-	}
-
-	/**
-	 * Construct an instance with the supplied handlers for the bean.
-	 * @param handlers the handlers.
-	 * @param defaultHandler the default handler.
-	 * @param bean the bean.
-	 * @param beanExpressionResolver the resolver.
-	 * @param beanExpressionContext the context.
-	 * @param beanFactory the bean factory.
 	 * @param validator the validator.
 	 * @since 2.5.11
 	 */
 	public DelegatingInvocableHandler(List<InvocableHandlerMethod> handlers,
-			@Nullable InvocableHandlerMethod defaultHandler,
-			Object bean, BeanExpressionResolver beanExpressionResolver, BeanExpressionContext beanExpressionContext,
+			@Nullable InvocableHandlerMethod defaultHandler, Object bean,
+			@Nullable BeanExpressionResolver beanExpressionResolver,
+			@Nullable BeanExpressionContext beanExpressionContext,
 			@Nullable BeanFactory beanFactory, @Nullable Validator validator) {
 
 		this.handlers = new ArrayList<>();
@@ -172,7 +152,8 @@ public class DelegatingInvocableHandler {
 		this.validator = validator == null ? null : new PayloadValidator(validator);
 	}
 
-	private InvocableHandlerMethod wrapIfNecessary(InvocableHandlerMethod handler) {
+	@Nullable
+	private InvocableHandlerMethod wrapIfNecessary(@Nullable InvocableHandlerMethod handler) {
 		if (handler == null) {
 			return null;
 		}
@@ -285,7 +266,7 @@ public class DelegatingInvocableHandler {
 	}
 
 	private String resolve(String value) {
-		if (this.resolver != null) {
+		if (this.resolver != null && this.beanExpressionContext != null) {
 			Object newValue = this.resolver.evaluate(value, this.beanExpressionContext);
 			Assert.isInstanceOf(String.class, newValue, "Invalid @SendTo expression");
 			return (String) newValue;
@@ -295,6 +276,7 @@ public class DelegatingInvocableHandler {
 		}
 	}
 
+	@Nullable
 	protected InvocableHandlerMethod findHandlerForPayload(Class<? extends Object> payloadClass) {
 		InvocableHandlerMethod result = null;
 		for (InvocableHandlerMethod handler : this.handlers) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2020 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ import org.springframework.expression.BeanResolver;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.listener.adapter.BatchMessagingMessageListenerAdapter;
+import org.springframework.kafka.listener.adapter.BatchToRecordAdapter;
 import org.springframework.kafka.listener.adapter.HandlerAdapter;
 import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RecordMessagingMessageListenerAdapter;
@@ -191,8 +192,9 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 		if (isBatchListener()) {
 			BatchMessagingMessageListenerAdapter<K, V> messageListener = new BatchMessagingMessageListenerAdapter<K, V>(
 					this.bean, this.method, this.errorHandler);
-			if (getBatchToRecordAdapter() != null) {
-				messageListener.setBatchToRecordAdapter(getBatchToRecordAdapter());
+			BatchToRecordAdapter<K, V> batchToRecordAdapter = getBatchToRecordAdapter();
+			if (batchToRecordAdapter != null) {
+				messageListener.setBatchToRecordAdapter(batchToRecordAdapter);
 			}
 			if (messageConverter instanceof BatchMessageConverter) {
 				messageListener.setBatchMessageConverter((BatchMessageConverter) messageConverter);

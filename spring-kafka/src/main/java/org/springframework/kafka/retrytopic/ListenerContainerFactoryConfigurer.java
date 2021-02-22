@@ -124,7 +124,7 @@ public class ListenerContainerFactoryConfigurer {
 			container.getContainerProperties().setIdlePartitionEventInterval(DEFAULT_IDLE_PARTITION_EVENT_INTERVAL);
 		}
 		container.setupMessageListener(new KafkaBackoffAwareMessageListenerAdapter<>(listener,
-				this.kafkaConsumerBackoffManager, container.getListenerId()));
+				this.kafkaConsumerBackoffManager, container.getListenerId())); // NOSONAR
 		this.containerCustomizer.accept(container);
 	}
 

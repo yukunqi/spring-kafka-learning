@@ -390,7 +390,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		return replyTo;
 	}
 
-	private String evaluateTopic(Object request, Object source, Object result, Expression sendTo) {
+	@Nullable
+	private String evaluateTopic(Object request, Object source, Object result, @Nullable Expression sendTo) {
 		if (sendTo instanceof LiteralExpression) {
 			return sendTo.getValue(String.class);
 		}

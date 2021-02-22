@@ -99,7 +99,7 @@ public class RetryingMessageListenerAdapter<K, V>
 	 * @since 2.1.3
 	 */
 	public RetryingMessageListenerAdapter(MessageListener<K, V> messageListener, RetryTemplate retryTemplate,
-			RecoveryCallback<? extends Object> recoveryCallback, boolean stateful) {
+			@Nullable RecoveryCallback<? extends Object> recoveryCallback, boolean stateful) {
 
 		super(messageListener, retryTemplate, recoveryCallback);
 		Assert.notNull(messageListener, "'messageListener' cannot be null");
@@ -107,8 +107,9 @@ public class RetryingMessageListenerAdapter<K, V>
 	}
 
 	@Override
-	public void onMessage(final ConsumerRecord<K, V> record, final Acknowledgment acknowledgment,
+	public void onMessage(final ConsumerRecord<K, V> record, @Nullable final Acknowledgment acknowledgment,
 			final Consumer<?, ?> consumer) {
+
 		RetryState retryState = null;
 		if (this.stateful) {
 			retryState = new DefaultRetryState(record.topic() + "-" + record.partition() + "-" + record.offset());

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2020 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,10 +30,12 @@ import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.converter.BatchMessageConverter;
 import org.springframework.kafka.support.converter.BatchMessagingMessageConverter;
+import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.GenericMessage;
 import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.util.Assert;
 
 
 /**
@@ -92,9 +94,11 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 	 * @param messageConverter the converter.
 	 */
 	public void setBatchMessageConverter(BatchMessageConverter messageConverter) {
+		Assert.notNull(messageConverter, "'messageConverter' cannot be null");
 		this.batchMessageConverter = messageConverter;
-		if (messageConverter.getRecordMessageConverter() != null) {
-			setMessageConverter(messageConverter.getRecordMessageConverter());
+		RecordMessageConverter recordMessageConverter = messageConverter.getRecordMessageConverter();
+		if (recordMessageConverter != null) {
+			setMessageConverter(recordMessageConverter);
 		}
 	}
 
@@ -123,7 +127,8 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 	}
 
 	@Override
-	public void onMessage(ConsumerRecords<K, V> records, Acknowledgment acknowledgment, Consumer<K, V> consumer) {
+	public void onMessage(ConsumerRecords<K, V> records, @Nullable Acknowledgment acknowledgment,
+			Consumer<K, V> consumer) {
 		invoke(records, acknowledgment, consumer, NULL_MESSAGE);
 	}
 

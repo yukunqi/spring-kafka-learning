@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2019 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,11 +33,19 @@ public class HandlerAdapter {
 
 	private final DelegatingInvocableHandler delegatingHandler;
 
+	/**
+	 * Construct an instance with the provided method.
+	 * @param invokerHandlerMethod the method.
+	 */
 	public HandlerAdapter(InvocableHandlerMethod invokerHandlerMethod) {
 		this.invokerHandlerMethod = invokerHandlerMethod;
 		this.delegatingHandler = null;
 	}
 
+	/**
+	 * Construct an instance with the provided delegating handler.
+	 * @param delegatingHandler the handler.
+	 */
 	public HandlerAdapter(DelegatingInvocableHandler delegatingHandler) {
 		this.invokerHandlerMethod = null;
 		this.delegatingHandler = delegatingHandler;
@@ -45,7 +53,7 @@ public class HandlerAdapter {
 
 	public Object invoke(Message<?> message, Object... providedArgs) throws Exception { //NOSONAR
 		if (this.invokerHandlerMethod != null) {
-			return this.invokerHandlerMethod.invoke(message, providedArgs);
+			return this.invokerHandlerMethod.invoke(message, providedArgs); // NOSONAR
 		}
 		else if (this.delegatingHandler.hasDefaultHandler()) {
 			// Needed to avoid returning raw Message which matches Object
