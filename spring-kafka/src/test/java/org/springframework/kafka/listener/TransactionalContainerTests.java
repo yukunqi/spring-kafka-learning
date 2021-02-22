@@ -88,7 +88,6 @@ import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
 import org.springframework.kafka.listener.ContainerProperties.EOSMode;
-import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.TopicPartitionOffset;
@@ -240,24 +239,13 @@ public class TransactionalContainerTests {
 		given(consumer.groupMetadata()).willReturn(consumerGroupMetadata);
 		final KafkaTemplate template = new KafkaTemplate(pf);
 		if (AckMode.MANUAL_IMMEDIATE.equals(ackMode)) {
-			class AckListener implements AcknowledgingMessageListener {
-				// not a lambda https://bugs.openjdk.java.net/browse/JDK-8074381
-
-				@Override
-				public void onMessage(ConsumerRecord data, Acknowledgment acknowledgment) {
-					template.send("bar", "baz");
-					if (handleError) {
-						throw new RuntimeException("fail");
-					}
-					acknowledgment.acknowledge();
+			props.setMessageListener((AcknowledgingMessageListener<Object, Object>) (data, acknowledgment) -> {
+				template.send("bar", "baz");
+				if (handleError) {
+					throw new RuntimeException("fail");
 				}
-
-				@Override
-				public void onMessage(Object data) {
-				}
-
-			}
-			props.setMessageListener(new AckListener());
+				acknowledgment.acknowledge();
+			});
 		}
 		else {
 			props.setMessageListener((MessageListener) m -> {

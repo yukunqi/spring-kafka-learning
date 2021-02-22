@@ -2991,20 +2991,8 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setClientId("clientId");
 		containerProps.setIdleEventInterval(100L);
 		AtomicReference<Acknowledgment> acknowledgment = new AtomicReference<>();
-		class AckListener implements AcknowledgingMessageListener {
-			// not a lambda https://bugs.openjdk.java.net/browse/JDK-8074381
-
-			@Override
-			public void onMessage(ConsumerRecord data, Acknowledgment ack) {
-				acknowledgment.set(ack);
-			}
-
-			@Override
-			public void onMessage(Object data) {
-			}
-
-		}
-		containerProps.setMessageListener(new AckListener());
+		containerProps.setMessageListener(
+				(AcknowledgingMessageListener<Object, Object>) (rec, ack) -> acknowledgment.set(ack));
 		containerProps.setConsumerRebalanceListener(new ConsumerAwareRebalanceListener() {
 
 			@Override
