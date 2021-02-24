@@ -53,6 +53,11 @@ public class MessagingTransformer<K, V, R> implements Transformer<K, V, KeyValue
 
 	private ProcessorContext processorContext;
 
+	/**
+	 * Construct an instance with the provided function and converter.
+	 * @param function the function.
+	 * @param converter the converter.
+	 */
 	public MessagingTransformer(MessagingFunction function, MessagingMessageConverter converter) {
 		Assert.notNull(function, "'function' cannot be null");
 		Assert.notNull(converter, "'converter' cannot be null");
