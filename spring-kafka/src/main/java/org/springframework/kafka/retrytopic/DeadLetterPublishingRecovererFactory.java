@@ -53,7 +53,7 @@ public class DeadLetterPublishingRecovererFactory {
 
 	@SuppressWarnings("unchecked")
 	public DeadLetterPublishingRecoverer create() {
-		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer( // NOSONAR anon. class size
+		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(// NOSONAR anon. class size
 				this::resolveTemplate,
 				false, (this::resolveDestination)) {
 
