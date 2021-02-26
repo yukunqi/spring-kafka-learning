@@ -190,6 +190,10 @@ public class DestinationTopic {
 			return Objects.hash(this.delayMs, this.suffix, this.type, this.maxAttempts, this.numPartitions,
 					this.dltStrategy, this.kafkaOperations);
 		}
+
+		public boolean isMainEndpoint() {
+			return Type.MAIN.equals(this.type);
+		}
 	}
 
 	enum Type {

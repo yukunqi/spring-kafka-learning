@@ -119,6 +119,8 @@ class RetryTopicConfigurerTests {
 
 	private static final List<String> topics = Arrays.asList("topic1", "topic2");
 
+	private static final String defaultFactoryBeanName = "defaultTestFactory";
+
 	// Captors
 
 	@Captor
@@ -172,7 +174,8 @@ class RetryTopicConfigurerTests {
 
 		// when - then
 		assertThrows(IllegalArgumentException.class,
-				() -> configurer.processMainAndRetryListeners(endpointProcessor, multiMethodEndpoint, configuration, registrar, containerFactory));
+				() -> configurer.processMainAndRetryListeners(endpointProcessor, multiMethodEndpoint, configuration,
+						registrar, containerFactory, defaultFactoryBeanName));
 	}
 
 	@Test
@@ -191,6 +194,7 @@ class RetryTopicConfigurerTests {
 			endpoint.setGroupId("testGroupId");
 			endpoint.setClientIdPrefix("testClientPrefix");
 		};
+		String mainEndpointSuffix = "";
 		String firstRetrySuffix = "-retry-1000";
 		String secondRetrySuffix = "-retry-2000";
 		String dltSuffix = "-dlt";
@@ -203,40 +207,45 @@ class RetryTopicConfigurerTests {
 		given(topicCreationConfig.shouldCreateTopics()).willReturn(true);
 
 		given(configuration.forContainerFactoryResolver()).willReturn(factoryResolverConfig);
-		willReturn(containerFactory).given(containerFactoryResolver).resolveFactoryForMainEndpoint(any(KafkaListenerContainerFactory.class),
-				eq(factoryResolverConfig));
+		willReturn(containerFactory).given(containerFactoryResolver)
+				.resolveFactoryForMainEndpoint(any(KafkaListenerContainerFactory.class),
+				eq(defaultFactoryBeanName), eq(factoryResolverConfig));
+		given(mainDestinationProperties.suffix()).willReturn(mainEndpointSuffix);
 		given(firstRetryDestinationProperties.suffix()).willReturn(firstRetrySuffix);
 		given(secondRetryDestinationProperties.suffix()).willReturn(secondRetrySuffix);
 		given(dltDestinationProperties.suffix()).willReturn(dltSuffix);
+		given(mainDestinationProperties.isMainEndpoint()).willReturn(true);
+		given(mainEndpoint.getTopics()).willReturn(topics);
 
-		willReturn(containerFactory).given(containerFactoryResolver).resolveFactoryForRetryEndpoint(containerFactory, factoryResolverConfig);
+		willReturn(containerFactory).given(containerFactoryResolver).resolveFactoryForRetryEndpoint(containerFactory,
+				defaultFactoryBeanName, factoryResolverConfig);
 		willReturn(containerFactory).given(this.listenerContainerFactoryConfigurer).configure(containerFactory);
 
 		RetryTopicConfigurer configurer = new RetryTopicConfigurer(destinationTopicProcessor, containerFactoryResolver,
 				listenerContainerFactoryConfigurer, defaultListableBeanFactory);
 
 		// when
-		configurer.processMainAndRetryListeners(endpointProcessor, mainEndpoint, configuration, registrar, containerFactory);
+		configurer.processMainAndRetryListeners(endpointProcessor, mainEndpoint, configuration, registrar,
+				containerFactory, defaultFactoryBeanName);
 
 		// then
 
-		// Main topic processing
-		thenAssertEndpointProcessing(mainEndpoint);
-
-		// Retry and Dlt processing
 		then(destinationTopicProcessor).should(times(1))
 				.processDestinationTopicProperties(destinationPropertiesProcessorCaptor.capture(), contextCaptor.capture());
 		DestinationTopicProcessor.Context context = contextCaptor.getValue();
-
 		Consumer<DestinationTopic.Properties> destinationPropertiesConsumer = destinationPropertiesProcessorCaptor.getValue();
+
+		destinationPropertiesConsumer.accept(mainDestinationProperties);
+		assertTopicNames(mainDestinationProperties.suffix(), mainDestinationProperties, context, 0);
+
 		destinationPropertiesConsumer.accept(firstRetryDestinationProperties);
-		assertTopicNames(firstRetrySuffix, firstRetryDestinationProperties, context, 0);
+		assertTopicNames(firstRetrySuffix, firstRetryDestinationProperties, context, 2);
 
 		destinationPropertiesConsumer.accept(secondRetryDestinationProperties);
-		assertTopicNames(secondRetrySuffix, secondRetryDestinationProperties, context, 2);
+		assertTopicNames(secondRetrySuffix, secondRetryDestinationProperties, context, 4);
 
 		destinationPropertiesConsumer.accept(dltDestinationProperties);
-		assertTopicNames(dltSuffix, dltDestinationProperties, context, 4);
+		assertTopicNames(dltSuffix, dltDestinationProperties, context, 6);
 
 		then(registrar).should(times(4)).registerEndpoint(endpointCaptor.capture(), eq(this.containerFactory));
 		List<MethodKafkaListenerEndpoint<?, ?>> allRegisteredEndpoints = endpointCaptor.getAllValues();

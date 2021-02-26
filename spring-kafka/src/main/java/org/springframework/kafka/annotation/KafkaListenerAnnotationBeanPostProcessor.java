@@ -411,7 +411,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 				resolveContainerFactory(kafkaListener, resolve(kafkaListener.containerFactory()), beanName);
 
 		getRetryTopicConfigurer()
-				.processMainAndRetryListeners(endpointProcessor, endpoint, retryTopicConfiguration, this.registrar, factory);
+				.processMainAndRetryListeners(endpointProcessor, endpoint, retryTopicConfiguration,
+						this.registrar, factory, this.defaultContainerFactoryBeanName);
 
 		this.listenerScope.removeListener(beanRef);
 		return true;

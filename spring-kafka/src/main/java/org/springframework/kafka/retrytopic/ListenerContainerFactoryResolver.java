@@ -59,8 +59,7 @@ public class ListenerContainerFactoryResolver {
 		this.retryEndpointCache = new Cache();
 
 		this.mainEndpointResolvers = Arrays.asList(
-				(fromKafkaListenerAnnotation, configuration) -> this.mainEndpointCache
-						.fromCache(fromKafkaListenerAnnotation, configuration),
+				this.mainEndpointCache::fromCache,
 				(fromKafkaListenerAnnotation, configuration) -> fromKafkaListenerAnnotation,
 				(fromKLAnnotation, configuration) -> configuration.factoryFromRetryTopicConfiguration,
 				(fromKLAnnotation, configuration) -> fromBeanName(configuration.listenerContainerFactoryName),
@@ -68,8 +67,7 @@ public class ListenerContainerFactoryResolver {
 						fromBeanName(RetryTopicInternalBeanNames.DEFAULT_LISTENER_FACTORY_BEAN_NAME));
 
 		this.retryEndpointResolvers = Arrays.asList(
-				(fromKafkaListenerAnnotation, configuration) ->
-						this.retryEndpointCache.fromCache(fromKafkaListenerAnnotation, configuration),
+				this.retryEndpointCache::fromCache,
 				(fromKLAnnotation, configuration) -> configuration.factoryFromRetryTopicConfiguration,
 				(fromKLAnnotation, configuration) -> fromBeanName(configuration.listenerContainerFactoryName),
 				(fromKLAnnotation, configuration) -> fromKLAnnotation,
@@ -78,17 +76,36 @@ public class ListenerContainerFactoryResolver {
 	}
 
 	ConcurrentKafkaListenerContainerFactory<?, ?> resolveFactoryForMainEndpoint(
-			KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotation, Configuration config) {
+			@Nullable KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotationInstance,
+			String defaultContainerFactoryBeanName,
+			Configuration config) {
+		KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotation =
+				getFactoryFromKLA(factoryFromKafkaListenerAnnotationInstance, defaultContainerFactoryBeanName);
 		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory = resolveFactory(this.mainEndpointResolvers,
 				factoryFromKafkaListenerAnnotation, config);
 		return this.mainEndpointCache.addIfAbsent(factoryFromKafkaListenerAnnotation, config, resolvedFactory);
 	}
 
 	ConcurrentKafkaListenerContainerFactory<?, ?> resolveFactoryForRetryEndpoint(
-			KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotation, Configuration config) {
+			@Nullable KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotationInstance,
+			String defaultContainerFactoryBeanName,
+			Configuration config) {
+		KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotation =
+				getFactoryFromKLA(factoryFromKafkaListenerAnnotationInstance, defaultContainerFactoryBeanName);
 		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory = resolveFactory(this.retryEndpointResolvers,
 				factoryFromKafkaListenerAnnotation, config);
 		return this.retryEndpointCache.addIfAbsent(factoryFromKafkaListenerAnnotation, config, resolvedFactory);
+	}
+
+	@Nullable
+	private KafkaListenerContainerFactory<?> getFactoryFromKLA(KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotationInstance,
+															String defaultContainerFactoryBeanName) {
+		KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotation =
+				factoryFromKafkaListenerAnnotationInstance;
+		if (factoryFromKafkaListenerAnnotation == null) {
+			factoryFromKafkaListenerAnnotation = fromBeanName(defaultContainerFactoryBeanName);
+		}
+		return factoryFromKafkaListenerAnnotation;
 	}
 
 	private ConcurrentKafkaListenerContainerFactory<?, ?> resolveFactory(List<FactoryResolver> factoryResolvers,

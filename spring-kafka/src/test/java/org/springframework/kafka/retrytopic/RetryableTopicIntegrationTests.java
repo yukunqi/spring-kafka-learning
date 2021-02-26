@@ -146,7 +146,7 @@ public class RetryableTopicIntegrationTests {
 		@Autowired
 		CountDownLatchContainer container;
 
-		@KafkaListener(topics = FIRST_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
+		@KafkaListener(id = "firstTopicId", topics = FIRST_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
 		public void listen(String message) {
 			logger.debug("Message {} received in topic {}", message, FIRST_TOPIC);
 			container.countDownLatch1.countDown();
@@ -179,7 +179,7 @@ public class RetryableTopicIntegrationTests {
 				numPartitions = 3,
 				timeout = 2000,
 				include = MyRetryException.class, kafkaTemplate = "kafkaTemplate")
-		@KafkaListener(topics = THIRD_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
+		@KafkaListener(id = "thirdTopicId", topics = THIRD_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
 		public void listenWithAnnotation(String message) {
 			container.countDownLatch3.countDown();
 			logger.debug("========================== Message {} received in annotated topic {} ", message, THIRD_TOPIC);

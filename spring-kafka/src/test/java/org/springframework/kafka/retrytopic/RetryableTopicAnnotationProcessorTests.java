@@ -151,11 +151,33 @@ class RetryableTopicAnnotationProcessorTests {
 		// setup
 		given(this.beanFactory.getBean(RetryTopicInternalBeanNames.DEFAULT_KAFKA_TEMPLATE_BEAN_NAME, KafkaOperations.class))
 				.willThrow(NoSuchBeanDefinitionException.class);
+
+		given(this.beanFactory.getBean("kafkaTemplate", KafkaOperations.class))
+				.willThrow(NoSuchBeanDefinitionException.class);
+
 		RetryableTopicAnnotationProcessor processor = new RetryableTopicAnnotationProcessor(beanFactory);
 
 		// given - then
 		assertThrows(BeanInitializationException.class, () ->
 				processor.processAnnotation(topics, listenWithRetryAndDlt, annotationWithDlt, beanWithDlt));
+	}
+
+	@Test
+	void shouldTrySpringBootDefaultKafkaTemplate() {
+
+		// setup
+		given(this.beanFactory.getBean(RetryTopicInternalBeanNames.DEFAULT_KAFKA_TEMPLATE_BEAN_NAME, KafkaOperations.class))
+				.willThrow(NoSuchBeanDefinitionException.class);
+		given(this.beanFactory.getBean("kafkaTemplate", KafkaOperations.class))
+				.willReturn(kafkaOperationsFromDefaultName);
+		RetryableTopicAnnotationProcessor processor = new RetryableTopicAnnotationProcessor(beanFactory);
+
+		// given - then
+		RetryTopicConfiguration configuration = processor.processAnnotation(topics, listenWithRetry, annotationWithDlt,
+				bean);
+		DestinationTopic.Properties properties = configuration.getDestinationTopicProperties().get(0);
+		DestinationTopic destinationTopic = new DestinationTopic("", properties);
+		assertEquals(kafkaOperationsFromDefaultName, destinationTopic.getKafkaOperations());
 	}
 
 	@Test
@@ -167,7 +189,8 @@ class RetryableTopicAnnotationProcessorTests {
 		RetryableTopicAnnotationProcessor processor = new RetryableTopicAnnotationProcessor(beanFactory);
 
 		// given - then
-		RetryTopicConfiguration configuration = processor.processAnnotation(topics, listenWithRetry, annotation, bean);
+		RetryTopicConfiguration configuration = processor
+				.processAnnotation(topics, listenWithRetry, annotation, bean);
 		DestinationTopic.Properties properties = configuration.getDestinationTopicProperties().get(0);
 		DestinationTopic destinationTopic = new DestinationTopic("", properties);
 		assertEquals(kafkaOperationsFromTemplateName, destinationTopic.getKafkaOperations());

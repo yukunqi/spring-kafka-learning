@@ -58,16 +58,19 @@ class ListenerContainerFactoryResolverTests {
 
 	private final static String factoryName = "testListenerContainerFactory";
 	private final static String otherFactoryName = "otherTestListenerContainerFactory";
+	private final static String defaultFactoryBeanName = "defaultTestListenerContainerFactory";
 
 	@Test
 	void shouldResolveWithKLAFactoryForMainEndpoint() {
 
 		// setup
 		ListenerContainerFactoryResolver listenerContainerFactoryResolver = new ListenerContainerFactoryResolver(beanFactory);
-		ListenerContainerFactoryResolver.Configuration configuration = new ListenerContainerFactoryResolver.Configuration(factoryFromRetryTopicConfiguration, factoryName);
+		ListenerContainerFactoryResolver.Configuration configuration = new ListenerContainerFactoryResolver
+				.Configuration(factoryFromRetryTopicConfiguration, factoryName);
 
 		// given
-		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory = listenerContainerFactoryResolver.resolveFactoryForMainEndpoint(factoryFromKafkaListenerAnnotation, configuration);
+		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory = listenerContainerFactoryResolver
+				.resolveFactoryForMainEndpoint(factoryFromKafkaListenerAnnotation, defaultFactoryBeanName, configuration);
 
 		// then
 		assertEquals(factoryFromKafkaListenerAnnotation, resolvedFactory);
@@ -78,10 +81,12 @@ class ListenerContainerFactoryResolverTests {
 
 		// setup
 		ListenerContainerFactoryResolver listenerContainerFactoryResolver = new ListenerContainerFactoryResolver(beanFactory);
-		ListenerContainerFactoryResolver.Configuration configuration = new ListenerContainerFactoryResolver.Configuration(factoryFromRetryTopicConfiguration, factoryName);
+		ListenerContainerFactoryResolver.Configuration configuration = new ListenerContainerFactoryResolver
+				.Configuration(factoryFromRetryTopicConfiguration, factoryName);
 
 		// given
-		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory = listenerContainerFactoryResolver.resolveFactoryForMainEndpoint(null, configuration);
+		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory = listenerContainerFactoryResolver
+				.resolveFactoryForMainEndpoint(null, defaultFactoryBeanName, configuration);
 
 		// then
 		assertEquals(factoryFromRetryTopicConfiguration, resolvedFactory);
@@ -98,7 +103,26 @@ class ListenerContainerFactoryResolverTests {
 
 		// given
 		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory =
-				listenerContainerFactoryResolver.resolveFactoryForMainEndpoint(null, configuration);
+				listenerContainerFactoryResolver
+						.resolveFactoryForMainEndpoint(null, null, configuration);
+
+		// then
+		assertEquals(factoryFromBeanName, resolvedFactory);
+	}
+
+	@Test
+	void shouldResolveFromDefaultFactoryBeanNameForMainEndpoint() {
+
+		// setup
+		given(beanFactory.getBean(defaultFactoryBeanName, ConcurrentKafkaListenerContainerFactory.class)).willReturn(factoryFromBeanName);
+		ListenerContainerFactoryResolver listenerContainerFactoryResolver = new ListenerContainerFactoryResolver(beanFactory);
+		ListenerContainerFactoryResolver.Configuration configuration =
+				new ListenerContainerFactoryResolver.Configuration(null, null);
+
+		// given
+		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory =
+				listenerContainerFactoryResolver.resolveFactoryForMainEndpoint(null,
+						defaultFactoryBeanName, configuration);
 
 		// then
 		assertEquals(factoryFromBeanName, resolvedFactory);
@@ -116,7 +140,7 @@ class ListenerContainerFactoryResolverTests {
 
 		// given
 		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory =
-				listenerContainerFactoryResolver.resolveFactoryForMainEndpoint(null, configuration);
+				listenerContainerFactoryResolver.resolveFactoryForMainEndpoint(null, null, configuration);
 
 		// then
 		assertEquals(factoryFromBeanName, resolvedFactory);
@@ -134,7 +158,8 @@ class ListenerContainerFactoryResolverTests {
 
 		// then
 		assertThrows(IllegalArgumentException.class,
-				() -> listenerContainerFactoryResolver.resolveFactoryForMainEndpoint(null, configuration));
+				() -> listenerContainerFactoryResolver
+						.resolveFactoryForMainEndpoint(null, null, configuration));
 	}
 
 	@Test
@@ -142,10 +167,12 @@ class ListenerContainerFactoryResolverTests {
 
 		// setup
 		ListenerContainerFactoryResolver listenerContainerFactoryResolver = new ListenerContainerFactoryResolver(beanFactory);
-		ListenerContainerFactoryResolver.Configuration configuration = new ListenerContainerFactoryResolver.Configuration(factoryFromRetryTopicConfiguration, factoryName);
+		ListenerContainerFactoryResolver.Configuration configuration = new ListenerContainerFactoryResolver
+				.Configuration(factoryFromRetryTopicConfiguration, factoryName);
 
 		// given
-		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory = listenerContainerFactoryResolver.resolveFactoryForRetryEndpoint(factoryFromKafkaListenerAnnotation, configuration);
+		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory = listenerContainerFactoryResolver
+				.resolveFactoryForRetryEndpoint(factoryFromKafkaListenerAnnotation, null, configuration);
 
 		// then
 		assertEquals(factoryFromRetryTopicConfiguration, resolvedFactory);
@@ -157,10 +184,12 @@ class ListenerContainerFactoryResolverTests {
 		// setup
 		given(beanFactory.getBean(factoryName, ConcurrentKafkaListenerContainerFactory.class)).willReturn(factoryFromBeanName);
 		ListenerContainerFactoryResolver listenerContainerFactoryResolver = new ListenerContainerFactoryResolver(beanFactory);
-		ListenerContainerFactoryResolver.Configuration configuration = new ListenerContainerFactoryResolver.Configuration(null, factoryName);
+		ListenerContainerFactoryResolver.Configuration configuration = new ListenerContainerFactoryResolver
+				.Configuration(null, factoryName);
 
 		// given
-		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory = listenerContainerFactoryResolver.resolveFactoryForRetryEndpoint(factoryFromKafkaListenerAnnotation, configuration);
+		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory = listenerContainerFactoryResolver
+				.resolveFactoryForRetryEndpoint(factoryFromKafkaListenerAnnotation, null, configuration);
 
 		// then
 		assertEquals(factoryFromBeanName, resolvedFactory);
@@ -176,17 +205,36 @@ class ListenerContainerFactoryResolverTests {
 
 		// given
 		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory =
-				listenerContainerFactoryResolver.resolveFactoryForRetryEndpoint(factoryFromKafkaListenerAnnotation, configuration);
+				listenerContainerFactoryResolver.resolveFactoryForRetryEndpoint(factoryFromKafkaListenerAnnotation, null, configuration);
 
 		// then
 		assertEquals(factoryFromKafkaListenerAnnotation, resolvedFactory);
 	}
 
 	@Test
+	void shouldResolveWithDefaultKLAFactoryForRetryEndpoint() {
+
+		// setup
+		given(beanFactory.getBean(defaultFactoryBeanName, ConcurrentKafkaListenerContainerFactory.class))
+				.willReturn(factoryFromDefaultBeanName);
+		ListenerContainerFactoryResolver listenerContainerFactoryResolver = new ListenerContainerFactoryResolver(beanFactory);
+		ListenerContainerFactoryResolver.Configuration configuration =
+				new ListenerContainerFactoryResolver.Configuration(null, null);
+
+		// given
+		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory =
+				listenerContainerFactoryResolver.resolveFactoryForRetryEndpoint(null,
+						defaultFactoryBeanName, configuration);
+
+		// then
+		assertEquals(factoryFromDefaultBeanName, resolvedFactory);
+	}
+
+	@Test
 	void shouldResolveFromDefaultBeanNameForRetryEndpoint() {
 
 		// setup
-		given(beanFactory.getBean(RetryTopicInternalBeanNames.DEFAULT_LISTENER_FACTORY_BEAN_NAME,
+		given(beanFactory.getBean(defaultFactoryBeanName,
 				ConcurrentKafkaListenerContainerFactory.class)).willReturn(factoryFromBeanName);
 		ListenerContainerFactoryResolver listenerContainerFactoryResolver = new ListenerContainerFactoryResolver(beanFactory);
 		ListenerContainerFactoryResolver.Configuration configuration =
@@ -194,7 +242,8 @@ class ListenerContainerFactoryResolverTests {
 
 		// given
 		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory =
-				listenerContainerFactoryResolver.resolveFactoryForRetryEndpoint(null, configuration);
+				listenerContainerFactoryResolver.resolveFactoryForRetryEndpoint(null,
+						defaultFactoryBeanName, configuration);
 
 		// then
 		assertEquals(factoryFromBeanName, resolvedFactory);
@@ -212,7 +261,7 @@ class ListenerContainerFactoryResolverTests {
 
 		// then
 		assertThrows(IllegalArgumentException.class,
-				() -> listenerContainerFactoryResolver.resolveFactoryForRetryEndpoint(null, configuration));
+				() -> listenerContainerFactoryResolver.resolveFactoryForRetryEndpoint(null, defaultFactoryBeanName, configuration));
 	}
 
 	@Test
@@ -231,10 +280,12 @@ class ListenerContainerFactoryResolverTests {
 
 		// given
 		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory =
-				listenerContainerFactoryResolver.resolveFactoryForMainEndpoint(null, configuration);
+				listenerContainerFactoryResolver.resolveFactoryForMainEndpoint(null,
+						null, configuration);
 
 		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory2 =
-				listenerContainerFactoryResolver.resolveFactoryForMainEndpoint(null, configuration2);
+				listenerContainerFactoryResolver.resolveFactoryForMainEndpoint(null,
+						null, configuration2);
 
 		// then
 		assertEquals(factoryFromBeanName, resolvedFactory);
@@ -244,7 +295,7 @@ class ListenerContainerFactoryResolverTests {
 	}
 
 	@Test
-	void shouldGetFromCacheForRetryEndpont() {
+	void shouldGetFromCacheForRetryEndpoint() {
 
 		// setup
 		given(beanFactory.getBean(factoryName,
@@ -259,10 +310,12 @@ class ListenerContainerFactoryResolverTests {
 
 		// given
 		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory =
-				listenerContainerFactoryResolver.resolveFactoryForRetryEndpoint(null, configuration);
+				listenerContainerFactoryResolver.resolveFactoryForRetryEndpoint(null,
+						null, configuration);
 
 		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory2 =
-				listenerContainerFactoryResolver.resolveFactoryForRetryEndpoint(null, configuration2);
+				listenerContainerFactoryResolver.resolveFactoryForRetryEndpoint(null,
+						null, configuration2);
 
 		// then
 		assertEquals(factoryFromBeanName, resolvedFactory);
@@ -272,7 +325,7 @@ class ListenerContainerFactoryResolverTests {
 	}
 
 	@Test
-	void shouldNotGetFromCacheForMainEndpont() {
+	void shouldNotGetFromCacheForMainEndpoint() {
 
 		// setup
 		given(beanFactory.getBean(factoryName,
@@ -289,10 +342,12 @@ class ListenerContainerFactoryResolverTests {
 
 		// given
 		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory =
-				listenerContainerFactoryResolver.resolveFactoryForMainEndpoint(null, configuration);
+				listenerContainerFactoryResolver.resolveFactoryForMainEndpoint(null,
+						null, configuration);
 
 		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory2 =
-				listenerContainerFactoryResolver.resolveFactoryForMainEndpoint(null, configuration2);
+				listenerContainerFactoryResolver.resolveFactoryForMainEndpoint(null,
+						null, configuration2);
 
 		// then
 		assertEquals(factoryFromBeanName, resolvedFactory);
@@ -308,7 +363,8 @@ class ListenerContainerFactoryResolverTests {
 
 		// setup
 		ListenerContainerFactoryResolver.Cache cache = new ListenerContainerFactoryResolver.Cache();
-		ListenerContainerFactoryResolver.Configuration configuration = new ListenerContainerFactoryResolver.Configuration(factoryFromRetryTopicConfiguration, factoryName);
+		ListenerContainerFactoryResolver.Configuration configuration = new ListenerContainerFactoryResolver
+				.Configuration(factoryFromRetryTopicConfiguration, factoryName);
 
 		// given
 		cache.addIfAbsent(factoryFromKafkaListenerAnnotation, configuration, factoryFromDefaultBeanName);
@@ -322,8 +378,10 @@ class ListenerContainerFactoryResolverTests {
 
 		// setup
 		ListenerContainerFactoryResolver.Cache cache = new ListenerContainerFactoryResolver.Cache();
-		ListenerContainerFactoryResolver.Configuration configuration = new ListenerContainerFactoryResolver.Configuration(factoryFromRetryTopicConfiguration, factoryName);
-		ListenerContainerFactoryResolver.Configuration configuration2 = new ListenerContainerFactoryResolver.Configuration(factoryFromRetryTopicConfiguration, factoryName);
+		ListenerContainerFactoryResolver.Configuration configuration = new ListenerContainerFactoryResolver
+				.Configuration(factoryFromRetryTopicConfiguration, factoryName);
+		ListenerContainerFactoryResolver.Configuration configuration2 = new ListenerContainerFactoryResolver
+				.Configuration(factoryFromRetryTopicConfiguration, factoryName);
 
 		// given
 		cache.addIfAbsent(factoryFromKafkaListenerAnnotation, configuration, factoryFromDefaultBeanName);
@@ -337,8 +395,10 @@ class ListenerContainerFactoryResolverTests {
 
 		// setup
 		ListenerContainerFactoryResolver.Cache cache = new ListenerContainerFactoryResolver.Cache();
-		ListenerContainerFactoryResolver.Configuration configuration = new ListenerContainerFactoryResolver.Configuration(factoryFromRetryTopicConfiguration, factoryName);
-		ListenerContainerFactoryResolver.Configuration configuration2 = new ListenerContainerFactoryResolver.Configuration(factoryFromOtherBeanName, factoryName);
+		ListenerContainerFactoryResolver.Configuration configuration = new ListenerContainerFactoryResolver
+				.Configuration(factoryFromRetryTopicConfiguration, factoryName);
+		ListenerContainerFactoryResolver.Configuration configuration2 = new ListenerContainerFactoryResolver
+				.Configuration(factoryFromOtherBeanName, factoryName);
 
 		// given
 		cache.addIfAbsent(factoryFromKafkaListenerAnnotation, configuration, factoryFromDefaultBeanName);

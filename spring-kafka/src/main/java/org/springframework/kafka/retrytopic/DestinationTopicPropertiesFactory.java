@@ -88,8 +88,12 @@ public class DestinationTopicPropertiesFactory {
 	}
 
 	private List<DestinationTopic.Properties> createPropertiesForFixedDelaySingleTopic() {
-		return Arrays.asList(createMainTopicProperties(), createRetryProperties(1,
-				DestinationTopic.Type.SINGLE_TOPIC_RETRY, getShouldRetryOn()), createDltProperties());
+		return isNoDltStrategy()
+					? Arrays.asList(createMainTopicProperties(),
+							createRetryProperties(1, DestinationTopic.Type.SINGLE_TOPIC_RETRY, getShouldRetryOn()))
+					: Arrays.asList(createMainTopicProperties(),
+							createRetryProperties(1, DestinationTopic.Type.SINGLE_TOPIC_RETRY, getShouldRetryOn()),
+							createDltProperties());
 	}
 
 	private boolean isSingleTopicFixedDelay() {
@@ -101,16 +105,15 @@ public class DestinationTopicPropertiesFactory {
 	}
 
 	private List<DestinationTopic.Properties> createPropertiesForDefaultTopicStrategy() {
-		return IntStream.rangeClosed(0, DltStrategy.NO_DLT.equals(this.dltStrategy)
+		return IntStream.rangeClosed(0, isNoDltStrategy()
 							? this.maxAttempts - 1
 							: this.maxAttempts)
-				.mapToObj(index -> createRetryOrDltTopicSuffixes(index))
+				.mapToObj(this::createRetryOrDltTopicSuffixes)
 				.collect(Collectors.toList());
 	}
 
-	private DestinationTopic.Properties createMainTopicProperties() {
-		return new DestinationTopic.Properties(0, MAIN_TOPIC_SUFFIX, DestinationTopic.Type.MAIN, this.maxAttempts,
-				this.numPartitions, this.dltStrategy, this.kafkaOperations, getShouldRetryOn(), this.timeout);
+	private boolean isNoDltStrategy() {
+		return DltStrategy.NO_DLT.equals(this.dltStrategy);
 	}
 
 	private DestinationTopic.Properties createRetryOrDltTopicSuffixes(int index) {
@@ -118,9 +121,13 @@ public class DestinationTopicPropertiesFactory {
 		return index == 0
 				? createMainTopicProperties()
 				: index < this.maxAttempts
-				? createRetryProperties(index,
-				DestinationTopic.Type.RETRY, shouldRetryOn)
-				: createDltProperties();
+					? createRetryProperties(index, DestinationTopic.Type.RETRY, shouldRetryOn)
+					: createDltProperties();
+	}
+
+	private DestinationTopic.Properties createMainTopicProperties() {
+		return new DestinationTopic.Properties(0, MAIN_TOPIC_SUFFIX, DestinationTopic.Type.MAIN, this.maxAttempts,
+				this.numPartitions, this.dltStrategy, this.kafkaOperations, getShouldRetryOn(), this.timeout);
 	}
 
 	private DestinationTopic.Properties createDltProperties() {
