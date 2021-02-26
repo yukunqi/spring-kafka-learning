@@ -109,7 +109,7 @@ class RetryTopicConfigurerTests {
 	private RetryTopicConfiguration.TopicCreation topicCreationConfig;
 
 	@Mock
-	private RetryTopicConfigurer.EndpointHandlerMethod endpointHandlerMethod;
+	private EndpointHandlerMethod endpointHandlerMethod;
 
 	@Mock
 	private ConsumerRecord<?, ?> consumerRecordMessage;
@@ -316,7 +316,7 @@ class RetryTopicConfigurerTests {
 		// setup
 		NoOpsClass noOps = new NoOpsClass();
 		willReturn(noOps).given(beanFactory).getBean(NoOpsClass.class);
-		RetryTopicConfigurer.EndpointHandlerMethod handlerMethod =
+		EndpointHandlerMethod handlerMethod =
 				RetryTopicConfigurer.createHandlerMethodWith(NoOpsClass.class, noOpsMethodName);
 
 		// given
@@ -334,7 +334,7 @@ class RetryTopicConfigurerTests {
 		String beanName = NoOpsClass.class.getSimpleName() + "-handlerMethod";
 		given(defaultListableBeanFactory.getBean(beanName)).willReturn(new NoOpsClass());
 		willThrow(NoSuchBeanDefinitionException.class).given(defaultListableBeanFactory).getBean(NoOpsClass.class);
-		RetryTopicConfigurer.EndpointHandlerMethod handlerMethod =
+		EndpointHandlerMethod handlerMethod =
 				RetryTopicConfigurer.createHandlerMethodWith(NoOpsClass.class, noOpsMethodName);
 
 		// given
