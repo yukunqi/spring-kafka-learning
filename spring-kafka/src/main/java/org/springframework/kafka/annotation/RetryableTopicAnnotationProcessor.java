@@ -60,7 +60,7 @@ public class RetryableTopicAnnotationProcessor {
 		PARSER = new SpelExpressionParser();
 	}
 
-	private final static String DEFAULT_SPRING_BOOT_KAFKA_TEMPLATE_NAME = "kafkaTemplate";
+	private static final String DEFAULT_SPRING_BOOT_KAFKA_TEMPLATE_NAME = "kafkaTemplate";
 
 	public RetryableTopicAnnotationProcessor(BeanFactory beanFactory) {
 		this.beanFactory = beanFactory;
@@ -162,15 +162,19 @@ public class RetryableTopicAnnotationProcessor {
 			}
 		}
 		try {
-			return this.beanFactory.getBean(RetryTopicInternalBeanNames.DEFAULT_KAFKA_TEMPLATE_BEAN_NAME, KafkaOperations.class);
+			return this.beanFactory.getBean(RetryTopicInternalBeanNames.DEFAULT_KAFKA_TEMPLATE_BEAN_NAME,
+					KafkaOperations.class);
 		}
 		catch (NoSuchBeanDefinitionException ex) {
 			try {
 				return this.beanFactory.getBean(DEFAULT_SPRING_BOOT_KAFKA_TEMPLATE_NAME, KafkaOperations.class);
 			}
 			catch (NoSuchBeanDefinitionException exc) {
-				throw new BeanInitializationException("Could not find a KafkaTemplate to configure the retry topics.", exc);
+				exc.addSuppressed(ex);
+				throw new BeanInitializationException("Could not find a KafkaTemplate to configure the retry topics.",
+						exc); // NOSONAR (lost stack trace)
 			}
 		}
 	}
+
 }
