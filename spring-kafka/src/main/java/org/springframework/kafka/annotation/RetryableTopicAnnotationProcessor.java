@@ -171,8 +171,8 @@ public class RetryableTopicAnnotationProcessor {
 			}
 			catch (NoSuchBeanDefinitionException exc) {
 				exc.addSuppressed(ex);
-				throw new BeanInitializationException("Could not find a KafkaTemplate to configure the retry topics.",
-						exc); // NOSONAR (lost stack trace)
+				throw new BeanInitializationException("Could not find a KafkaTemplate to configure the retry topics.", // NOSONAR (lost stack trace)
+						exc);
 			}
 		}
 	}
