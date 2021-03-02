@@ -163,6 +163,13 @@
 					  value="Please use AssertJ imports."/>
 			<property name="ignoreComments" value="true"/>
 		</module>
+		<module name="RegexpSinglelineJava">
+			<property name="maximum" value="0"/>
+			<property name="format" value="org\.junit\.jupiter\.api\.Assertions\.assert"/>
+			<property name="message"
+					  value="Please use AssertJ imports."/>
+			<property name="ignoreComments" value="true"/>
+		</module>
 		<module name="Regexp">
 			<property name="format" value="[ \t]+$"/>
 			<property name="illegalPattern" value="true"/>
