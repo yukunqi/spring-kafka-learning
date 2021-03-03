@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2020 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,6 +57,7 @@ import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextStoppedEvent;
 import org.springframework.core.log.LogAccessor;
+import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.support.TransactionSupport;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
@@ -519,7 +520,20 @@ public class DefaultKafkaProducerFactory<K, V> implements ProducerFactory<K, V>,
 					this.clientIdPrefix + "-" + this.clientIdCounter.incrementAndGet());
 		}
 		newProducer = createRawProducer(newProducerConfigs);
-		newProducer.initTransactions();
+		try {
+			newProducer.initTransactions();
+		}
+		catch (RuntimeException ex) {
+			try {
+				newProducer.close(this.physicalCloseTimeout);
+			}
+			catch (RuntimeException ex2) {
+				KafkaException newEx = new KafkaException("initTransactions() failed and then close() failed", ex);
+				newEx.addSuppressed(ex2);
+				throw newEx; // NOSONAR - lost stack trace
+			}
+			throw new KafkaException("initTransactions() failed", ex);
+		}
 		return new CloseSafeProducer<>(newProducer, getCache(prefix), remover,
 				(String) newProducerConfigs.get(ProducerConfig.TRANSACTIONAL_ID_CONFIG), this.physicalCloseTimeout,
 				this.epoch);
