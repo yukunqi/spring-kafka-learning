@@ -58,6 +58,7 @@ import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextStoppedEvent;
 import org.springframework.core.log.LogAccessor;
+import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.support.TransactionSupport;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
@@ -716,7 +717,20 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		}
 		checkBootstrap(newProducerConfigs);
 		newProducer = createRawProducer(newProducerConfigs);
-		newProducer.initTransactions();
+		try {
+			newProducer.initTransactions();
+		}
+		catch (RuntimeException ex) {
+			try {
+				newProducer.close(this.physicalCloseTimeout);
+			}
+			catch (RuntimeException ex2) {
+				KafkaException newEx = new KafkaException("initTransactions() failed and then close() failed", ex);
+				newEx.addSuppressed(ex2);
+				throw newEx; // NOSONAR - lost stack trace
+			}
+			throw new KafkaException("initTransactions() failed", ex);
+		}
 		CloseSafeProducer<K, V> closeSafeProducer =
 				new CloseSafeProducer<>(newProducer, remover, prefix, this.physicalCloseTimeout, this.beanName,
 						this.epoch.get());
