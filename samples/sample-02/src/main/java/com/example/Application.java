@@ -29,10 +29,10 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.SeekToCurrentErrorHandler;
+import org.springframework.kafka.support.converter.ByteArrayJsonMessageConverter;
 import org.springframework.kafka.support.converter.DefaultJackson2JavaTypeMapper;
 import org.springframework.kafka.support.converter.Jackson2JavaTypeMapper.TypePrecedence;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
-import org.springframework.kafka.support.converter.StringJsonMessageConverter;
 import org.springframework.util.backoff.FixedBackOff;
 
 import com.common.Bar2;
@@ -63,7 +63,7 @@ public class Application {
 
 	@Bean
 	public RecordMessageConverter converter() {
-		StringJsonMessageConverter converter = new StringJsonMessageConverter();
+		ByteArrayJsonMessageConverter converter = new ByteArrayJsonMessageConverter();
 		DefaultJackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
 		typeMapper.setTypePrecedence(TypePrecedence.TYPE_ID);
 		typeMapper.addTrustedPackages("com.common");
