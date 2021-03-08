@@ -60,6 +60,16 @@ import org.springframework.util.StringUtils;
  */
 public class RetryableTopicAnnotationProcessor {
 
+	private static final String NULL = "null";
+
+	private static final String THE_OSQ = "The [";
+
+	private static final String RESOLVED_TO_OSQ = "Resolved to [";
+
+	private static final String CSQ = "]";
+
+	private static final String CSQ_FOR_OSQ = "] for [";
+
 	private final BeanFactory beanFactory;
 
 	private final BeanExpressionResolver resolver;
@@ -219,8 +229,8 @@ public class RetryableTopicAnnotationProcessor {
 			return (String) resolved;
 		}
 		else if (resolved != null) {
-			throw new IllegalStateException("The [" + attribute + "] must resolve to a String. "
-					+ "Resolved to [" + resolved.getClass() + "] for [" + value + "]");
+			throw new IllegalStateException(THE_OSQ + attribute + "] must resolve to a String. "
+					+ RESOLVED_TO_OSQ + resolved.getClass() + CSQ_FOR_OSQ + value + CSQ);
 		}
 		return null;
 	}
@@ -241,9 +251,9 @@ public class RetryableTopicAnnotationProcessor {
 		}
 		else if (resolved != null || required) {
 			throw new IllegalStateException(
-					"The [" + attribute + "] must resolve to an Number or a String that can be parsed as an Integer. "
-							+ "Resolved to [" + (resolved == null ? "null" : resolved.getClass())
-									+ "] for [" + value + "]");
+					THE_OSQ + attribute + "] must resolve to an Number or a String that can be parsed as an Integer. "
+							+ RESOLVED_TO_OSQ + (resolved == null ? NULL : resolved.getClass())
+									+ CSQ_FOR_OSQ + value + CSQ);
 		}
 		return result;
 	}
@@ -264,9 +274,9 @@ public class RetryableTopicAnnotationProcessor {
 		}
 		else if (resolved != null || required) {
 			throw new IllegalStateException(
-					"The [" + attribute + "] must resolve to an Number or a String that can be parsed as a Short. "
-							+ "Resolved to [" + (resolved == null ? "null" : resolved.getClass())
-									+ "] for [" + value + "]");
+					THE_OSQ + attribute + "] must resolve to an Number or a String that can be parsed as a Short. "
+							+ RESOLVED_TO_OSQ + (resolved == null ? NULL : resolved.getClass())
+									+ CSQ_FOR_OSQ + value + CSQ);
 		}
 		return result;
 	}
@@ -287,9 +297,9 @@ public class RetryableTopicAnnotationProcessor {
 		}
 		else if (resolved != null || required) {
 			throw new IllegalStateException(
-					"The [" + attribute + "] must resolve to an Number or a String that can be parsed as a Long. "
-							+ "Resolved to [" + (resolved == null ? "null" : resolved.getClass())
-									+ "] for [" + value + "]");
+					THE_OSQ + attribute + "] must resolve to an Number or a String that can be parsed as a Long. "
+							+ RESOLVED_TO_OSQ + (resolved == null ? NULL : resolved.getClass())
+									+ CSQ_FOR_OSQ + value + CSQ);
 		}
 		return result;
 	}
@@ -310,9 +320,9 @@ public class RetryableTopicAnnotationProcessor {
 		}
 		else if (resolved != null || required) {
 			throw new IllegalStateException(
-					"The [" + attribute + "] must resolve to an Number or a String that can be parsed as a Double. "
-							+ "Resolved to [" + (resolved == null ? "null" : resolved.getClass())
-									+ "] for [" + value + "]");
+					THE_OSQ + attribute + "] must resolve to an Number or a String that can be parsed as a Double. "
+							+ RESOLVED_TO_OSQ + (resolved == null ? NULL : resolved.getClass())
+									+ CSQ_FOR_OSQ + value + CSQ);
 		}
 		return result;
 	}
@@ -328,8 +338,8 @@ public class RetryableTopicAnnotationProcessor {
 		}
 		else if (resolved != null) {
 			throw new IllegalStateException(
-					"The [" + attribute + "] must resolve to a Boolean or a String that can be parsed as a Boolean. "
-							+ "Resolved to [" + resolved.getClass() + "] for [" + value + "]");
+					THE_OSQ + attribute + "] must resolve to a Boolean or a String that can be parsed as a Boolean. "
+							+ RESOLVED_TO_OSQ + resolved.getClass() + CSQ_FOR_OSQ + value + CSQ);
 		}
 		return result;
 	}

@@ -236,7 +236,7 @@ public final class SeekUtils {
 	 * @since 2.7
 	 */
 	public static boolean isBackoffException(Exception exception) {
-		return NestedRuntimeException.class.isAssignableFrom(exception.getClass())
+		return NestedRuntimeException.class.isAssignableFrom(exception.getClass()) // NOSONAR - unchecked cast
 				&& ((NestedRuntimeException) exception).contains(KafkaBackoffException.class);
 	}
 
