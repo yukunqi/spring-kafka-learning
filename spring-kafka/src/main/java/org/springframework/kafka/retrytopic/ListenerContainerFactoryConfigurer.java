@@ -58,7 +58,8 @@ public class ListenerContainerFactoryConfigurer {
 
 	private static final Set<ConcurrentKafkaListenerContainerFactory<?, ?>> CONFIGURED_FACTORIES_CACHE;
 
-	private static final LogAccessor logger = new LogAccessor(LogFactory.getLog(ListenerContainerFactoryConfigurer.class));
+	private static final LogAccessor LOGGER = new LogAccessor(
+			LogFactory.getLog(ListenerContainerFactoryConfigurer.class));
 
 	static {
 		CONFIGURED_FACTORIES_CACHE = new HashSet<>();
@@ -67,8 +68,6 @@ public class ListenerContainerFactoryConfigurer {
 	private static final int MIN_POLL_TIMEOUT_VALUE = 250;
 
 	private static final int MAX_POLL_TIMEOUT_VALUE = 5000;
-
-	private static final int IDLE_PARTITION_EVENT_INTERVAL_DIVISOR = 2;
 
 	private static final int POLL_TIMEOUT_DIVISOR = 4;
 
@@ -170,7 +169,7 @@ public class ListenerContainerFactoryConfigurer {
 		long pollTimeoutValue = getPollTimeoutValue(containerProperties, backOffValues);
 		long idlePartitionEventInterval = getIdlePartitionInterval(containerProperties, pollTimeoutValue);
 
-		logger.debug(() -> "pollTimeout and idlePartitionEventInterval for back off values "
+		LOGGER.debug(() -> "pollTimeout and idlePartitionEventInterval for back off values "
 				+ backOffValues + " will be set to " + pollTimeoutValue
 				+ " and " + idlePartitionEventInterval);
 
@@ -196,8 +195,7 @@ public class ListenerContainerFactoryConfigurer {
 				.min(Comparator.naturalOrder())
 				.orElseThrow(() -> new IllegalArgumentException("No back off values found!"));
 
-		long pollTimeoutValue = applyLimits(lowestBackOff / POLL_TIMEOUT_DIVISOR);
-		return pollTimeoutValue;
+		return applyLimits(lowestBackOff / POLL_TIMEOUT_DIVISOR);
 	}
 
 	private long applyLimits(long pollTimeoutValue) {

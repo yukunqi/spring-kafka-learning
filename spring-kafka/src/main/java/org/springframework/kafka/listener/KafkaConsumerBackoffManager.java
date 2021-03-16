@@ -52,7 +52,7 @@ import org.springframework.retry.backoff.Sleeper;
  */
 public class KafkaConsumerBackoffManager implements ApplicationListener<ListenerContainerPartitionIdleEvent> {
 
-	private static final LogAccessor logger = new LogAccessor(LogFactory.getLog(KafkaConsumerBackoffManager.class));
+	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(KafkaConsumerBackoffManager.class));
 	/**
 	 * Internal Back Off Clock Bean Name.
 	 */
@@ -108,7 +108,7 @@ public class KafkaConsumerBackoffManager implements ApplicationListener<Listener
 
 	@Override
 	public void onApplicationEvent(ListenerContainerPartitionIdleEvent partitionIdleEvent) {
-		logger.debug(() -> String.format("partitionIdleEvent received at %s. Partition: %s",
+		LOGGER.debug(() -> String.format("partitionIdleEvent received at %s. Partition: %s",
 				getCurrentMillisFromClock(), partitionIdleEvent.getTopicPartition()));
 
 		Context backOffContext = getBackOffContext(partitionIdleEvent.getTopicPartition());
@@ -135,14 +135,14 @@ public class KafkaConsumerBackoffManager implements ApplicationListener<Listener
 			resumePartition(context);
 		}
 		else {
-			logger.debug(() -> String.format("TopicPartition %s not due. DueTimestamp: %s Now: %s ",
+			LOGGER.debug(() -> String.format("TopicPartition %s not due. DueTimestamp: %s Now: %s ",
 					context.topicPartition, context.dueTimestamp, now));
 		}
 	}
 
 	private void resumePartition(Context context) {
 		MessageListenerContainer container = getListenerContainerFromContext(context);
-		logger.debug(() -> "Resuming partition at " + getCurrentMillisFromClock());
+		LOGGER.debug(() -> "Resuming partition at " + getCurrentMillisFromClock());
 		container.resumePartition(context.topicPartition);
 		removeBackoff(context.topicPartition);
 	}
@@ -167,19 +167,19 @@ public class KafkaConsumerBackoffManager implements ApplicationListener<Listener
 
 	private void doApplyTimingCorrection(Context context, long correctionAmount) {
 		try {
-			logger.debug(() -> String.format("Applying correction of %s millis at %s for TopicPartition %s",
+			LOGGER.debug(() -> String.format("Applying correction of %s millis at %s for TopicPartition %s",
 					correctionAmount, getCurrentMillisFromClock(), context.topicPartition));
 			this.sleeper.sleep(correctionAmount);
-			logger.debug(() -> "Waking up consumer for partition topic: " + context.topicPartition);
+			LOGGER.debug(() -> "Waking up consumer for partition topic: " + context.topicPartition);
 			context.consumerForTimingCorrection.wakeup();
 		}
 		catch (InterruptedException e) {
-			Thread.interrupted();
+			Thread.currentThread().interrupt();
 			throw new IllegalStateException("Interrupted waking up consumer while applying correction " +
 					"for TopicPartition " + context.topicPartition, e);
 		}
-		catch (Throwable e) {
-			logger.error(e, () -> "Error waking up consumer while applying correction " +
+		catch (Exception e) { // NOSONAR
+			LOGGER.error(e, () -> "Error waking up consumer while applying correction " +
 					"for TopicPartition " + context.topicPartition);
 		}
 	}
@@ -194,6 +194,7 @@ public class KafkaConsumerBackoffManager implements ApplicationListener<Listener
 		}
 	}
 
+	@Nullable
 	protected Context getBackOffContext(TopicPartition topicPartition) {
 		synchronized (this.backOffContexts) {
 			return this.backOffContexts.get(topicPartition);

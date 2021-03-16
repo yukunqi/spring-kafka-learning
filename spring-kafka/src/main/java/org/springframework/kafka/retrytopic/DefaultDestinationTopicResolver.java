@@ -39,15 +39,16 @@ import org.springframework.kafka.listener.TimestampedException;
  * and no more destinations can be added after that.
  *
  * @author Tomaz Fernandes
+ * @author Gary Russell
  * @since 2.7
  *
  */
 public class DefaultDestinationTopicResolver implements DestinationTopicResolver, ApplicationListener<ContextRefreshedEvent> {
 
-	private String NO_OPS_SUFFIX = "-noOps";
+	private static final String NO_OPS_SUFFIX = "-noOps";
 
-	private static final List<Class<? extends Throwable>> frameworkExceptions
-			= Arrays.asList(ListenerExecutionFailedException.class, TimestampedException.class);
+	private static final List<Class<? extends Throwable>> FRAMEWORK_EXCEPTIONS =
+			Arrays.asList(ListenerExecutionFailedException.class, TimestampedException.class);
 
 	private final Map<String, DestinationTopicHolder> sourceDestinationsHolderMap;
 
@@ -77,7 +78,7 @@ public class DefaultDestinationTopicResolver implements DestinationTopicResolver
 	}
 
 	private Throwable maybeUnwrapException(Throwable e) {
-		return frameworkExceptions
+		return FRAMEWORK_EXCEPTIONS
 				.stream()
 				.filter(frameworkException -> frameworkException.isAssignableFrom(e.getClass()))
 				.map(frameworkException -> maybeUnwrapException(e.getCause()))

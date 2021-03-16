@@ -1261,6 +1261,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			resumePartitionsIfNecessary();
 			debugRecords(records);
 
+			invokeIfHaveRecords(records);
+		}
+
+		private void invokeIfHaveRecords(@Nullable ConsumerRecords<K, V> records) {
 			if (records != null && records.count() > 0) {
 				savePositionsIfNeeded(records);
 				notIdle();
@@ -1382,6 +1386,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
+		@Nullable
 		private ConsumerRecords<K, V> doPoll() {
 			ConsumerRecords<K, V> records;
 			if (this.isBatchListener && this.subBatchPerPartition) {
@@ -1427,7 +1432,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private void debugRecords(ConsumerRecords<K, V> records) {
+		private void debugRecords(@Nullable ConsumerRecords<K, V> records) {
 			if (records != null) {
 				this.logger.debug(() -> "Received: " + records.count() + " records");
 				if (records.count() > 0) {

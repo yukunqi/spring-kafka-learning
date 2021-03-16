@@ -47,7 +47,7 @@ import org.springframework.kafka.support.KafkaHeaders;
  */
 public class DeadLetterPublishingRecovererFactory {
 
-	private static final LogAccessor logger = new LogAccessor(LogFactory.getLog(DeadLetterPublishingRecovererFactory.class));
+	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(DeadLetterPublishingRecovererFactory.class));
 
 	private final DestinationTopicResolver destinationTopicResolver;
 
@@ -109,7 +109,7 @@ public class DeadLetterPublishingRecovererFactory {
 		DestinationTopic nextDestination = this.destinationTopicResolver.resolveDestinationTopic(
 				cr.topic(), getAttempts(cr), e, getOriginalTimestampHeaderLong(cr));
 
-		logger.debug(() -> "Resolved topic: " + (nextDestination.isNoOpsTopic()
+		LOGGER.debug(() -> "Resolved topic: " + (nextDestination.isNoOpsTopic()
 				? "none"
 				: nextDestination.getDestinationName()));
 
@@ -133,17 +133,19 @@ public class DeadLetterPublishingRecovererFactory {
 		headers.add(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS,
 				BigInteger.valueOf(attempts + 1).toByteArray());
 		headers.add(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP,
-				BigInteger.valueOf(getNextExecutionTimestamp(consumerRecord, e, attempts, originalTimestampHeader))
+				BigInteger.valueOf(getNextExecutionTimestamp(consumerRecord, e, originalTimestampHeader))
 						.toByteArray());
 		return headers;
 	}
 
-	private long getNextExecutionTimestamp(ConsumerRecord<?, ?> consumerRecord, Exception e, int attempts, byte[] originalTimestampHeader) {
+	private long getNextExecutionTimestamp(ConsumerRecord<?, ?> consumerRecord, Exception e,
+			byte[] originalTimestampHeader) {
+
 		long originalTimestamp = new BigInteger(originalTimestampHeader).longValue();
 		long failureTimestamp = getFailureTimestamp(e);
 		long nextExecutionTimestamp =  failureTimestamp + this.destinationTopicResolver
 				.getDestinationTopicByName(consumerRecord.topic()).getDestinationDelay();
-		logger.debug(() -> String.format("FailureTimestamp: %s, Original timestamp: %s, nextExecutionTimestamp: %s",
+		LOGGER.debug(() -> String.format("FailureTimestamp: %s, Original timestamp: %s, nextExecutionTimestamp: %s",
 				failureTimestamp, originalTimestamp, nextExecutionTimestamp));
 		return nextExecutionTimestamp;
 	}
