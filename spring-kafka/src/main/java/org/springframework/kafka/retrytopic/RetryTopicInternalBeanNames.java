@@ -45,6 +45,8 @@ public abstract class RetryTopicInternalBeanNames {
 
 	static final String DEFAULT_LISTENER_FACTORY_BEAN_NAME = "retryTopicListenerContainerFactory";
 
+	static final String DEFAULT_SLEEPER_BEAN_NAME = "retryTopicSleeper";
+
 	/**
 	 * Default Kafka template bean name for publishing to retry topics.
 	 */

@@ -71,5 +71,4 @@ public interface DestinationTopicProcessor {
 			this.properties = properties;
 		}
 	}
-
 }

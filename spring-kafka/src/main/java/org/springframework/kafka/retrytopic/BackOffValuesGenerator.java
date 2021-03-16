@@ -28,6 +28,7 @@ import org.springframework.retry.backoff.FixedBackOffPolicy;
 import org.springframework.retry.backoff.NoBackOffPolicy;
 import org.springframework.retry.backoff.Sleeper;
 import org.springframework.retry.backoff.SleepingBackOffPolicy;
+import org.springframework.retry.backoff.UniformRandomBackOffPolicy;
 import org.springframework.retry.support.RetrySynchronizationManager;
 
 /**
@@ -77,6 +78,12 @@ public class BackOffValuesGenerator {
 	private List<Long> generateFromSleepingBackOffPolicy(int maxAttempts, BackOffPolicy providedBackOffPolicy) {
 		BackoffRetainerSleeper sleeper = new BackoffRetainerSleeper();
 		SleepingBackOffPolicy<?> retainingBackOffPolicy = ((SleepingBackOffPolicy<?>) providedBackOffPolicy).withSleeper(sleeper);
+
+		// UniformRandomBackOffPolicy loses the max value when a sleeper is set.
+		if (providedBackOffPolicy instanceof UniformRandomBackOffPolicy) {
+			((UniformRandomBackOffPolicy) retainingBackOffPolicy)
+					.setMaxBackOffPeriod(((UniformRandomBackOffPolicy) providedBackOffPolicy).getMaxBackOffPeriod());
+		}
 		BackOffContext backOffContext = retainingBackOffPolicy.start(RetrySynchronizationManager.getContext());
 		IntStream.range(0, maxAttempts)
 				.forEach(index -> retainingBackOffPolicy.backOff(backOffContext));

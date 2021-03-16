@@ -24,7 +24,6 @@ import java.util.stream.IntStream;
 
 import org.springframework.classify.BinaryExceptionClassifier;
 import org.springframework.kafka.core.KafkaOperations;
-import org.springframework.retry.backoff.BackOffPolicy;
 import org.springframework.util.StringUtils;
 
 /**
@@ -60,8 +59,8 @@ public class DestinationTopicPropertiesFactory {
 
 	private final long timeout;
 
-	public DestinationTopicPropertiesFactory(String retryTopicSuffix, String dltSuffix, int maxAttempts,
-			BackOffPolicy backOffPolicy, BinaryExceptionClassifier exceptionClassifier,
+	public DestinationTopicPropertiesFactory(String retryTopicSuffix, String dltSuffix, List<Long> backOffValues,
+			BinaryExceptionClassifier exceptionClassifier,
 			int numPartitions, KafkaOperations<?, ?> kafkaOperations,
 			FixedDelayStrategy fixedDelayStrategy,
 			DltStrategy dltStrategy,
@@ -76,7 +75,7 @@ public class DestinationTopicPropertiesFactory {
 		this.topicSuffixingStrategy = topicSuffixingStrategy;
 		this.timeout = timeout;
 		this.destinationTopicSuffixes = new DestinationTopicSuffixes(retryTopicSuffix, dltSuffix);
-		this.backOffValues = new BackOffValuesGenerator(maxAttempts, backOffPolicy).generateValues();
+		this.backOffValues = backOffValues;
 		// Max Attempts include the initial try.
 		this.maxAttempts = this.backOffValues.size() + 1;
 	}

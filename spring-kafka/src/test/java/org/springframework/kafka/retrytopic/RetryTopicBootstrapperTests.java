@@ -38,6 +38,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
+import org.springframework.retry.backoff.ThreadWaitSleeper;
 
 /**
  * @author Tomaz Fernandes
@@ -59,7 +60,7 @@ class RetryTopicBootstrapperTests {
 	private BeanFactory wrongBeanFactory;
 
 	@Mock
-	private DestinationTopicContainer destinationTopicContainer;
+	private DefaultDestinationTopicResolver defaultDestinationTopicResolver;
 
 	@Mock
 	private KafkaConsumerBackoffManager kafkaConsumerBackoffManager;
@@ -82,8 +83,8 @@ class RetryTopicBootstrapperTests {
 		// given
 		given(applicationContext.containsBeanDefinition(any(String.class))).willReturn(false);
 		given(this.applicationContext.getBean(
-				RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME, DestinationTopicContainer.class))
-				.willReturn(destinationTopicContainer);
+				RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME, DefaultDestinationTopicResolver.class))
+				.willReturn(defaultDestinationTopicResolver);
 		given(this.applicationContext.getBean(
 				RetryTopicInternalBeanNames.KAFKA_CONSUMER_BACKOFF_MANAGER, KafkaConsumerBackoffManager.class))
 				.willReturn(kafkaConsumerBackoffManager);
@@ -101,7 +102,8 @@ class RetryTopicBootstrapperTests {
 		then(registry).should(times(1)).registerBeanDefinition(RetryTopicInternalBeanNames.DEAD_LETTER_PUBLISHING_RECOVERER_PROVIDER_NAME, new RootBeanDefinition(DeadLetterPublishingRecovererFactory.class));
 		then(registry).should(times(1)).registerBeanDefinition(RetryTopicInternalBeanNames.RETRY_TOPIC_CONFIGURER, new RootBeanDefinition(RetryTopicConfigurer.class));
 		then(registry).should(times(1)).registerBeanDefinition(RetryTopicInternalBeanNames.KAFKA_CONSUMER_BACKOFF_MANAGER, new RootBeanDefinition(KafkaConsumerBackoffManager.class));
-		then(registry).should(times(1)).registerBeanDefinition(RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME, new RootBeanDefinition(DestinationTopicContainer.class));
+		then(registry).should(times(1)).registerBeanDefinition(RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME, new RootBeanDefinition(DefaultDestinationTopicResolver.class));
+		then(registry).should(times(1)).registerBeanDefinition(RetryTopicInternalBeanNames.DEFAULT_SLEEPER_BEAN_NAME, new RootBeanDefinition(ThreadWaitSleeper.class));
 	}
 
 	@Test
@@ -110,8 +112,8 @@ class RetryTopicBootstrapperTests {
 		// given
 		given(applicationContext.containsBeanDefinition(any(String.class))).willReturn(true);
 		given(this.applicationContext.getBean(
-				RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME, DestinationTopicContainer.class))
-				.willReturn(destinationTopicContainer);
+				RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME, DefaultDestinationTopicResolver.class))
+				.willReturn(defaultDestinationTopicResolver);
 		given(this.applicationContext.getBean(
 				RetryTopicInternalBeanNames.KAFKA_CONSUMER_BACKOFF_MANAGER, KafkaConsumerBackoffManager.class))
 				.willReturn(kafkaConsumerBackoffManager);
@@ -129,7 +131,8 @@ class RetryTopicBootstrapperTests {
 		then(registry).should(times(0)).registerBeanDefinition(RetryTopicInternalBeanNames.DEAD_LETTER_PUBLISHING_RECOVERER_PROVIDER_NAME, new RootBeanDefinition(DeadLetterPublishingRecovererFactory.class));
 		then(registry).should(times(0)).registerBeanDefinition(RetryTopicInternalBeanNames.RETRY_TOPIC_CONFIGURER, new RootBeanDefinition(RetryTopicConfigurer.class));
 		then(registry).should(times(0)).registerBeanDefinition(RetryTopicInternalBeanNames.KAFKA_CONSUMER_BACKOFF_MANAGER, new RootBeanDefinition(KafkaConsumerBackoffManager.class));
-		then(registry).should(times(0)).registerBeanDefinition(RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME, new RootBeanDefinition(DestinationTopicContainer.class));
+		then(registry).should(times(0)).registerBeanDefinition(RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME, new RootBeanDefinition(DefaultDestinationTopicResolver.class));
+		then(registry).should(times(0)).registerBeanDefinition(RetryTopicInternalBeanNames.DEFAULT_SLEEPER_BEAN_NAME, new RootBeanDefinition(ThreadWaitSleeper.class));
 	}
 
 	@Test
@@ -139,8 +142,8 @@ class RetryTopicBootstrapperTests {
 		given(applicationContext.containsBeanDefinition(any(String.class)))
 				.willReturn(false);
 		given(this.applicationContext.getBean(
-				RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME, DestinationTopicContainer.class))
-				.willReturn(destinationTopicContainer);
+				RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME, DefaultDestinationTopicResolver.class))
+				.willReturn(defaultDestinationTopicResolver);
 		given(this.applicationContext.getBean(
 				RetryTopicInternalBeanNames.KAFKA_CONSUMER_BACKOFF_MANAGER, KafkaConsumerBackoffManager.class))
 				.willReturn(kafkaConsumerBackoffManager);
@@ -163,8 +166,8 @@ class RetryTopicBootstrapperTests {
 		given(applicationContext.containsBeanDefinition(any(String.class)))
 				.willReturn(false);
 		given(this.applicationContext.getBean(
-				RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME, DestinationTopicContainer.class))
-				.willReturn(destinationTopicContainer);
+				RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME, DefaultDestinationTopicResolver.class))
+				.willReturn(defaultDestinationTopicResolver);
 		given(this.applicationContext.getBean(
 				RetryTopicInternalBeanNames.KAFKA_CONSUMER_BACKOFF_MANAGER, KafkaConsumerBackoffManager.class))
 				.willReturn(kafkaConsumerBackoffManager);
@@ -178,6 +181,6 @@ class RetryTopicBootstrapperTests {
 
 		// then
 		then(configurableApplicationContext).should(times(1)).addApplicationListener(kafkaConsumerBackoffManager);
-		then(configurableApplicationContext).should(times(1)).addApplicationListener(destinationTopicContainer);
+		then(configurableApplicationContext).should(times(1)).addApplicationListener(defaultDestinationTopicResolver);
 	}
 }

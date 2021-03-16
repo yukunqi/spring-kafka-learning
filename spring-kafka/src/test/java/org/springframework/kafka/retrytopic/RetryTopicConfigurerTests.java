@@ -114,6 +114,9 @@ class RetryTopicConfigurerTests {
 	@Mock
 	private ConsumerRecord<?, ?> consumerRecordMessage;
 
+	@Mock
+	private ListenerContainerFactoryConfigurer.Configuration lcfcConfiguration;
+
 	private static final Object objectMessage = new Object();
 
 	private static final List<String> topics = Arrays.asList("topic1", "topic2");
@@ -215,10 +218,14 @@ class RetryTopicConfigurerTests {
 		given(dltDestinationProperties.suffix()).willReturn(dltSuffix);
 		given(mainDestinationProperties.isMainEndpoint()).willReturn(true);
 		given(mainEndpoint.getTopics()).willReturn(topics);
+		given(configuration.forContainerFactoryConfigurer()).willReturn(lcfcConfiguration);
 
 		willReturn(containerFactory).given(containerFactoryResolver).resolveFactoryForRetryEndpoint(containerFactory,
 				defaultFactoryBeanName, factoryResolverConfig);
-		willReturn(containerFactory).given(this.listenerContainerFactoryConfigurer).configure(containerFactory);
+		willReturn(containerFactory).given(this.listenerContainerFactoryConfigurer).configure(containerFactory,
+				lcfcConfiguration);
+		willReturn(containerFactory).given(this.listenerContainerFactoryConfigurer).configureWithoutBackOff(containerFactory,
+				lcfcConfiguration);
 
 		RetryTopicConfigurer configurer = new RetryTopicConfigurer(destinationTopicProcessor, containerFactoryResolver,
 				listenerContainerFactoryConfigurer, defaultListableBeanFactory);

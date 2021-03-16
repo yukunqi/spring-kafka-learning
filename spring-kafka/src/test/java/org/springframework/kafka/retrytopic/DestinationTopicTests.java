@@ -214,7 +214,7 @@ public class DestinationTopicTests {
 					new DestinationTopic.Properties(secondRetryProps3, "-noOps", DestinationTopic.Type.NO_OPS));
 
 	protected List<DestinationTopic> allThirdDestinationTopics = Arrays
-			.asList(mainDestinationTopic2, firstRetryDestinationTopic2, secondRetryDestinationTopic2, dltDestinationTopic2);
+			.asList(mainDestinationTopic3, firstRetryDestinationTopic3, secondRetryDestinationTopic3);
 
 	// Classifiers
 

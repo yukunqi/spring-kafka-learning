@@ -16,46 +16,29 @@
 
 package org.springframework.kafka.retrytopic;
 
-import java.util.Map;
-
 /**
  *
- * Contains methods for resolving the destination to which a message that failed
- * to be processed should be forwarded to, based on the current topic, the attempt
- * and the thrown exception.
+ * Provides methods for resolving the destination to which a message that failed
+ * to be processed should be forwarded to.
  *
  * @author Tomaz Fernandes
  * @since 2.7
  *
  */
-public interface DestinationTopicResolver {
+public interface DestinationTopicResolver extends DestinationTopicContainer {
 
-	DestinationTopic resolveNextDestination(String topic, Integer attempt, Exception e, long originalTimestamp);
-	long resolveDestinationNextExecutionTimestamp(String topic, Integer attempt, Exception e, long originalTimestamp);
-	DestinationTopic getCurrentTopic(String topic);
-	void addDestinations(Map<String, DestinationTopicResolver.DestinationsHolder> sourceDestinationMapToAdd);
+	/**
+	 *
+	 * Resolves the destination topic for the failed message.
+	 *
+	 * @param topic the current topic for the message.
+	 * @param attempt the number of processing attempts already made for that message.
+	 * @param e the exception the message processing has thrown
+	 * @param originalTimestamp the time when the first attempt to process the message
+	 *                             threw an exception.
+	 * @return the {@link DestinationTopic} for the given parameters.
+	 *
+	 */
+	DestinationTopic resolveDestinationTopic(String topic, Integer attempt, Exception e, long originalTimestamp);
 
-	static DestinationsHolder holderFor(DestinationTopic sourceDestination, DestinationTopic nextDestination) {
-		return new DestinationsHolder(sourceDestination, nextDestination);
-	}
-
-	class DestinationsHolder {
-
-		private final DestinationTopic sourceDestination;
-
-		private final DestinationTopic nextDestination;
-
-		DestinationsHolder(DestinationTopic sourceDestination, DestinationTopic nextDestination) {
-			this.sourceDestination = sourceDestination;
-			this.nextDestination = nextDestination;
-		}
-
-		protected DestinationTopic getNextDestination() {
-			return this.nextDestination;
-		}
-
-		protected DestinationTopic getSourceDestination() {
-			return this.sourceDestination;
-		}
-	}
 }

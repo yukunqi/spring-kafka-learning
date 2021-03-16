@@ -351,20 +351,22 @@ public class RetryTopicConfigurer {
 	private ConcurrentKafkaListenerContainerFactory<?, ?> resolveAndConfigureFactoryForMainEndpoint(
 			KafkaListenerContainerFactory<?> providedFactory,
 			String defaultFactoryBeanName, RetryTopicConfiguration configuration) {
-
+		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory = this.containerFactoryResolver
+				.resolveFactoryForMainEndpoint(providedFactory, defaultFactoryBeanName,
+						configuration.forContainerFactoryResolver());
 		return this.listenerContainerFactoryConfigurer
-				.configure(this.containerFactoryResolver.resolveFactoryForMainEndpoint(providedFactory,
-						defaultFactoryBeanName,
-						configuration.forContainerFactoryResolver()));
+				.configureWithoutBackOff(resolvedFactory, configuration.forContainerFactoryConfigurer());
 	}
 
-	private ConcurrentKafkaListenerContainerFactory<?, ?> resolveAndConfigureFactoryForRetryEndpoint(KafkaListenerContainerFactory<?> providedFactory,
-																									String defaultFactoryBeanName,
-																									RetryTopicConfiguration configuration) {
+	private ConcurrentKafkaListenerContainerFactory<?, ?> resolveAndConfigureFactoryForRetryEndpoint(
+			KafkaListenerContainerFactory<?> providedFactory,
+			String defaultFactoryBeanName,
+			RetryTopicConfiguration configuration) {
+		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory =
+				this.containerFactoryResolver.resolveFactoryForRetryEndpoint(providedFactory, defaultFactoryBeanName,
+				configuration.forContainerFactoryResolver());
 		return this.listenerContainerFactoryConfigurer
-				.configure(this.containerFactoryResolver.resolveFactoryForRetryEndpoint(providedFactory,
-						defaultFactoryBeanName,
-						configuration.forContainerFactoryResolver()));
+				.configure(resolvedFactory, configuration.forContainerFactoryConfigurer());
 	}
 
 	private void throwIfMultiMethodEndpoint(MethodKafkaListenerEndpoint<?, ?> mainEndpoint) {
@@ -389,7 +391,6 @@ public class RetryTopicConfigurer {
 	}
 
 	private interface EndpointCustomizer extends Function<MethodKafkaListenerEndpoint<?, ?>, Collection<TopicNamesHolder>> {
-
 		default Collection<TopicNamesHolder> customizeEndpointAndCollectTopics(MethodKafkaListenerEndpoint<?, ?> listenerEndpoint) {
 			return apply(listenerEndpoint);
 		}

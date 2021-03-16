@@ -23,6 +23,27 @@ IMPORTANT: You can set the `AckMode` mode you prefer, but `RECORD` is suggested.
 
 IMPORTANT: At this time this functionality doesn't support class level `@KafkaListener` annotations
 
+=== Back Off Delay Precision
+
+==== Overview and Guarantees
+
+All message processing and backing off is handled by the consumer thread, and, as such, delay precision is guaranteed on a best-effort basis.
+If one message's processing takes longer than the next message's back off period for that consumer, the next message's delay will be higher than expected.
+Also, for short delays (about 1s or less), the maintenance work the thread has to do, such as committing offsets, may delay the message processing execution.
+The precision can also be affected if the retry topic's consumer is handling more than one partition, because we rely on waking up the consumer from polling and having full pollTimeouts to make timing adjustments.
+
+That being said, for consumers handling a single partition the message's processing should happen under 100ms after it's exact due time for most situations.
+
+IMPORTANT: It is guaranteed that a message will never be processed before its due time.
+
+==== Tuning the Delay Precision
+
+The message's processing delay precision relies on two `ContainerProperties`: `ContainerProperties.pollTimeout` and `ContainerProperties.idlePartitionEventInterval`.
+Both properties will be automatically set in the retry topic and dlt's `ListenerContainerFactory` to one quarter of the smallest delay value for that topic, with a minimum value of 250ms and a maximum value of 5000ms.
+These values will only be set if the property has its default values - if you change either value yourself your change will not be overridden.
+This way you can tune the precision and performance for the retry topics if you need to.
+
+NOTE: You can have separate `ListenerContainerFactory` instances for the main and retry topics - this way you can have different settings to better suit your needs, such as having a higher polling timeout setting for the main topics and a lower one for the retry topics.
 
 === Configuration
 

@@ -42,16 +42,20 @@ public class RetryTopicConfiguration {
 
 	private final ListenerContainerFactoryResolver.Configuration factoryResolverConfig;
 
+	private final ListenerContainerFactoryConfigurer.Configuration factoryConfigurerConfig;
+
 	RetryTopicConfiguration(List<DestinationTopic.Properties> destinationTopicProperties,
-								EndpointHandlerMethod dltHandlerMethod,
-								TopicCreation kafkaTopicAutoCreationConfig,
-								AllowDenyCollectionManager<String> topicAllowListManager,
-								ListenerContainerFactoryResolver.Configuration factoryResolverConfig) {
+							EndpointHandlerMethod dltHandlerMethod,
+							TopicCreation kafkaTopicAutoCreationConfig,
+							AllowDenyCollectionManager<String> topicAllowListManager,
+							ListenerContainerFactoryResolver.Configuration factoryResolverConfig,
+							ListenerContainerFactoryConfigurer.Configuration factoryConfigurerConfig) {
 		this.destinationTopicProperties = destinationTopicProperties;
 		this.dltHandlerMethod = dltHandlerMethod;
 		this.kafkaTopicAutoCreationConfig = kafkaTopicAutoCreationConfig;
 		this.topicAllowListManager = topicAllowListManager;
 		this.factoryResolverConfig = factoryResolverConfig;
+		this.factoryConfigurerConfig = factoryConfigurerConfig;
 	}
 
 	public boolean hasConfigurationForTopics(String[] topics) {
@@ -64,6 +68,10 @@ public class RetryTopicConfiguration {
 
 	public ListenerContainerFactoryResolver.Configuration forContainerFactoryResolver() {
 		return this.factoryResolverConfig;
+	}
+
+	public ListenerContainerFactoryConfigurer.Configuration forContainerFactoryConfigurer() {
+		return this.factoryConfigurerConfig;
 	}
 
 	public EndpointHandlerMethod getDltHandlerMethod() {

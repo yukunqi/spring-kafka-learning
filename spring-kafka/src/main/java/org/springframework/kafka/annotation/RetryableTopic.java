@@ -174,7 +174,7 @@ public @interface RetryableTopic {
 	TopicSuffixingStrategy topicSuffixingStrategy() default TopicSuffixingStrategy.SUFFIX_WITH_DELAY_VALUE;
 
 	/**
-	 * Whether or not to redeliver to the DLT if delivery fails.
+	 * Whether or not create a DLT, and redeliver to the DLT if delivery fails or just give up.
 	 * @return the dlt strategy.
 	 */
 	DltStrategy dltStrategy() default DltStrategy.ALWAYS_RETRY_ON_ERROR;

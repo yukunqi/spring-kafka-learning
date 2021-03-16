@@ -25,6 +25,7 @@ import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
+import org.springframework.retry.backoff.ThreadWaitSleeper;
 
 /**
  *
@@ -77,7 +78,8 @@ public class RetryTopicBootstrapper {
 				DeadLetterPublishingRecovererFactory.class);
 		registerIfNotContains(RetryTopicInternalBeanNames.RETRY_TOPIC_CONFIGURER, RetryTopicConfigurer.class);
 		registerIfNotContains(RetryTopicInternalBeanNames.KAFKA_CONSUMER_BACKOFF_MANAGER, KafkaConsumerBackoffManager.class);
-		registerIfNotContains(RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME, DestinationTopicContainer.class);
+		registerIfNotContains(RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME, DefaultDestinationTopicResolver.class);
+		registerIfNotContains(RetryTopicInternalBeanNames.DEFAULT_SLEEPER_BEAN_NAME, ThreadWaitSleeper.class);
 
 	}
 
@@ -95,9 +97,9 @@ public class RetryTopicBootstrapper {
 	}
 
 	private void configureDestinationTopicContainer() {
-		DestinationTopicContainer destinationTopicContainer = this.applicationContext.getBean(
-				RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME, DestinationTopicContainer.class);
-		((ConfigurableApplicationContext) this.applicationContext).addApplicationListener(destinationTopicContainer);
+		DefaultDestinationTopicResolver defaultDestinationTopicResolver = this.applicationContext.getBean(
+				RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME, DefaultDestinationTopicResolver.class);
+		((ConfigurableApplicationContext) this.applicationContext).addApplicationListener(defaultDestinationTopicResolver);
 	}
 
 	private void registerIfNotContains(String beanName, Class<?> beanClass) {

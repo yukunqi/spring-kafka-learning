@@ -315,19 +315,28 @@ public class RetryTopicConfigurationBuilder {
 
 	// The templates are configured per ListenerContainerFactory. Only the first configured ones will be used.
 	public RetryTopicConfiguration create(KafkaOperations<?, ?> sendToTopicKafkaTemplate) {
-		ListenerContainerFactoryResolver.Configuration containerFactory =
+
+		ListenerContainerFactoryResolver.Configuration factoryResolverConfig =
 				new ListenerContainerFactoryResolver.Configuration(this.listenerContainerFactory,
 						this.listenerContainerFactoryName);
+
 		AllowDenyCollectionManager<String> allowListManager =
 				new AllowDenyCollectionManager<>(this.includeTopicNames, this.excludeTopicNames);
+
+		List<Long> backOffValues = new BackOffValuesGenerator(this.maxAttempts, this.backOffPolicy).generateValues();
+
+		ListenerContainerFactoryConfigurer.Configuration factoryConfigurerConfig =
+				new ListenerContainerFactoryConfigurer.Configuration(backOffValues);
+
 		List<DestinationTopic.Properties> destinationTopicProperties =
-				new DestinationTopicPropertiesFactory(this.retryTopicSuffix, this.dltSuffix, this.maxAttempts,
-						this.backOffPolicy, buildClassifier(), this.topicCreationConfiguration.getNumPartitions(),
+				new DestinationTopicPropertiesFactory(this.retryTopicSuffix, this.dltSuffix, backOffValues,
+						buildClassifier(), this.topicCreationConfiguration.getNumPartitions(),
 						sendToTopicKafkaTemplate, this.fixedDelayStrategy, this.dltStrategy,
 						this.topicSuffixingStrategy, this.timeout)
 						.createProperties();
 		return new RetryTopicConfiguration(destinationTopicProperties,
-				this.dltHandlerMethod, this.topicCreationConfiguration, allowListManager, containerFactory);
+				this.dltHandlerMethod, this.topicCreationConfiguration, allowListManager,
+				factoryResolverConfig, factoryConfigurerConfig);
 	}
 
 	private BinaryExceptionClassifier buildClassifier() {

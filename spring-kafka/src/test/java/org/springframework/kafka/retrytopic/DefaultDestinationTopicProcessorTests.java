@@ -18,10 +18,10 @@ package org.springframework.kafka.retrytopic;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.times;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
@@ -42,7 +42,7 @@ class DefaultDestinationTopicProcessorTests extends DestinationTopicTests {
 	private DestinationTopicResolver destinationTopicResolver;
 
 	@Captor
-	private ArgumentCaptor<Map<String, DestinationTopicResolver.DestinationsHolder>> destinationMapCaptor;
+	private ArgumentCaptor<List<DestinationTopic>> destinationTopicListCaptor;
 
 	private final DefaultDestinationTopicProcessor destinationTopicProcessor =
 			new DefaultDestinationTopicProcessor(destinationTopicResolver);
@@ -119,7 +119,7 @@ class DefaultDestinationTopicProcessorTests extends DestinationTopicTests {
 
 	@Test
 	void shouldCreateDestinationMapWhenProcessDestinations() {
-		// setup
+		// given
 		DefaultDestinationTopicProcessor destinationTopicProcessor =
 				new DefaultDestinationTopicProcessor(destinationTopicResolver);
 
@@ -132,46 +132,30 @@ class DefaultDestinationTopicProcessorTests extends DestinationTopicTests {
 		destinationTopicProcessor.processRegisteredDestinations(topic -> { }, context);
 
 		// then
-		then(destinationTopicResolver).should().addDestinations(destinationMapCaptor.capture());
-		Map<String, DestinationTopicResolver.DestinationsHolder> destinationMap = destinationMapCaptor.getValue();
+		then(destinationTopicResolver).should(times(3))
+				.addDestinationTopics(destinationTopicListCaptor.capture());
 
-		assertThat(destinationMap.size()).isEqualTo(11);
+		List<DestinationTopic> destinationList = destinationTopicListCaptor
+				.getAllValues()
+				.stream()
+				.flatMap(list -> list.stream())
+				.collect(Collectors.toList());
 
-		assertThat(destinationMap.containsKey(mainDestinationTopic.getDestinationName())).isTrue();
-		assertThat(destinationMap.get(mainDestinationTopic.getDestinationName()).getSourceDestination()).isEqualTo(mainDestinationTopic);
-		assertThat(destinationMap.get(mainDestinationTopic.getDestinationName()).getNextDestination()).isEqualTo(firstRetryDestinationTopic);
-		assertThat(destinationMap.containsKey(firstRetryDestinationTopic.getDestinationName())).isTrue();
-		assertThat(destinationMap.get(firstRetryDestinationTopic.getDestinationName()).getSourceDestination()).isEqualTo(firstRetryDestinationTopic);
-		assertThat(destinationMap.get(firstRetryDestinationTopic.getDestinationName()).getNextDestination()).isEqualTo(secondRetryDestinationTopic);
-		assertThat(destinationMap.containsKey(secondRetryDestinationTopic.getDestinationName())).isTrue();
-		assertThat(destinationMap.get(secondRetryDestinationTopic.getDestinationName()).getSourceDestination()).isEqualTo(secondRetryDestinationTopic);
-		assertThat(destinationMap.get(secondRetryDestinationTopic.getDestinationName()).getNextDestination()).isEqualTo(dltDestinationTopic);
-		assertThat(destinationMap.containsKey(dltDestinationTopic.getDestinationName())).isTrue();
-		assertThat(destinationMap.get(dltDestinationTopic.getDestinationName()).getSourceDestination()).isEqualTo(dltDestinationTopic);
-		assertThat(destinationMap.get(dltDestinationTopic.getDestinationName()).getNextDestination()).isEqualTo(noOpsDestinationTopic);
+		assertThat(destinationList.size()).isEqualTo(11);
 
-		assertThat(destinationMap.containsKey(mainDestinationTopic2.getDestinationName())).isTrue();
-		assertThat(destinationMap.get(mainDestinationTopic2.getDestinationName()).getSourceDestination()).isEqualTo(mainDestinationTopic2);
-		assertThat(destinationMap.get(mainDestinationTopic2.getDestinationName()).getNextDestination()).isEqualTo(firstRetryDestinationTopic2);
-		assertThat(destinationMap.containsKey(firstRetryDestinationTopic2.getDestinationName())).isTrue();
-		assertThat(destinationMap.get(firstRetryDestinationTopic2.getDestinationName()).getSourceDestination()).isEqualTo(firstRetryDestinationTopic2);
-		assertThat(destinationMap.get(firstRetryDestinationTopic2.getDestinationName()).getNextDestination()).isEqualTo(secondRetryDestinationTopic2);
-		assertThat(destinationMap.containsKey(secondRetryDestinationTopic2.getDestinationName())).isTrue();
-		assertThat(destinationMap.get(secondRetryDestinationTopic2.getDestinationName()).getSourceDestination()).isEqualTo(secondRetryDestinationTopic2);
-		assertThat(destinationMap.get(secondRetryDestinationTopic2.getDestinationName()).getNextDestination()).isEqualTo(dltDestinationTopic2);
-		assertThat(destinationMap.containsKey(dltDestinationTopic2.getDestinationName())).isTrue();
-		assertThat(destinationMap.get(dltDestinationTopic2.getDestinationName()).getSourceDestination()).isEqualTo(dltDestinationTopic2);
-		assertThat(destinationMap.get(dltDestinationTopic2.getDestinationName()).getNextDestination()).isEqualTo(noOpsDestinationTopic2);
+		assertThat(destinationList.contains(mainDestinationTopic)).isTrue();
+		assertThat(destinationList.contains(firstRetryDestinationTopic)).isTrue();
+		assertThat(destinationList.contains(secondRetryDestinationTopic)).isTrue();
+		assertThat(destinationList.contains(dltDestinationTopic)).isTrue();
 
-		assertThat(destinationMap.containsKey(mainDestinationTopic3.getDestinationName())).isTrue();
-		assertThat(destinationMap.get(mainDestinationTopic3.getDestinationName()).getSourceDestination()).isEqualTo(mainDestinationTopic3);
-		assertThat(destinationMap.get(mainDestinationTopic3.getDestinationName()).getNextDestination()).isEqualTo(firstRetryDestinationTopic3);
-		assertThat(destinationMap.containsKey(firstRetryDestinationTopic3.getDestinationName())).isTrue();
-		assertThat(destinationMap.get(firstRetryDestinationTopic3.getDestinationName()).getSourceDestination()).isEqualTo(firstRetryDestinationTopic3);
-		assertThat(destinationMap.get(firstRetryDestinationTopic3.getDestinationName()).getNextDestination()).isEqualTo(secondRetryDestinationTopic3);
-		assertThat(destinationMap.containsKey(secondRetryDestinationTopic3.getDestinationName())).isTrue();
-		assertThat(destinationMap.get(secondRetryDestinationTopic3.getDestinationName()).getSourceDestination()).isEqualTo(secondRetryDestinationTopic3);
-		assertThat(destinationMap.get(secondRetryDestinationTopic3.getDestinationName()).getNextDestination()).isEqualTo(noOpsDestinationTopic3);
+		assertThat(destinationList.contains(mainDestinationTopic2)).isTrue();
+		assertThat(destinationList.contains(firstRetryDestinationTopic2)).isTrue();
+		assertThat(destinationList.contains(secondRetryDestinationTopic2)).isTrue();
+		assertThat(destinationList.contains(dltDestinationTopic2)).isTrue();
+
+		assertThat(destinationList.contains(mainDestinationTopic3)).isTrue();
+		assertThat(destinationList.contains(firstRetryDestinationTopic3)).isTrue();
+		assertThat(destinationList.contains(secondRetryDestinationTopic3)).isTrue();
 	}
 
 	@Test

@@ -17,8 +17,10 @@
 package org.springframework.kafka.retrytopic;
 
 import java.math.BigInteger;
+import java.time.Instant;
 import java.util.function.Consumer;
 
+import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
@@ -27,9 +29,11 @@ import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 
 import org.springframework.core.NestedRuntimeException;
+import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.SeekUtils;
+import org.springframework.kafka.listener.TimestampedException;
 import org.springframework.kafka.support.KafkaHeaders;
 
 /**
@@ -42,6 +46,8 @@ import org.springframework.kafka.support.KafkaHeaders;
  *
  */
 public class DeadLetterPublishingRecovererFactory {
+
+	private static final LogAccessor logger = new LogAccessor(LogFactory.getLog(DeadLetterPublishingRecovererFactory.class));
 
 	private final DestinationTopicResolver destinationTopicResolver;
 
@@ -87,7 +93,7 @@ public class DeadLetterPublishingRecovererFactory {
 
 	private KafkaOperations<?, ?> resolveTemplate(ProducerRecord<?, ?> outRecord) {
 		return this.destinationTopicResolver
-						.getCurrentTopic(outRecord.topic())
+						.getDestinationTopicByName(outRecord.topic())
 						.getKafkaOperations();
 	}
 
@@ -100,11 +106,12 @@ public class DeadLetterPublishingRecovererFactory {
 			throw (NestedRuntimeException) e; // Necessary to not commit the offset and seek to current again
 		}
 
-		int attempt = getAttempts(cr);
-		BigInteger originalTimestamp = new BigInteger(getOriginalTimestampHeader(cr));
+		DestinationTopic nextDestination = this.destinationTopicResolver.resolveDestinationTopic(
+				cr.topic(), getAttempts(cr), e, getOriginalTimestampHeaderLong(cr));
 
-		DestinationTopic nextDestination = this.destinationTopicResolver.resolveNextDestination(
-				cr.topic(), attempt, e, originalTimestamp.longValue());
+		logger.debug(() -> "Resolved topic: " + (nextDestination.isNoOpsTopic()
+				? "none"
+				: nextDestination.getDestinationName()));
 
 		return nextDestination.isNoOpsTopic()
 					? null
@@ -120,30 +127,60 @@ public class DeadLetterPublishingRecovererFactory {
 	}
 
 	private Headers addHeaders(ConsumerRecord<?, ?> consumerRecord, Exception e, int attempts) {
-
 		Headers headers = new RecordHeaders();
-
-		byte[] originalTimestampHeader = getOriginalTimestampHeader(consumerRecord);
+		byte[] originalTimestampHeader = getOriginalTimestampHeaderBytes(consumerRecord);
 		headers.add(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP, originalTimestampHeader);
-
 		headers.add(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS,
 				BigInteger.valueOf(attempts + 1).toByteArray());
-		long originalTimestamp = new BigInteger(originalTimestampHeader).longValue();
-
-		long nextExecutionTimestamp = this.destinationTopicResolver
-				.resolveDestinationNextExecutionTimestamp(consumerRecord.topic(), attempts, e,
-						originalTimestamp);
-
-		headers.add(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP,	BigInteger.valueOf(nextExecutionTimestamp).toByteArray());
+		headers.add(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP,
+				BigInteger.valueOf(getNextExecutionTimestamp(consumerRecord, e, attempts, originalTimestampHeader))
+						.toByteArray());
 		return headers;
 	}
 
-	private byte[] getOriginalTimestampHeader(ConsumerRecord<?, ?> consumerRecord) {
-		Header currentOriginalTimestampHeader = consumerRecord.headers()
-				.lastHeader(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP);
+	private long getNextExecutionTimestamp(ConsumerRecord<?, ?> consumerRecord, Exception e, int attempts, byte[] originalTimestampHeader) {
+		long originalTimestamp = new BigInteger(originalTimestampHeader).longValue();
+		long failureTimestamp = getFailureTimestamp(e);
+		long nextExecutionTimestamp =  failureTimestamp + this.destinationTopicResolver
+				.getDestinationTopicByName(consumerRecord.topic()).getDestinationDelay();
+		logger.debug(() -> String.format("FailureTimestamp: %s, Original timestamp: %s, nextExecutionTimestamp: %s",
+				failureTimestamp, originalTimestamp, nextExecutionTimestamp));
+		return nextExecutionTimestamp;
+	}
+
+	private long getFailureTimestamp(Exception e) {
+		return e instanceof NestedRuntimeException && ((NestedRuntimeException) e).contains(TimestampedException.class)
+					? getTimestampedException(e).getTimestamp()
+					: Instant.now().toEpochMilli();
+	}
+
+	private TimestampedException getTimestampedException(Throwable e) {
+		if (e == null) {
+			throw new IllegalArgumentException("Provided exception does not contain a "
+					+ TimestampedException.class.getSimpleName() + " cause.");
+		}
+		return e.getClass().isAssignableFrom(TimestampedException.class)
+				? (TimestampedException) e
+				: getTimestampedException(e.getCause());
+	}
+
+	private byte[] getOriginalTimestampHeaderBytes(ConsumerRecord<?, ?> consumerRecord) {
+		Header currentOriginalTimestampHeader = getOriginaTimeStampHeader(consumerRecord);
 		return currentOriginalTimestampHeader != null
 				? currentOriginalTimestampHeader.value()
 				: BigInteger.valueOf(consumerRecord.timestamp()).toByteArray();
+	}
+
+	private long getOriginalTimestampHeaderLong(ConsumerRecord<?, ?> consumerRecord) {
+		Header currentOriginalTimestampHeader = getOriginaTimeStampHeader(consumerRecord);
+		return currentOriginalTimestampHeader != null
+				? new BigInteger(currentOriginalTimestampHeader.value()).longValue()
+				: consumerRecord.timestamp();
+	}
+
+	private Header getOriginaTimeStampHeader(ConsumerRecord<?, ?> consumerRecord) {
+		return consumerRecord.headers()
+					.lastHeader(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP);
 	}
 }
 
