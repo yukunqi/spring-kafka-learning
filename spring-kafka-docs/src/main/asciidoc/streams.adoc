@@ -234,6 +234,7 @@ If there are multiple such beans, they will be applied according to their `Order
 
 By default, when the factory bean is stopped, the `KafkaStreams.cleanUp()` method is called.
 Starting with version 2.1.2, the factory bean has additional constructors, taking a `CleanupConfig` object that has properties to let you control whether the `cleanUp()` method is called during `start()` or `stop()` or neither.
+Starting with version 2.7, the default is to never clean up local state.
 
 [[streams-header-enricher]]
 ==== Header Enricher
