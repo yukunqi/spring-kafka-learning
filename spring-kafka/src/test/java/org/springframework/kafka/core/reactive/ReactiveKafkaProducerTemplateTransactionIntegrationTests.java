@@ -29,12 +29,10 @@ import java.util.Optional;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.KafkaException;
-import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -59,7 +57,6 @@ import reactor.kafka.receiver.ReceiverRecord;
 import reactor.kafka.sender.SenderOptions;
 import reactor.kafka.sender.SenderRecord;
 import reactor.kafka.sender.SenderResult;
-import reactor.kafka.sender.TransactionManager;
 import reactor.test.StepVerifier;
 
 /**
@@ -296,7 +293,7 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 				.expectComplete()
 				.verify();
 
-		StepVerifier.create(this.reactiveKafkaConsumerTemplate
+		StepVerifier.create(reactiveKafkaConsumerTemplate
 				.receiveExactlyOnce(this.reactiveKafkaProducerTemplate.transactionManager())
 				.concatMap(consumerRecordFlux -> sendAndCommit(consumerRecordFlux, false))
 				.onErrorResume(error -> this.reactiveKafkaProducerTemplate.transactionManager()
