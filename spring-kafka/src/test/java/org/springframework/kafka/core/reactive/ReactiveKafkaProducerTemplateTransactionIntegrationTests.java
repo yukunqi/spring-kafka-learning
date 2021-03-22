@@ -43,7 +43,10 @@ import org.reactivestreams.Subscription;
 
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
+import org.springframework.kafka.test.condition.LogLevels;
+import org.springframework.kafka.test.condition.LogLevelsCondition;
 import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.kafka.test.utils.JUnitUtils;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 import reactor.core.publisher.Flux;
@@ -315,6 +318,8 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 				.verify(DEFAULT_VERIFY_TIMEOUT);
 	}
 
+	@LogLevels(categories = "reactor.kafka.receiver.internals.ConsumerEventLoop", level = "DEBUG",
+			classes = { JUnitUtils.class, LogLevelsCondition.class })
 	@Test
 	public void shouldSendOneRecordTransactionallyViaTemplateAsSenderRecordAndReceiveItExactlyOnce() {
 		ProducerRecord<Integer, String> producerRecord =
