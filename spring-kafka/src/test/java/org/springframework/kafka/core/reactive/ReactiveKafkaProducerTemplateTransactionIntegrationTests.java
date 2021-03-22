@@ -26,6 +26,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 
+import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
@@ -41,6 +42,8 @@ import org.junit.jupiter.api.Test;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
 
+import org.springframework.core.log.LogAccessor;
+import org.springframework.kafka.listener.ListenerUtils;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
 import org.springframework.kafka.test.condition.LogLevels;
@@ -69,6 +72,9 @@ import reactor.test.StepVerifier;
 @EmbeddedKafka(topics = ReactiveKafkaProducerTemplateTransactionIntegrationTests.REACTIVE_INT_KEY_TOPIC,
 		brokerProperties = { "transaction.state.log.replication.factor=1", "transaction.state.log.min.isr=1" })
 public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
+
+	private static final LogAccessor logger = new LogAccessor(
+			LogFactory.getLog(ReactiveKafkaProducerTemplateTransactionIntegrationTests.class));
 
 	private static final String CONSUMER_GROUP_ID = "reactive_transaction_consumer_group";
 
@@ -319,7 +325,8 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 	}
 
 	@LogLevels(categories = "reactor.kafka.receiver.internals.ConsumerEventLoop", level = "DEBUG",
-			classes = { JUnitUtils.class, LogLevelsCondition.class })
+			classes = { JUnitUtils.class, LogLevelsCondition.class,
+					ReactiveKafkaProducerTemplateTransactionIntegrationTests.class})
 	@Test
 	public void shouldSendOneRecordTransactionallyViaTemplateAsSenderRecordAndReceiveItExactlyOnce() {
 		ProducerRecord<Integer, String> producerRecord =
@@ -331,10 +338,10 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 				.expectComplete()
 				.verify();
 
-		StepVerifier.create(reactiveKafkaConsumerTemplate
-				.receiveExactlyOnce(reactiveKafkaProducerTemplate.transactionManager())
+		StepVerifier.create(this.reactiveKafkaConsumerTemplate
+				.receiveExactlyOnce(this.reactiveKafkaProducerTemplate.transactionManager())
 				.concatMap(consumerRecordFlux -> sendAndCommit(consumerRecordFlux, false))
-				.onErrorResume(error -> reactiveKafkaProducerTemplate.transactionManager()
+				.onErrorResume(error -> this.reactiveKafkaProducerTemplate.transactionManager()
 						.abort()
 						.then(Mono.error(error))))
 				.assertNext(senderResult -> {
@@ -347,6 +354,7 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 		StepVerifier.create(reactiveKafkaConsumerTemplate
 				.receive().doOnNext(receiverRecord -> receiverRecord.receiverOffset().acknowledge()))
 				.assertNext(receiverRecord -> {
+					logger.info(ListenerUtils.recordToString(receiverRecord, true));
 					assertThat(receiverRecord.value()).isEqualTo(DEFAULT_VALUE + "xyz");
 					assertThat(receiverRecord.offset()).isGreaterThan(0);
 				})
@@ -369,6 +377,7 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 	}
 
 	private SenderRecord<Integer, String, Integer> toSenderRecord(ConsumerRecord<Integer, String> record) {
+		logger.info(ListenerUtils.recordToString(record, true));
 		return SenderRecord.create(REACTIVE_INT_KEY_TOPIC, record.partition(), null, record.key(),
 				record.value() + "xyz", record.key());
 	}
