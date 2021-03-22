@@ -253,48 +253,6 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 	}
 
 	@Test
-	public void shouldSendOffsetsToTransaction() {
-		ProducerRecord<Integer, String> producerRecord =
-				new ProducerRecord<>(REACTIVE_INT_KEY_TOPIC, DEFAULT_PARTITION, DEFAULT_TIMESTAMP, DEFAULT_KEY,
-						DEFAULT_VALUE);
-
-		TransactionManager tm = reactiveKafkaProducerTemplate.transactionManager();
-
-		StepVerifier.create(reactiveKafkaProducerTemplate.sendTransactionally(SenderRecord.create(producerRecord, null))
-				.then())
-				.expectComplete()
-				.verify(DEFAULT_VERIFY_TIMEOUT);
-
-		StepVerifier.create(reactiveKafkaConsumerTemplate.receive())
-				.assertNext(rr -> {
-					SenderRecord<Integer, String, Object> transformed =
-							SenderRecord.create(rr.topic(), rr.partition(), rr.timestamp(), rr.key(), rr
-									.value() + "xyz", null);
-					Mono<Void> sendOffsets = tm.begin()
-							.then(
-									reactiveKafkaProducerTemplate.send(transformed)
-											.map(SenderResult::recordMetadata)
-											.map(rm -> {
-												Map<TopicPartition, OffsetAndMetadata> offsets =
-														Collections.singletonMap(
-																new TopicPartition(rm.topic(), rm.partition()),
-																new OffsetAndMetadata(rm.offset() + 1));
-												return tm.sendOffsets(offsets, CONSUMER_GROUP_ID);
-											}))
-							.then(tm.commit()).then();
-					StepVerifier.create(sendOffsets)
-							.expectComplete()
-							.verify(DEFAULT_VERIFY_TIMEOUT);
-				})
-				.assertNext(rr -> {
-					assertThat(rr.value()).startsWith(DEFAULT_VALUE + "xyz");
-					rr.receiverOffset().acknowledge();
-				})
-				.thenCancel()
-				.verify(DEFAULT_VERIFY_TIMEOUT);
-	}
-
-	@Test
 	public void shouldSendOneRecordTransactionallyViaTemplateAsSenderRecordAndReceiveItExactlyOnceWithException() {
 		ProducerRecord<Integer, String> producerRecord =
 				new ProducerRecord<>(REACTIVE_INT_KEY_TOPIC, DEFAULT_PARTITION, DEFAULT_TIMESTAMP, DEFAULT_KEY,
