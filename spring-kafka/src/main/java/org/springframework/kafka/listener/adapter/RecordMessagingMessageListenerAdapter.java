@@ -25,6 +25,7 @@ import org.springframework.kafka.listener.AcknowledgingConsumerAwareMessageListe
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.converter.ProjectingMessageConverter;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.GenericMessage;
@@ -84,7 +85,7 @@ public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessag
 		else {
 			message = NULL_MESSAGE;
 		}
-		if (logger.isDebugEnabled()) {
+		if (logger.isDebugEnabled() && !(getMessageConverter() instanceof ProjectingMessageConverter)) {
 			logger.debug("Processing [" + message + "]");
 		}
 		try {
