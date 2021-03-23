@@ -24,6 +24,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
 import java.lang.reflect.Method;
@@ -359,7 +360,7 @@ class RetryTopicConfigurerTests {
 		RetryTopicConfigurer.LoggingDltListenerHandlerMethod method =
 				new RetryTopicConfigurer.LoggingDltListenerHandlerMethod();
 		method.logMessage(consumerRecordMessage);
-		then(consumerRecordMessage).should(times(0)).topic();
+		then(consumerRecordMessage).should(never()).topic();
 	}
 
 	@Test

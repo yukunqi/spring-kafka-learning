@@ -17,10 +17,8 @@ package org.springframework.kafka.kdocs.started.consumer
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.apache.kafka.clients.admin.NewTopic
-import org.springframework.kafka.config.TopicBuilder
 import org.springframework.kafka.annotation.KafkaListener
 import kotlin.jvm.JvmStatic
-import org.springframework.boot.SpringApplication
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.kafka.kdocs.started.producer.Application
@@ -40,11 +38,12 @@ class Application {
     fun topic() = NewTopic("topic1", 10, 1)
 
     @KafkaListener(id = "myId", topics = ["topic1"])
-    fun listen(`in`: String?) {
-        println(`in`)
+    fun listen(value: String?) {
+        println(value)
     }
 
-    fun main(args: Array<String>) = runApplication<Application>(*args)
-
 }
+
+fun main(args: Array<String>) = runApplication<Application>(*args)
+
 // end::startedConsumer[]
