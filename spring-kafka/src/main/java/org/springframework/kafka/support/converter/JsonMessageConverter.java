@@ -102,17 +102,7 @@ public class JsonMessageConverter extends MessagingMessageConverter {
 			return KafkaNull.INSTANCE;
 		}
 
-		JavaType javaType = this.typeMapper.getTypePrecedence().equals(TypePrecedence.INFERRED) && type != null
-				? TypeFactory.defaultInstance().constructType(type)
-				: this.typeMapper.toJavaType(record.headers());
-		if (javaType == null) { // no headers
-			if (type != null) {
-				javaType = TypeFactory.defaultInstance().constructType(type);
-			}
-			else {
-				javaType = OBJECT;
-			}
-		}
+		JavaType javaType = determineJavaType(record, type);
 		if (value instanceof Bytes) {
 			value = ((Bytes) value).get();
 		}
@@ -135,6 +125,21 @@ public class JsonMessageConverter extends MessagingMessageConverter {
 		else {
 			throw new IllegalStateException("Only String, Bytes, or byte[] supported");
 		}
+	}
+
+	private JavaType determineJavaType(ConsumerRecord<?, ?> record, Type type) {
+		JavaType javaType = this.typeMapper.getTypePrecedence().equals(TypePrecedence.INFERRED) && type != null
+				? TypeFactory.defaultInstance().constructType(type)
+				: this.typeMapper.toJavaType(record.headers());
+		if (javaType == null) { // no headers
+			if (type != null) {
+				javaType = TypeFactory.defaultInstance().constructType(type);
+			}
+			else {
+				javaType = OBJECT;
+			}
+		}
+		return javaType;
 	}
 
 }
