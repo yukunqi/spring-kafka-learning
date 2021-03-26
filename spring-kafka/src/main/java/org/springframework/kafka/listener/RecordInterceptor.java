@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.listener;
 
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.lang.Nullable;
@@ -39,25 +40,45 @@ public interface RecordInterceptor<K, V> {
 	 * the record will be skipped. Invoked before the listener.
 	 * @param record the record.
 	 * @return the record or null.
+	 * @deprecated in favor of {@link #intercept(ConsumerRecord, Consumer)} which will
+	 * become the required method in a future release.
 	 */
+	@Deprecated
 	@Nullable
 	ConsumerRecord<K, V> intercept(ConsumerRecord<K, V> record);
 
 	/**
-	 * Called after the listener exits normally.
+	 * Perform some action on the record or return a different one. If null is returned
+	 * the record will be skipped. Invoked before the listener.
 	 * @param record the record.
+	 * @param consumer the consumer.
+	 * @return the record or null.
 	 * @since 2.7
 	 */
-	default void success(ConsumerRecord<K, V> record) {
+	@Nullable
+	default ConsumerRecord<K, V> intercept(ConsumerRecord<K, V> record,
+			@SuppressWarnings("unused") Consumer<K, V> consumer) {
+
+		return intercept(record);
+	}
+
+	/**
+	 * Called after the listener exits normally.
+	 * @param record the record.
+	 * @param consumer the consumer.
+	 * @since 2.7
+	 */
+	default void success(ConsumerRecord<K, V> record, Consumer<K, V> consumer) {
 	}
 
 	/**
 	 * Called after the listener throws an exception.
 	 * @param record the record.
 	 * @param exception the exception.
+	 * @param consumer the consumer.
 	 * @since 2.7
 	 */
-	default void failure(ConsumerRecord<K, V> record, Exception exception) {
+	default void failure(ConsumerRecord<K, V> record, Exception exception, Consumer<K, V> consumer) {
 	}
 
 }
