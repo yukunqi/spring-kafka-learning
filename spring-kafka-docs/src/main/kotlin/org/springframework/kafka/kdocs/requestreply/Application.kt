@@ -65,7 +65,7 @@ class Application {
     }
 
     @Bean
-    fun kafkaTemplate(pf: ProducerFactory<Any, Any>?) = KafkaTemplate(pf)
+    fun kafkaTemplate(pf: ProducerFactory<*, *>?) = KafkaTemplate(pf)
 
 // tag::beans[]
     @Bean
