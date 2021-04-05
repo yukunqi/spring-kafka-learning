@@ -40,7 +40,7 @@ class RetryTopicInternalBeanNamesTests {
 
 	static final String DESTINATION_TOPIC_CONTAINER_NAME = "internalDestinationTopicContainer";
 
-	static final String DEFAULT_LISTENER_FACTORY_BEAN_NAME = "retryTopicListenerContainerFactory";
+	static final String DEFAULT_LISTENER_FACTORY_BEAN_NAME = "internalRetryTopicListenerContainerFactory";
 
 	static final String DEFAULT_KAFKA_TEMPLATE_BEAN_NAME = "retryTopicDefaultKafkaTemplate";
 

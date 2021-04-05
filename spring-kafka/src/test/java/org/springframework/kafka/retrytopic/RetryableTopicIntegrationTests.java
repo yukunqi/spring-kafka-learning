@@ -53,7 +53,6 @@ import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.ContainerProperties;
-import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
@@ -371,7 +370,7 @@ public class RetryableTopicIntegrationTests {
 	@Configuration
 	public static class RuntimeConfig {
 
-		@Bean(name = KafkaConsumerBackoffManager.INTERNAL_BACKOFF_CLOCK_BEAN_NAME)
+		@Bean(name = RetryTopicInternalBeanNames.INTERNAL_BACKOFF_CLOCK_BEAN_NAME)
 		public Clock clock() {
 			return Clock.systemUTC();
 		}

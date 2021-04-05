@@ -25,13 +25,10 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.common.TopicPartition;
 
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationListener;
 import org.springframework.core.log.LogAccessor;
-import org.springframework.core.task.TaskExecutor;
 import org.springframework.kafka.event.ListenerContainerPartitionIdleEvent;
 import org.springframework.lang.Nullable;
-import org.springframework.retry.backoff.Sleeper;
 
 /**
  *
@@ -42,8 +39,7 @@ import org.springframework.retry.backoff.Sleeper;
  * so the Manager can resume the partition consumption.
  *
  * Note that when a record backs off the partition consumption gets paused for
- * approximately that amount of time, so you must have a fixed backoff value per partition
- * in order to make sure no record waits more than it should.
+ * approximately that amount of time, so you must have a fixed backoff value per partition.
  *
  * @author Tomaz Fernandes
  * @author Gary Russell
@@ -53,34 +49,85 @@ import org.springframework.retry.backoff.Sleeper;
 public class KafkaConsumerBackoffManager implements ApplicationListener<ListenerContainerPartitionIdleEvent> {
 
 	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(KafkaConsumerBackoffManager.class));
-	/**
-	 * Internal Back Off Clock Bean Name.
-	 */
-	public static final String INTERNAL_BACKOFF_CLOCK_BEAN_NAME = "internalBackOffClock";
 
-	private static final int TIMING_CORRECTION_THRESHOLD = 100;
-
-	private static final int POLL_TIMEOUTS_FOR_CORRECTION_WINDOW = 2;
-
-	private final ListenerContainerRegistry registry;
+	private final ListenerContainerRegistry listenerContainerRegistry;
 
 	private final Map<TopicPartition, Context> backOffContexts;
 
 	private final Clock clock;
 
-	private final TaskExecutor taskExecutor;
+	private final KafkaConsumerTimingAdjuster kafkaConsumerTimingAdjuster;
 
-	private final Sleeper sleeper;
+	/**
+	 * Constructs an instance with the provided {@link ListenerContainerRegistry} and
+	 * {@link KafkaConsumerTimingAdjuster}.
+	 *
+	 * The ListenerContainerRegistry is used to fetch the {@link MessageListenerContainer}
+	 * that will be backed off / resumed.
+	 *
+	 * The KafkaConsumerTimingAdjuster is used to make timing adjustments
+	 * in the message consumption so that it processes the message closer
+	 * to its due time rather than later.
+	 *
+	 * @param listenerContainerRegistry the listenerContainerRegistry to use.
+	 * @param kafkaConsumerTimingAdjuster the kafkaConsumerTimingAdjuster to use.
+	 */
+	public KafkaConsumerBackoffManager(ListenerContainerRegistry listenerContainerRegistry,
+									KafkaConsumerTimingAdjuster kafkaConsumerTimingAdjuster) {
 
-	public KafkaConsumerBackoffManager(ListenerContainerRegistry registry,
-									@Qualifier(INTERNAL_BACKOFF_CLOCK_BEAN_NAME) Clock clock,
-									TaskExecutor taskExecutor,
-									Sleeper sleeper) {
+		this.listenerContainerRegistry = listenerContainerRegistry;
+		this.kafkaConsumerTimingAdjuster = kafkaConsumerTimingAdjuster;
+		this.clock = Clock.systemUTC();
+		this.backOffContexts = new HashMap<>();
+	}
 
-		this.registry = registry;
+	/**
+	 * Constructs an instance with the provided {@link ListenerContainerRegistry}
+	 * and with no timing adjustment capabilities.
+	 *
+	 * The ListenerContainerRegistry is used to fetch the {@link MessageListenerContainer}
+	 * that will be backed off / resumed.
+	 *
+	 * @param listenerContainerRegistry the listenerContainerRegistry to use.
+	 */
+	public KafkaConsumerBackoffManager(ListenerContainerRegistry listenerContainerRegistry) {
+
+		this.listenerContainerRegistry = listenerContainerRegistry;
+		this.kafkaConsumerTimingAdjuster = null;
+		this.clock = Clock.systemUTC();
+		this.backOffContexts = new HashMap<>();
+	}
+
+	/**
+	 * Creates an instance with the provided {@link ListenerContainerRegistry},
+	 * {@link KafkaConsumerTimingAdjuster} and {@link Clock}.
+	 *
+	 * @param listenerContainerRegistry the listenerContainerRegistry to use.
+	 * @param kafkaConsumerTimingAdjuster the kafkaConsumerTimingAdjuster to use.
+	 * @param clock the clock to use.
+	 */
+	public KafkaConsumerBackoffManager(ListenerContainerRegistry listenerContainerRegistry,
+									KafkaConsumerTimingAdjuster kafkaConsumerTimingAdjuster,
+									Clock clock) {
+
+		this.listenerContainerRegistry = listenerContainerRegistry;
 		this.clock = clock;
-		this.taskExecutor = taskExecutor;
-		this.sleeper = sleeper;
+		this.kafkaConsumerTimingAdjuster = kafkaConsumerTimingAdjuster;
+		this.backOffContexts = new HashMap<>();
+	}
+
+	/**
+	 * Creates an instance with the provided {@link ListenerContainerRegistry}
+	 * and {@link Clock}, with no timing adjustment capabilities.
+	 *
+	 * @param listenerContainerRegistry the listenerContainerRegistry to use.
+	 * @param clock the clock to use.
+	 */
+	public KafkaConsumerBackoffManager(ListenerContainerRegistry listenerContainerRegistry, Clock clock) {
+
+		this.listenerContainerRegistry = listenerContainerRegistry;
+		this.clock = clock;
+		this.kafkaConsumerTimingAdjuster = null;
 		this.backOffContexts = new HashMap<>();
 	}
 
@@ -112,10 +159,6 @@ public class KafkaConsumerBackoffManager implements ApplicationListener<Listener
 				getCurrentMillisFromClock(), partitionIdleEvent.getTopicPartition()));
 
 		Context backOffContext = getBackOffContext(partitionIdleEvent.getTopicPartition());
-
-		if (backOffContext == null) {
-			return;
-		}
 		maybeResumeConsumption(backOffContext);
 	}
 
@@ -123,7 +166,10 @@ public class KafkaConsumerBackoffManager implements ApplicationListener<Listener
 		return Instant.now(this.clock).toEpochMilli();
 	}
 
-	private void maybeResumeConsumption(Context context) {
+	private void maybeResumeConsumption(@Nullable Context context) {
+		if (context == null) {
+			return;
+		}
 		long now = getCurrentMillisFromClock();
 		long timeUntilDue = context.dueTimestamp - now;
 		long pollTimeout = getListenerContainerFromContext(context)
@@ -131,13 +177,25 @@ public class KafkaConsumerBackoffManager implements ApplicationListener<Listener
 				.getPollTimeout();
 		boolean isDue = timeUntilDue <= pollTimeout;
 
-		if (maybeApplyTimingCorrection(context, pollTimeout, timeUntilDue) || isDue) {
+		long adjustedAmount = applyTimingAdjustment(context, timeUntilDue, pollTimeout);
+
+		if (adjustedAmount != 0L || isDue) {
 			resumePartition(context);
 		}
 		else {
 			LOGGER.debug(() -> String.format("TopicPartition %s not due. DueTimestamp: %s Now: %s ",
 					context.topicPartition, context.dueTimestamp, now));
 		}
+	}
+
+	private long applyTimingAdjustment(Context context, long timeUntilDue, long pollTimeout) {
+		if (this.kafkaConsumerTimingAdjuster == null || context.consumerForTimingAdjustment == null) {
+			LOGGER.debug(() -> String.format(
+					"Skipping timing adjustment for TopicPartition %s.", context.topicPartition));
+			return 0L;
+		}
+		return this.kafkaConsumerTimingAdjuster.adjustTiming(
+						context.consumerForTimingAdjustment, context.topicPartition, pollTimeout, timeUntilDue);
 	}
 
 	private void resumePartition(Context context) {
@@ -147,45 +205,8 @@ public class KafkaConsumerBackoffManager implements ApplicationListener<Listener
 		removeBackoff(context.topicPartition);
 	}
 
-	private boolean maybeApplyTimingCorrection(Context context, long pollTimeout, long timeUntilDue) {
-		// Correction can only be applied to ConsumerAwareMessageListener
-		// listener instances.
-		if (context.consumerForTimingCorrection == null) {
-			return false;
-		}
-
-		boolean isInCorrectionWindow = timeUntilDue > pollTimeout && timeUntilDue <=
-				pollTimeout * POLL_TIMEOUTS_FOR_CORRECTION_WINDOW;
-
-		long correctionAmount = timeUntilDue % pollTimeout;
-		if (isInCorrectionWindow && correctionAmount > TIMING_CORRECTION_THRESHOLD) {
-			this.taskExecutor.execute(() -> doApplyTimingCorrection(context, correctionAmount));
-			return true;
-		}
-		return false;
-	}
-
-	private void doApplyTimingCorrection(Context context, long correctionAmount) {
-		try {
-			LOGGER.debug(() -> String.format("Applying correction of %s millis at %s for TopicPartition %s",
-					correctionAmount, getCurrentMillisFromClock(), context.topicPartition));
-			this.sleeper.sleep(correctionAmount);
-			LOGGER.debug(() -> "Waking up consumer for partition topic: " + context.topicPartition);
-			context.consumerForTimingCorrection.wakeup();
-		}
-		catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
-			throw new IllegalStateException("Interrupted waking up consumer while applying correction " +
-					"for TopicPartition " + context.topicPartition, e);
-		}
-		catch (Exception e) { // NOSONAR
-			LOGGER.error(e, () -> "Error waking up consumer while applying correction " +
-					"for TopicPartition " + context.topicPartition);
-		}
-	}
-
 	private MessageListenerContainer getListenerContainerFromContext(Context context) {
-		return this.registry.getListenerContainer(context.listenerId);
+		return this.listenerContainerRegistry.getListenerContainer(context.listenerId);
 	}
 
 	protected void addBackoff(Context context, TopicPartition topicPartition) {
@@ -194,8 +215,7 @@ public class KafkaConsumerBackoffManager implements ApplicationListener<Listener
 		}
 	}
 
-	@Nullable
-	protected Context getBackOffContext(TopicPartition topicPartition) {
+	protected @Nullable Context getBackOffContext(TopicPartition topicPartition) {
 		synchronized (this.backOffContexts) {
 			return this.backOffContexts.get(topicPartition);
 		}
@@ -208,8 +228,8 @@ public class KafkaConsumerBackoffManager implements ApplicationListener<Listener
 	}
 
 	public Context createContext(long dueTimestamp, String listenerId, TopicPartition topicPartition,
-								@Nullable Consumer<?, ?> consumerForTimingCorrection) {
-		return new Context(dueTimestamp, topicPartition, listenerId, consumerForTimingCorrection);
+								@Nullable Consumer<?, ?> consumerForTimingAdjustment) {
+		return new Context(dueTimestamp, topicPartition, listenerId, consumerForTimingAdjustment);
 	}
 
 	/**
@@ -237,14 +257,14 @@ public class KafkaConsumerBackoffManager implements ApplicationListener<Listener
 		/**
 		 * The consumer of the message, if present.
 		 */
-		private final Consumer<?, ?> consumerForTimingCorrection; // NOSONAR
+		private final Consumer<?, ?> consumerForTimingAdjustment; // NOSONAR
 
 		Context(long dueTimestamp, TopicPartition topicPartition, String listenerId,
-						@Nullable Consumer<?, ?> consumerForTimingCorrection) {
+						@Nullable Consumer<?, ?> consumerForTimingAdjustment) {
 			this.dueTimestamp = dueTimestamp;
 			this.listenerId = listenerId;
 			this.topicPartition = topicPartition;
-			this.consumerForTimingCorrection = consumerForTimingCorrection;
+			this.consumerForTimingAdjustment = consumerForTimingAdjustment;
 		}
 	}
 }

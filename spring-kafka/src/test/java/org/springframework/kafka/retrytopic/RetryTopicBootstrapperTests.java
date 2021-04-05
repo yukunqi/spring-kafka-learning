@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
 import java.time.Clock;
@@ -31,13 +32,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.config.SingletonBeanRegistry;
-import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.support.GenericApplicationContext;
+import org.springframework.kafka.listener.KafkaBackOffManagerFactory;
 import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
+import org.springframework.kafka.listener.TimingAdjustingKafkaBackOffManagerFactory;
 import org.springframework.retry.backoff.ThreadWaitSleeper;
 
 /**
@@ -63,7 +64,10 @@ class RetryTopicBootstrapperTests {
 	private DefaultDestinationTopicResolver defaultDestinationTopicResolver;
 
 	@Mock
-	private KafkaConsumerBackoffManager kafkaConsumerBackoffManager;
+	private TimingAdjustingKafkaBackOffManagerFactory kafkaBackOffManagerFactory;
+
+	@Mock
+	private KafkaConsumerBackoffManager kafkaConsumerBackOffManager;
 
 	@Test
 	void shouldThrowIfACDoesntImplementInterfaces() {
@@ -86,24 +90,36 @@ class RetryTopicBootstrapperTests {
 				RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME, DefaultDestinationTopicResolver.class))
 				.willReturn(defaultDestinationTopicResolver);
 		given(this.applicationContext.getBean(
-				RetryTopicInternalBeanNames.KAFKA_CONSUMER_BACKOFF_MANAGER, KafkaConsumerBackoffManager.class))
-				.willReturn(kafkaConsumerBackoffManager);
-
-		BeanDefinitionRegistry registry = (BeanDefinitionRegistry) this.applicationContext;
+				RetryTopicInternalBeanNames.INTERNAL_KAFKA_CONSUMER_BACKOFF_MANAGER_FACTORY,
+				KafkaBackOffManagerFactory.class))
+				.willReturn(kafkaBackOffManagerFactory);
 
 		// when
 		RetryTopicBootstrapper bootstrapper = new RetryTopicBootstrapper(applicationContext, beanFactory);
 		bootstrapper.bootstrapRetryTopic();
 
 		// then
-		then(registry).should(times(1)).registerBeanDefinition(RetryTopicInternalBeanNames.LISTENER_CONTAINER_FACTORY_RESOLVER_NAME, new RootBeanDefinition(ListenerContainerFactoryResolver.class));
-		then(registry).should(times(1)).registerBeanDefinition(RetryTopicInternalBeanNames.DESTINATION_TOPIC_PROCESSOR_NAME, new RootBeanDefinition(DefaultDestinationTopicProcessor.class));
-		then(registry).should(times(1)).registerBeanDefinition(RetryTopicInternalBeanNames.LISTENER_CONTAINER_FACTORY_CONFIGURER_NAME, new RootBeanDefinition(ListenerContainerFactoryConfigurer.class));
-		then(registry).should(times(1)).registerBeanDefinition(RetryTopicInternalBeanNames.DEAD_LETTER_PUBLISHING_RECOVERER_PROVIDER_NAME, new RootBeanDefinition(DeadLetterPublishingRecovererFactory.class));
-		then(registry).should(times(1)).registerBeanDefinition(RetryTopicInternalBeanNames.RETRY_TOPIC_CONFIGURER, new RootBeanDefinition(RetryTopicConfigurer.class));
-		then(registry).should(times(1)).registerBeanDefinition(RetryTopicInternalBeanNames.KAFKA_CONSUMER_BACKOFF_MANAGER, new RootBeanDefinition(KafkaConsumerBackoffManager.class));
-		then(registry).should(times(1)).registerBeanDefinition(RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME, new RootBeanDefinition(DefaultDestinationTopicResolver.class));
-		then(registry).should(times(1)).registerBeanDefinition(RetryTopicInternalBeanNames.DEFAULT_SLEEPER_BEAN_NAME, new RootBeanDefinition(ThreadWaitSleeper.class));
+		then(this.applicationContext).should(times(1))
+				.registerBeanDefinition(RetryTopicInternalBeanNames.LISTENER_CONTAINER_FACTORY_RESOLVER_NAME,
+						new RootBeanDefinition(ListenerContainerFactoryResolver.class));
+		then(this.applicationContext).should(times(1))
+				.registerBeanDefinition(RetryTopicInternalBeanNames.DESTINATION_TOPIC_PROCESSOR_NAME,
+						new RootBeanDefinition(DefaultDestinationTopicProcessor.class));
+		then(this.applicationContext).should(times(1))
+				.registerBeanDefinition(RetryTopicInternalBeanNames.LISTENER_CONTAINER_FACTORY_CONFIGURER_NAME,
+						new RootBeanDefinition(ListenerContainerFactoryConfigurer.class));
+		then(this.applicationContext).should(times(1))
+				.registerBeanDefinition(RetryTopicInternalBeanNames.DEAD_LETTER_PUBLISHING_RECOVERER_PROVIDER_NAME,
+						new RootBeanDefinition(DeadLetterPublishingRecovererFactory.class));
+		then(this.applicationContext).should(times(1))
+				.registerBeanDefinition(RetryTopicInternalBeanNames.RETRY_TOPIC_CONFIGURER,
+						new RootBeanDefinition(RetryTopicConfigurer.class));
+		then(this.applicationContext).should(times(1))
+				.registerBeanDefinition(RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME,
+						new RootBeanDefinition(DefaultDestinationTopicResolver.class));
+		then(this.applicationContext).should(times(1))
+				.registerBeanDefinition(RetryTopicInternalBeanNames.BACKOFF_SLEEPER_BEAN_NAME,
+						new RootBeanDefinition(ThreadWaitSleeper.class));
 	}
 
 	@Test
@@ -114,41 +130,45 @@ class RetryTopicBootstrapperTests {
 		given(this.applicationContext.getBean(
 				RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME, DefaultDestinationTopicResolver.class))
 				.willReturn(defaultDestinationTopicResolver);
-		given(this.applicationContext.getBean(
-				RetryTopicInternalBeanNames.KAFKA_CONSUMER_BACKOFF_MANAGER, KafkaConsumerBackoffManager.class))
-				.willReturn(kafkaConsumerBackoffManager);
-
-		BeanDefinitionRegistry registry = (BeanDefinitionRegistry) this.applicationContext;
 
 		// when
 		RetryTopicBootstrapper bootstrapper = new RetryTopicBootstrapper(applicationContext, beanFactory);
 		bootstrapper.bootstrapRetryTopic();
 
 		// then
-		then(registry).should(times(0)).registerBeanDefinition(RetryTopicInternalBeanNames.LISTENER_CONTAINER_FACTORY_RESOLVER_NAME, new RootBeanDefinition(ListenerContainerFactoryResolver.class));
-		then(registry).should(times(0)).registerBeanDefinition(RetryTopicInternalBeanNames.DESTINATION_TOPIC_PROCESSOR_NAME, new RootBeanDefinition(DefaultDestinationTopicProcessor.class));
-		then(registry).should(times(0)).registerBeanDefinition(RetryTopicInternalBeanNames.LISTENER_CONTAINER_FACTORY_CONFIGURER_NAME, new RootBeanDefinition(ListenerContainerFactoryConfigurer.class));
-		then(registry).should(times(0)).registerBeanDefinition(RetryTopicInternalBeanNames.DEAD_LETTER_PUBLISHING_RECOVERER_PROVIDER_NAME, new RootBeanDefinition(DeadLetterPublishingRecovererFactory.class));
-		then(registry).should(times(0)).registerBeanDefinition(RetryTopicInternalBeanNames.RETRY_TOPIC_CONFIGURER, new RootBeanDefinition(RetryTopicConfigurer.class));
-		then(registry).should(times(0)).registerBeanDefinition(RetryTopicInternalBeanNames.KAFKA_CONSUMER_BACKOFF_MANAGER, new RootBeanDefinition(KafkaConsumerBackoffManager.class));
-		then(registry).should(times(0)).registerBeanDefinition(RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME, new RootBeanDefinition(DefaultDestinationTopicResolver.class));
-		then(registry).should(times(0)).registerBeanDefinition(RetryTopicInternalBeanNames.DEFAULT_SLEEPER_BEAN_NAME, new RootBeanDefinition(ThreadWaitSleeper.class));
+		then(this.applicationContext).should(times(0))
+				.registerBeanDefinition(RetryTopicInternalBeanNames.DESTINATION_TOPIC_PROCESSOR_NAME,
+						new RootBeanDefinition(DefaultDestinationTopicProcessor.class));
+		then(this.applicationContext).should(times(0))
+				.registerBeanDefinition(RetryTopicInternalBeanNames.LISTENER_CONTAINER_FACTORY_CONFIGURER_NAME,
+						new RootBeanDefinition(ListenerContainerFactoryConfigurer.class));
+		then(this.applicationContext).should(times(0))
+				.registerBeanDefinition(RetryTopicInternalBeanNames.LISTENER_CONTAINER_FACTORY_RESOLVER_NAME,
+						new RootBeanDefinition(ListenerContainerFactoryResolver.class));
+		then(this.applicationContext).should(times(0))
+				.registerBeanDefinition(RetryTopicInternalBeanNames.DEAD_LETTER_PUBLISHING_RECOVERER_PROVIDER_NAME,
+						new RootBeanDefinition(DeadLetterPublishingRecovererFactory.class));
+		then(this.applicationContext).should(times(0))
+				.registerBeanDefinition(RetryTopicInternalBeanNames.RETRY_TOPIC_CONFIGURER,
+						new RootBeanDefinition(RetryTopicConfigurer.class));
+		then(this.applicationContext).should(times(0))
+				.registerBeanDefinition(RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME,
+						new RootBeanDefinition(DefaultDestinationTopicResolver.class));
+		then(this.applicationContext).should(times(0))
+				.registerBeanDefinition(RetryTopicInternalBeanNames.BACKOFF_SLEEPER_BEAN_NAME,
+						new RootBeanDefinition(ThreadWaitSleeper.class));
 	}
 
 	@Test
-	void shouldConfigureClock() {
+	void shouldRegisterSingletonsIfNotExists() {
 
 		// given
 		given(applicationContext.containsBeanDefinition(any(String.class)))
 				.willReturn(false);
-		given(this.applicationContext.getBean(
-				RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME, DefaultDestinationTopicResolver.class))
-				.willReturn(defaultDestinationTopicResolver);
-		given(this.applicationContext.getBean(
-				RetryTopicInternalBeanNames.KAFKA_CONSUMER_BACKOFF_MANAGER, KafkaConsumerBackoffManager.class))
-				.willReturn(kafkaConsumerBackoffManager);
-
-		BeanDefinitionRegistry registry = (BeanDefinitionRegistry) this.applicationContext;
+		given(this.applicationContext
+				.getBean(RetryTopicInternalBeanNames.INTERNAL_KAFKA_CONSUMER_BACKOFF_MANAGER_FACTORY,
+					KafkaBackOffManagerFactory.class)).willReturn(kafkaBackOffManagerFactory);
+		given(kafkaBackOffManagerFactory.create()).willReturn(kafkaConsumerBackOffManager);
 
 		// when
 		RetryTopicBootstrapper bootstrapper = new RetryTopicBootstrapper(applicationContext, beanFactory);
@@ -156,7 +176,31 @@ class RetryTopicBootstrapperTests {
 
 		// then
 		then((SingletonBeanRegistry) this.beanFactory).should(times(1)).registerSingleton(
-				KafkaConsumerBackoffManager.INTERNAL_BACKOFF_CLOCK_BEAN_NAME, Clock.systemUTC());
+				RetryTopicInternalBeanNames.INTERNAL_BACKOFF_CLOCK_BEAN_NAME, Clock.systemUTC());
+		then((SingletonBeanRegistry) this.beanFactory).should(times(1)).registerSingleton(
+				RetryTopicInternalBeanNames.KAFKA_CONSUMER_BACKOFF_MANAGER, kafkaConsumerBackOffManager);
+	}
+
+	@Test
+	void shouldNotRegisterSingletonsIfExists() {
+
+		// given
+		given(applicationContext.containsBeanDefinition(any(String.class)))
+				.willReturn(false);
+		given(applicationContext.containsBeanDefinition(RetryTopicInternalBeanNames.INTERNAL_BACKOFF_CLOCK_BEAN_NAME))
+				.willReturn(true);
+		given(applicationContext.containsBeanDefinition(RetryTopicInternalBeanNames.KAFKA_CONSUMER_BACKOFF_MANAGER))
+				.willReturn(true);
+
+		// when
+		RetryTopicBootstrapper bootstrapper = new RetryTopicBootstrapper(applicationContext, beanFactory);
+		bootstrapper.bootstrapRetryTopic();
+
+		// then
+		then((SingletonBeanRegistry) this.beanFactory).should(never()).registerSingleton(
+				RetryTopicInternalBeanNames.INTERNAL_BACKOFF_CLOCK_BEAN_NAME, Clock.systemUTC());
+		then((SingletonBeanRegistry) this.beanFactory).should(never()).registerSingleton(
+				RetryTopicInternalBeanNames.KAFKA_CONSUMER_BACKOFF_MANAGER, kafkaConsumerBackOffManager);
 	}
 
 	@Test
@@ -169,18 +213,16 @@ class RetryTopicBootstrapperTests {
 				RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME, DefaultDestinationTopicResolver.class))
 				.willReturn(defaultDestinationTopicResolver);
 		given(this.applicationContext.getBean(
-				RetryTopicInternalBeanNames.KAFKA_CONSUMER_BACKOFF_MANAGER, KafkaConsumerBackoffManager.class))
-				.willReturn(kafkaConsumerBackoffManager);
-
-		BeanDefinitionRegistry registry = (BeanDefinitionRegistry) this.applicationContext;
+				RetryTopicInternalBeanNames.INTERNAL_KAFKA_CONSUMER_BACKOFF_MANAGER_FACTORY,
+				KafkaBackOffManagerFactory.class))
+				.willReturn(kafkaBackOffManagerFactory);
 
 		// when
 		RetryTopicBootstrapper bootstrapper = new RetryTopicBootstrapper(applicationContext, beanFactory);
 		bootstrapper.bootstrapRetryTopic();
-		ConfigurableApplicationContext configurableApplicationContext = (ConfigurableApplicationContext) this.applicationContext;
 
 		// then
-		then(configurableApplicationContext).should(times(1)).addApplicationListener(kafkaConsumerBackoffManager);
-		then(configurableApplicationContext).should(times(1)).addApplicationListener(defaultDestinationTopicResolver);
+		then(this.applicationContext).should(times(1))
+				.addApplicationListener(defaultDestinationTopicResolver);
 	}
 }

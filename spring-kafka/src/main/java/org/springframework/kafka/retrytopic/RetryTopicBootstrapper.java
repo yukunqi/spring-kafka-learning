@@ -17,14 +17,20 @@
 package org.springframework.kafka.retrytopic;
 
 import java.time.Clock;
+import java.util.function.Supplier;
 
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.config.SingletonBeanRegistry;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.core.task.TaskExecutor;
+import org.springframework.kafka.listener.KafkaBackOffManagerFactory;
 import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
+import org.springframework.kafka.listener.KafkaConsumerTimingAdjuster;
+import org.springframework.kafka.listener.TimingAdjustingKafkaBackOffManagerFactory;
 import org.springframework.retry.backoff.ThreadWaitSleeper;
 
 /**
@@ -45,26 +51,25 @@ public class RetryTopicBootstrapper {
 	private final BeanFactory beanFactory;
 
 	public RetryTopicBootstrapper(ApplicationContext applicationContext, BeanFactory beanFactory) {
-		this.beanFactory = beanFactory;
 		if (!ConfigurableApplicationContext.class.isAssignableFrom(applicationContext.getClass()) ||
-			!BeanDefinitionRegistry.class.isAssignableFrom(applicationContext.getClass())) {
+				!BeanDefinitionRegistry.class.isAssignableFrom(applicationContext.getClass())) {
 			throw new IllegalStateException(String.format("ApplicationContext must be implement %s and %s interfaces. Provided: %s",
 					ConfigurableApplicationContext.class.getSimpleName(),
 					BeanDefinitionRegistry.class.getSimpleName(),
 					applicationContext.getClass().getSimpleName()));
 		}
-		if (!SingletonBeanRegistry.class.isAssignableFrom(this.beanFactory.getClass())) {
+		if (!SingletonBeanRegistry.class.isAssignableFrom(beanFactory.getClass())) {
 			throw new IllegalStateException("BeanFactory must implement " + SingletonBeanRegistry.class +
-					" interface. Provided: " + this.beanFactory.getClass().getSimpleName());
+					" interface. Provided: " + beanFactory.getClass().getSimpleName());
 		}
+		this.beanFactory = beanFactory;
 		this.applicationContext = applicationContext;
 	}
 
 	public void bootstrapRetryTopic() {
 		registerBeans();
-		configureBackoffClock();
-		configureDestinationTopicContainer();
-		configureKafkaConsumerBackoffManager();
+		registerSingletons();
+		addApplicationListeners();
 	}
 
 	private void registerBeans() {
@@ -77,29 +82,49 @@ public class RetryTopicBootstrapper {
 		registerIfNotContains(RetryTopicInternalBeanNames.DEAD_LETTER_PUBLISHING_RECOVERER_PROVIDER_NAME,
 				DeadLetterPublishingRecovererFactory.class);
 		registerIfNotContains(RetryTopicInternalBeanNames.RETRY_TOPIC_CONFIGURER, RetryTopicConfigurer.class);
-		registerIfNotContains(RetryTopicInternalBeanNames.KAFKA_CONSUMER_BACKOFF_MANAGER, KafkaConsumerBackoffManager.class);
-		registerIfNotContains(RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME, DefaultDestinationTopicResolver.class);
-		registerIfNotContains(RetryTopicInternalBeanNames.DEFAULT_SLEEPER_BEAN_NAME, ThreadWaitSleeper.class);
-
+		registerIfNotContains(RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME,
+				DefaultDestinationTopicResolver.class);
+		registerIfNotContains(RetryTopicInternalBeanNames.BACKOFF_SLEEPER_BEAN_NAME, ThreadWaitSleeper.class);
+		registerIfNotContains(RetryTopicInternalBeanNames.INTERNAL_KAFKA_CONSUMER_BACKOFF_MANAGER_FACTORY,
+				TimingAdjustingKafkaBackOffManagerFactory.class);
 	}
 
-	private void configureBackoffClock() {
-		if (!this.applicationContext.containsBeanDefinition(KafkaConsumerBackoffManager.INTERNAL_BACKOFF_CLOCK_BEAN_NAME)) {
-			((SingletonBeanRegistry) this.beanFactory).registerSingleton(
-					KafkaConsumerBackoffManager.INTERNAL_BACKOFF_CLOCK_BEAN_NAME, Clock.systemUTC());
+	private void registerSingletons() {
+		registerSingletonIfNotContains(RetryTopicInternalBeanNames.INTERNAL_BACKOFF_CLOCK_BEAN_NAME, Clock::systemUTC);
+		registerSingletonIfNotContains(RetryTopicInternalBeanNames.KAFKA_CONSUMER_BACKOFF_MANAGER,
+				this::createKafkaConsumerBackoffManager);
+	}
+
+	private void addApplicationListeners() {
+		((ConfigurableApplicationContext) this.applicationContext)
+				.addApplicationListener(this.applicationContext.getBean(
+						RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME, DefaultDestinationTopicResolver.class));
+	}
+
+	private KafkaConsumerBackoffManager createKafkaConsumerBackoffManager() {
+		KafkaBackOffManagerFactory factory = this.applicationContext
+				.getBean(RetryTopicInternalBeanNames.INTERNAL_KAFKA_CONSUMER_BACKOFF_MANAGER_FACTORY,
+						KafkaBackOffManagerFactory.class);
+		if (ApplicationContextAware.class.isAssignableFrom(factory.getClass())) {
+			((ApplicationContextAware) factory).setApplicationContext(this.applicationContext);
 		}
+		if (TimingAdjustingKafkaBackOffManagerFactory.class.isAssignableFrom(factory.getClass())) {
+			setupTimingAdjustingBackOffFactory((TimingAdjustingKafkaBackOffManagerFactory) factory);
+		}
+		return factory.create();
 	}
 
-	private void configureKafkaConsumerBackoffManager() {
-		KafkaConsumerBackoffManager kafkaConsumerBackoffManager = this.applicationContext.getBean(
-				RetryTopicInternalBeanNames.KAFKA_CONSUMER_BACKOFF_MANAGER, KafkaConsumerBackoffManager.class);
-		((ConfigurableApplicationContext) this.applicationContext).addApplicationListener(kafkaConsumerBackoffManager);
-	}
-
-	private void configureDestinationTopicContainer() {
-		DefaultDestinationTopicResolver defaultDestinationTopicResolver = this.applicationContext.getBean(
-				RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME, DefaultDestinationTopicResolver.class);
-		((ConfigurableApplicationContext) this.applicationContext).addApplicationListener(defaultDestinationTopicResolver);
+	private void setupTimingAdjustingBackOffFactory(TimingAdjustingKafkaBackOffManagerFactory factory) {
+		if (this.applicationContext.containsBean(RetryTopicInternalBeanNames.BACKOFF_TASK_EXECUTOR)) {
+			factory.setTaskExecutor(this.applicationContext
+					.getBean(RetryTopicInternalBeanNames.BACKOFF_TASK_EXECUTOR, TaskExecutor.class));
+		}
+		if (this.applicationContext.containsBean(
+				RetryTopicInternalBeanNames.INTERNAL_BACKOFF_TIMING_ADJUSTMENT_MANAGER)) {
+			factory.setTimingAdjustmentManager(this.applicationContext
+					.getBean(RetryTopicInternalBeanNames.INTERNAL_BACKOFF_TIMING_ADJUSTMENT_MANAGER,
+						KafkaConsumerTimingAdjuster.class));
+		}
 	}
 
 	private void registerIfNotContains(String beanName, Class<?> beanClass) {
@@ -107,6 +132,12 @@ public class RetryTopicBootstrapper {
 		if (!registry.containsBeanDefinition(beanName)) {
 			registry.registerBeanDefinition(beanName,
 					new RootBeanDefinition(beanClass));
+		}
+	}
+
+	private void registerSingletonIfNotContains(String beanName, Supplier<Object> singletonSupplier) {
+		if (!this.applicationContext.containsBeanDefinition(beanName)) {
+			((SingletonBeanRegistry) this.beanFactory).registerSingleton(beanName, singletonSupplier.get());
 		}
 	}
 }

@@ -18,13 +18,10 @@ package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
-import java.math.BigInteger;
 import java.time.Clock;
 import java.time.Instant;
 
@@ -32,16 +29,12 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import org.springframework.core.task.TaskExecutor;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.event.ListenerContainerPartitionIdleEvent;
 import org.springframework.kafka.retrytopic.TestClockUtils;
-import org.springframework.retry.backoff.Sleeper;
 
 /**
  * @author Tomaz Fernandes
@@ -57,22 +50,16 @@ class KafkaConsumerBackoffManagerTests {
 	private MessageListenerContainer listenerContainer;
 
 	@Mock
-	private ListenerContainerPartitionIdleEvent partitionIdleEvent;
+	private WakingKafkaConsumerTimingAdjuster timingAdjustmentManager;
 
 	@Mock
-	private TaskExecutor taskExecutor;
+	private ListenerContainerPartitionIdleEvent partitionIdleEvent;
 
 	@Mock
 	private Consumer<?, ?> consumer;
 
 	@Mock
 	private ContainerProperties containerProperties;
-
-	@Mock
-	private Sleeper sleeper;
-
-	@Captor
-	private ArgumentCaptor<Runnable> correctionRunnableCaptor;
 
 	private static final String testListenerId = "testListenerId";
 
@@ -82,30 +69,30 @@ class KafkaConsumerBackoffManagerTests {
 
 	private static final int testPartition = 0;
 
+	private static final long pollTimeout = 500L;
+
 	private static final TopicPartition topicPartition = new TopicPartition(testTopic, testPartition);
 
 	private static final long originalTimestamp = Instant.now(clock).minusMillis(2500L).toEpochMilli();
 
-	private static final byte[] originalTimestampBytes = BigInteger.valueOf(originalTimestamp).toByteArray();
-
-
 	@Test
-	void shouldBackoffgivenDueTimestampIsLater() {
+	void shouldBackOffGivenDueTimestampIsLater() {
 
-		// setup
+		// given
 		given(this.registry.getListenerContainer(testListenerId)).willReturn(listenerContainer);
 		given(registry.getListenerContainer(testListenerId)).willReturn(listenerContainer);
-		KafkaConsumerBackoffManager backoffManager = new KafkaConsumerBackoffManager(registry, clock, taskExecutor, sleeper);
+		KafkaConsumerBackoffManager backoffManager =
+				new KafkaConsumerBackoffManager(registry, timingAdjustmentManager, clock);
 
 		long dueTimestamp = originalTimestamp + 5000;
 		KafkaConsumerBackoffManager.Context context =
 				backoffManager.createContext(dueTimestamp, testListenerId, topicPartition, consumer);
 
-		// given
+		// then
 		KafkaBackoffException backoffException = catchThrowableOfType(() -> backoffManager.maybeBackoff(context),
 				KafkaBackoffException.class);
 
-		// then
+		// when
 		assertThat(backoffException.getDueTimestamp()).isEqualTo(dueTimestamp);
 		assertThat(backoffException.getListenerId()).isEqualTo(testListenerId);
 		assertThat(backoffException.getTopicPartition()).isEqualTo(topicPartition);
@@ -116,15 +103,16 @@ class KafkaConsumerBackoffManagerTests {
 	@Test
 	void shouldNotBackoffGivenDueTimestampIsPast() {
 
-		// setup
-		KafkaConsumerBackoffManager backoffManager = new KafkaConsumerBackoffManager(registry, clock, taskExecutor, sleeper);
+		// given
+		KafkaConsumerBackoffManager backoffManager =
+				new KafkaConsumerBackoffManager(registry, timingAdjustmentManager, clock);
 		KafkaConsumerBackoffManager.Context context =
 				backoffManager.createContext(originalTimestamp - 5000, testListenerId, topicPartition, consumer);
 
-		// given
+		// then
 		backoffManager.maybeBackoff(context);
 
-		// then
+		// when
 		assertThat(backoffManager.getBackOffContext(topicPartition)).isNull();
 		then(listenerContainer).should(times(0)).pausePartition(topicPartition);
 	}
@@ -132,132 +120,92 @@ class KafkaConsumerBackoffManagerTests {
 	@Test
 	void shouldDoNothingIfIdleBeforeDueTimestamp() {
 
-		// setup
+		// given
 		given(this.partitionIdleEvent.getTopicPartition()).willReturn(topicPartition);
 		given(registry.getListenerContainer(testListenerId)).willReturn(listenerContainer);
 		given(listenerContainer.getContainerProperties()).willReturn(containerProperties);
-		given(containerProperties.getPollTimeout()).willReturn(500L);
+		given(containerProperties.getPollTimeout()).willReturn(pollTimeout);
 
-		KafkaConsumerBackoffManager backoffManager = new KafkaConsumerBackoffManager(registry, clock, taskExecutor, sleeper);
+		KafkaConsumerBackoffManager backoffManager =
+				new KafkaConsumerBackoffManager(registry, timingAdjustmentManager, clock);
 
+		long dueTimestamp = originalTimestamp + 5000;
 		KafkaConsumerBackoffManager.Context context =
-				backoffManager.createContext(originalTimestamp + 5000, testListenerId, topicPartition, consumer);
+				backoffManager.createContext(dueTimestamp, testListenerId, topicPartition, consumer);
 		backoffManager.addBackoff(context, topicPartition);
 
-		// given
+		// then
 		backoffManager.onApplicationEvent(partitionIdleEvent);
 
-		// then
+		// when
 		assertThat(backoffManager.getBackOffContext(topicPartition)).isEqualTo(context);
+		then(timingAdjustmentManager).should(times(1)).adjustTiming(
+				consumer, topicPartition, pollTimeout, getTimeUntilDue(dueTimestamp));
 		then(listenerContainer).should(times(0)).resumePartition(topicPartition);
+	}
+
+	private long getTimeUntilDue(long dueTimestamp) {
+		return dueTimestamp - Instant.now(clock).toEpochMilli();
 	}
 
 	@Test
 	void shouldResumePartitionIfIdleAfterDueTimestamp() {
 
-		// setup
+		// given
 		given(registry.getListenerContainer(testListenerId)).willReturn(listenerContainer);
 		given(listenerContainer.getContainerProperties()).willReturn(containerProperties);
 		given(containerProperties.getPollTimeout()).willReturn(500L);
 
 		given(this.registry.getListenerContainer(testListenerId)).willReturn(listenerContainer);
 		given(this.partitionIdleEvent.getTopicPartition()).willReturn(topicPartition);
-		KafkaConsumerBackoffManager backoffManager = new KafkaConsumerBackoffManager(registry, clock, taskExecutor, sleeper);
+		long dueTimestamp = originalTimestamp - 5000;
+		given(timingAdjustmentManager
+				.adjustTiming(consumer, topicPartition, pollTimeout, getTimeUntilDue(dueTimestamp)))
+				.willReturn(0L);
+		KafkaConsumerBackoffManager backoffManager =
+				new KafkaConsumerBackoffManager(registry, timingAdjustmentManager, clock);
 		KafkaConsumerBackoffManager.Context context =
-				backoffManager.createContext(originalTimestamp - 5000, testListenerId, topicPartition, consumer);
+				backoffManager.createContext(dueTimestamp, testListenerId, topicPartition, consumer);
 		backoffManager.addBackoff(context, topicPartition);
 
-		// given
+		// when
 		backoffManager.onApplicationEvent(partitionIdleEvent);
 
 		// then
+		then(timingAdjustmentManager).should(times(1)).adjustTiming(
+				consumer, topicPartition, pollTimeout, getTimeUntilDue(dueTimestamp));
 		assertThat(backoffManager.getBackOffContext(topicPartition)).isNull();
 		then(listenerContainer).should(times(1)).resumePartition(topicPartition);
 	}
 
 	@Test
-	void shouldApplyCorrectionIfInCorrectionWindow() throws InterruptedException {
+	void shouldResumePartitionIfCorrectionIsApplied() {
 
-		// setup
+		// given
 		given(registry.getListenerContainer(testListenerId)).willReturn(listenerContainer);
 		given(listenerContainer.getContainerProperties()).willReturn(containerProperties);
-		long pollTimout = 500L;
-		given(containerProperties.getPollTimeout()).willReturn(pollTimout);
+		long pollTimeout = 500L;
+		given(containerProperties.getPollTimeout()).willReturn(pollTimeout);
 
 		given(this.registry.getListenerContainer(testListenerId)).willReturn(listenerContainer);
 		given(this.partitionIdleEvent.getTopicPartition()).willReturn(topicPartition);
-		KafkaConsumerBackoffManager backoffManager = new KafkaConsumerBackoffManager(registry, clock, taskExecutor, sleeper);
-		long dueBackOffTime = 750L;
-		long dueTimestamp = Instant.now(clock).plusMillis(dueBackOffTime).toEpochMilli();
+		long dueTimestamp = originalTimestamp + 5000;
+		given(timingAdjustmentManager
+				.adjustTiming(consumer, topicPartition, pollTimeout, getTimeUntilDue(dueTimestamp)))
+				.willReturn(1000L);
+		KafkaConsumerBackoffManager backoffManager =
+				new KafkaConsumerBackoffManager(registry, timingAdjustmentManager, clock);
 		KafkaConsumerBackoffManager.Context context =
-				backoffManager.createContext(dueTimestamp,
-						testListenerId, topicPartition, consumer);
+				backoffManager.createContext(dueTimestamp, testListenerId, topicPartition, consumer);
 		backoffManager.addBackoff(context, topicPartition);
 
-		// given
+		// when
 		backoffManager.onApplicationEvent(partitionIdleEvent);
 
 		// then
-		then(this.taskExecutor).should(times(1)).execute(correctionRunnableCaptor.capture());
-		Runnable correctionRunnable = correctionRunnableCaptor.getValue();
-		correctionRunnable.run();
-
-		then(sleeper).should(times(1)).sleep(dueBackOffTime - pollTimout);
-		then(consumer).should(times(1)).wakeup();
-
-		assertThat(backoffManager.getBackOffContext(topicPartition)).isNull();
+		then(timingAdjustmentManager).should(times(1)).adjustTiming(
+				consumer, topicPartition, pollTimeout, getTimeUntilDue(dueTimestamp));
 		then(listenerContainer).should(times(1)).resumePartition(topicPartition);
-	}
-
-	@Test
-	void shouldNotApplyCorrectionIfTooLateForCorrectionWindow() throws InterruptedException {
-
-		// setup
-		given(registry.getListenerContainer(testListenerId)).willReturn(listenerContainer);
-		given(listenerContainer.getContainerProperties()).willReturn(containerProperties);
-		long pollTimout = 500L;
-		given(containerProperties.getPollTimeout()).willReturn(pollTimout);
-
-		given(this.registry.getListenerContainer(testListenerId)).willReturn(listenerContainer);
-		given(this.partitionIdleEvent.getTopicPartition()).willReturn(topicPartition);
-		KafkaConsumerBackoffManager backoffManager = new KafkaConsumerBackoffManager(registry, clock, taskExecutor, sleeper);
-		long dueBackOffTime = 250L;
-		long dueTimestamp = Instant.now(clock).plusMillis(dueBackOffTime).toEpochMilli();
-		KafkaConsumerBackoffManager.Context context =
-				backoffManager.createContext(dueTimestamp,
-						testListenerId, topicPartition, consumer);
-		backoffManager.addBackoff(context, topicPartition);
-
-		// given
-		backoffManager.onApplicationEvent(partitionIdleEvent);
-
-		// then
-		then(this.taskExecutor).should(never()).execute(any(Runnable.class));
-	}
-
-	@Test
-	void shouldNotApplyCorrectionIfTooSoonForCorrectionWindow() throws InterruptedException {
-
-		// setup
-		given(registry.getListenerContainer(testListenerId)).willReturn(listenerContainer);
-		given(listenerContainer.getContainerProperties()).willReturn(containerProperties);
-		long pollTimout = 500L;
-		given(containerProperties.getPollTimeout()).willReturn(pollTimout);
-
-		given(this.registry.getListenerContainer(testListenerId)).willReturn(listenerContainer);
-		given(this.partitionIdleEvent.getTopicPartition()).willReturn(topicPartition);
-		KafkaConsumerBackoffManager backoffManager = new KafkaConsumerBackoffManager(registry, clock, taskExecutor, sleeper);
-		long dueBackOffTime = 1250L;
-		long dueTimestamp = Instant.now(clock).plusMillis(dueBackOffTime).toEpochMilli();
-		KafkaConsumerBackoffManager.Context context =
-				backoffManager.createContext(dueTimestamp,
-						testListenerId, topicPartition, consumer);
-		backoffManager.addBackoff(context, topicPartition);
-
-		// given
-		backoffManager.onApplicationEvent(partitionIdleEvent);
-
-		// then
-		then(this.taskExecutor).should(never()).execute(any(Runnable.class));
+		assertThat(backoffManager.getBackOffContext(topicPartition)).isNull();
 	}
 }

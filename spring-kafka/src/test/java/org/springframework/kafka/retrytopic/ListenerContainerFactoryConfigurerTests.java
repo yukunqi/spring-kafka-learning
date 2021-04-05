@@ -132,7 +132,7 @@ class ListenerContainerFactoryConfigurerTests {
 	@Mock
 	private RetryTopicConfiguration configuration;
 
-	private final long backOffValue = 1000L;
+	private final long backOffValue = 2000L;
 
 	private ListenerContainerFactoryConfigurer.Configuration lcfcConfiguration =
 			new ListenerContainerFactoryConfigurer.Configuration(Collections.singletonList(backOffValue));
@@ -254,9 +254,9 @@ class ListenerContainerFactoryConfigurerTests {
 		containerCustomizer.configure(container);
 
 		then(containerProperties).should(times(1))
-				.setIdlePartitionEventInterval(250L);
+				.setIdlePartitionEventInterval(100L);
 		then(containerProperties).should(times(1))
-				.setPollTimeout(250L);
+				.setPollTimeout(100L);
 	}
 
 	@Test

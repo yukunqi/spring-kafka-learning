@@ -43,9 +43,20 @@ public abstract class RetryTopicInternalBeanNames {
 
 	static final String DESTINATION_TOPIC_CONTAINER_NAME = "internalDestinationTopicContainer";
 
-	static final String DEFAULT_LISTENER_FACTORY_BEAN_NAME = "retryTopicListenerContainerFactory";
+	static final String DEFAULT_LISTENER_FACTORY_BEAN_NAME = "internalRetryTopicListenerContainerFactory";
 
-	static final String DEFAULT_SLEEPER_BEAN_NAME = "retryTopicSleeper";
+	static final String BACKOFF_SLEEPER_BEAN_NAME = "internalBackoffSleeper";
+
+	static final String BACKOFF_TASK_EXECUTOR = "internalBackOffTaskExecutor";
+
+	static final String INTERNAL_BACKOFF_TIMING_ADJUSTMENT_MANAGER = "internalKafkaConsumerTimingAdjustmentManager";
+
+	static final String INTERNAL_KAFKA_CONSUMER_BACKOFF_MANAGER_FACTORY = "internalKafkaConsumerBackOffManagerFactory";
+
+	/**
+	 * Internal Back Off Clock Bean Name.
+	 */
+	public static final String INTERNAL_BACKOFF_CLOCK_BEAN_NAME = "internalBackOffClock";
 
 	/**
 	 * Default Kafka template bean name for publishing to retry topics.

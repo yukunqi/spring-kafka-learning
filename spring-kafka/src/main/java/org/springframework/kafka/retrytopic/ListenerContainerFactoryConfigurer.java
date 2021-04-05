@@ -65,11 +65,13 @@ public class ListenerContainerFactoryConfigurer {
 		CONFIGURED_FACTORIES_CACHE = new HashSet<>();
 	}
 
-	private static final int MIN_POLL_TIMEOUT_VALUE = 250;
+	private static final int MIN_POLL_TIMEOUT_VALUE = 100;
 
 	private static final int MAX_POLL_TIMEOUT_VALUE = 5000;
 
 	private static final int POLL_TIMEOUT_DIVISOR = 4;
+
+	private static final long LOWEST_BACKOFF_THRESHOLD = 1500L;
 
 	private Consumer<ConcurrentMessageListenerContainer<?, ?>> containerCustomizer = container -> {
 	};
@@ -85,7 +87,7 @@ public class ListenerContainerFactoryConfigurer {
 
 	ListenerContainerFactoryConfigurer(KafkaConsumerBackoffManager kafkaConsumerBackoffManager,
 									DeadLetterPublishingRecovererFactory deadLetterPublishingRecovererFactory,
-									@Qualifier(KafkaConsumerBackoffManager
+									@Qualifier(RetryTopicInternalBeanNames
 											.INTERNAL_BACKOFF_CLOCK_BEAN_NAME) Clock clock) {
 		this.kafkaConsumerBackoffManager = kafkaConsumerBackoffManager;
 		this.deadLetterPublishingRecovererFactory = deadLetterPublishingRecovererFactory;
@@ -195,7 +197,9 @@ public class ListenerContainerFactoryConfigurer {
 				.min(Comparator.naturalOrder())
 				.orElseThrow(() -> new IllegalArgumentException("No back off values found!"));
 
-		return applyLimits(lowestBackOff / POLL_TIMEOUT_DIVISOR);
+		return lowestBackOff > LOWEST_BACKOFF_THRESHOLD
+				? applyLimits(lowestBackOff / POLL_TIMEOUT_DIVISOR)
+				: MIN_POLL_TIMEOUT_VALUE;
 	}
 
 	private long applyLimits(long pollTimeoutValue) {
