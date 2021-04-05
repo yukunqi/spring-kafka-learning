@@ -33,7 +33,7 @@ if(gitPresent) {
 	apply plugin: 'org.ajoberstar.grgit'
 }
 
-description = 'Spring Kafka'
+description = 'Spring for Apache Kafka'
 
 ext {
 	linkHomepage = 'https://github.com/spring-projects/spring-kafka'

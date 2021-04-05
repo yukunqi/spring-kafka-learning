@@ -30,7 +30,8 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
 
 /**
- * Annotation that can be specified on a test class that runs Spring Kafka based tests.
+ * Annotation that can be specified on a test class that runs Spring for Apache Kafka
+ * based tests.
  * Provides the following features over and above the regular <em>Spring TestContext
  * Framework</em>:
  * <ul>

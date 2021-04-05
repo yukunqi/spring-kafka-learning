@@ -22,7 +22,7 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * The Spring Kafka specific {@link NestedRuntimeException} implementation.
+ * The Spring for Apache Kafka specific {@link NestedRuntimeException} implementation.
  *
  * @author Gary Russell
  * @author Artem Bilan

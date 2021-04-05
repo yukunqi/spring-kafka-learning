@@ -1,6 +1,6 @@
 = Spring for Apache Kafka Contributor Guidelines
 
-Have something you'd like to contribute to **Spring Kafka**?
+Do you have something you'd like to contribute to **Spring for Apache Kafka**?
 We welcome pull requests, but ask that you carefully read this document first to understand how best to submit them;
 what kind of changes are likely to be accepted; and what to expect from the Spring team when evaluating your submission.
 
