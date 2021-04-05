@@ -338,7 +338,7 @@ public class KafkaAdmin extends KafkaResourceFactory
 	 */
 	public static class NewTopics {
 
-		final Collection<NewTopic> newTopics = new ArrayList<>();
+		private final Collection<NewTopic> newTopics = new ArrayList<>();
 
 		/**
 		 * Construct an instance with the {@link NewTopic}s.
