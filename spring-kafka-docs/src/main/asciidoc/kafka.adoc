@@ -4153,7 +4153,7 @@ Refer to the https://github.com/spring-projects/spring-retry[spring-retry] proje
 [[messaging-message-conversion]]
 ===== Spring Messaging Message Conversion
 
-Although the `Serializer` and `Deserializer` API is quite simple and flexible from the low-level Kafka `Consumer` and `Producer` perspective, you might need more flexibility at the Spring Messaging level, when using either `@KafkaListener` or https://docs.spring.io/spring-integration/docs/current/reference/html/kafka.html#kafka[[Spring Integration's Apache Kafka Support].
+Although the `Serializer` and `Deserializer` API is quite simple and flexible from the low-level Kafka `Consumer` and `Producer` perspective, you might need more flexibility at the Spring Messaging level, when using either `@KafkaListener` or https://docs.spring.io/spring-integration/docs/current/reference/html/kafka.html#kafka[Spring Integration's Apache Kafka Support].
 To let you easily convert to and from `org.springframework.messaging.Message`, Spring for Apache Kafka provides a `MessageConverter` abstraction with the `MessagingMessageConverter` implementation and its `JsonMessageConverter` (and subclasses) customization.
 You can inject the `MessageConverter` into a `KafkaTemplate` instance directly and by using `AbstractKafkaListenerContainerFactory` bean definition for the `@KafkaListener.containerFactory()` property.
 The following example shows how to do so:
@@ -4177,6 +4177,8 @@ public void jsonListener(Cat cat) {
 }
 ----
 ====
+
+When using Spring Boot, simply define the converter as a `@Bean` and Spring Boot auto configuration will wire it into the auto-configured template and container factory.
 
 When you use a `@KafkaListener`, the parameter type is provided to the message converter to assist with the conversion.
 
