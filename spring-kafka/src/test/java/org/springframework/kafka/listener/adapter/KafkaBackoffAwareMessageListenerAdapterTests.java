@@ -145,7 +145,7 @@ class KafkaBackoffAwareMessageListenerAdapterTests {
 				.createContext(timestampCaptor.capture(), eq(listenerId), eq(topicPartition), isNull());
 		assertThat(timestampCaptor.getValue()).isEqualTo(originalTimestamp);
 		then(kafkaConsumerBackoffManager).should(times(1))
-				.maybeBackoff(context);
+				.backOffIfNecessary(context);
 
 		then(delegate).should(times(1)).onMessage(data, null, null);
 	}
@@ -173,7 +173,7 @@ class KafkaBackoffAwareMessageListenerAdapterTests {
 				.createContext(timestampCaptor.capture(), eq(listenerId), eq(topicPartition), isNull());
 		assertThat(timestampCaptor.getValue()).isEqualTo(originalTimestamp);
 		then(kafkaConsumerBackoffManager).should(times(1))
-				.maybeBackoff(context);
+				.backOffIfNecessary(context);
 
 		then(delegate).should(times(1)).onMessage(data, null, null);
 	}
@@ -198,7 +198,7 @@ class KafkaBackoffAwareMessageListenerAdapterTests {
 				.createContext(timestampCaptor.capture(), eq(listenerId), eq(topicPartition), isNull());
 		assertThat(timestampCaptor.getValue()).isEqualTo(originalTimestamp);
 		then(kafkaConsumerBackoffManager).should(times(1))
-				.maybeBackoff(context);
+				.backOffIfNecessary(context);
 
 		then(delegate).should(times(1)).onMessage(data, ack, null);
 	}
@@ -222,7 +222,7 @@ class KafkaBackoffAwareMessageListenerAdapterTests {
 				.createContext(timestampCaptor.capture(), eq(listenerId), eq(topicPartition), eq(consumer));
 		assertThat(timestampCaptor.getValue()).isEqualTo(originalTimestamp);
 		then(kafkaConsumerBackoffManager).should(times(1))
-				.maybeBackoff(context);
+				.backOffIfNecessary(context);
 
 		then(delegate).should(times(1)).onMessage(data, null, consumer);
 	}
@@ -247,7 +247,7 @@ class KafkaBackoffAwareMessageListenerAdapterTests {
 				.createContext(timestampCaptor.capture(), eq(listenerId), eq(topicPartition), eq(consumer));
 		assertThat(timestampCaptor.getValue()).isEqualTo(originalTimestamp);
 		then(kafkaConsumerBackoffManager).should(times(1))
-				.maybeBackoff(context);
+				.backOffIfNecessary(context);
 
 		then(delegate).should(times(1)).onMessage(data, ack, consumer);
 	}

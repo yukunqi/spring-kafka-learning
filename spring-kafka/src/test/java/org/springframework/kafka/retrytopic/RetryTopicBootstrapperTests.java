@@ -38,7 +38,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.kafka.listener.KafkaBackOffManagerFactory;
 import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
-import org.springframework.kafka.listener.TimingAdjustingKafkaBackOffManagerFactory;
+import org.springframework.kafka.listener.PartitionPausingBackOffManagerFactory;
 import org.springframework.retry.backoff.ThreadWaitSleeper;
 
 /**
@@ -64,7 +64,7 @@ class RetryTopicBootstrapperTests {
 	private DefaultDestinationTopicResolver defaultDestinationTopicResolver;
 
 	@Mock
-	private TimingAdjustingKafkaBackOffManagerFactory kafkaBackOffManagerFactory;
+	private PartitionPausingBackOffManagerFactory kafkaBackOffManagerFactory;
 
 	@Mock
 	private KafkaConsumerBackoffManager kafkaConsumerBackOffManager;

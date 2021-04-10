@@ -91,7 +91,7 @@ public class KafkaBackoffAwareMessageListenerAdapter<K, V>
 								@Nullable Consumer<?, ?> consumer) {
 		maybeGetBackoffTimestamp(consumerRecord)
 				.ifPresent(nextExecutionTimestamp -> this.kafkaConsumerBackoffManager
-						.maybeBackoff(createContext(consumerRecord, nextExecutionTimestamp, consumer)));
+						.backOffIfNecessary(createContext(consumerRecord, nextExecutionTimestamp, consumer)));
 		try {
 			invokeDelegateOnMessage(consumerRecord, acknowledgment, consumer);
 		}

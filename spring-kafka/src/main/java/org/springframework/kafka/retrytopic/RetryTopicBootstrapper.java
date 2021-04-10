@@ -30,7 +30,7 @@ import org.springframework.core.task.TaskExecutor;
 import org.springframework.kafka.listener.KafkaBackOffManagerFactory;
 import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
 import org.springframework.kafka.listener.KafkaConsumerTimingAdjuster;
-import org.springframework.kafka.listener.TimingAdjustingKafkaBackOffManagerFactory;
+import org.springframework.kafka.listener.PartitionPausingBackOffManagerFactory;
 import org.springframework.retry.backoff.ThreadWaitSleeper;
 
 /**
@@ -86,7 +86,7 @@ public class RetryTopicBootstrapper {
 				DefaultDestinationTopicResolver.class);
 		registerIfNotContains(RetryTopicInternalBeanNames.BACKOFF_SLEEPER_BEAN_NAME, ThreadWaitSleeper.class);
 		registerIfNotContains(RetryTopicInternalBeanNames.INTERNAL_KAFKA_CONSUMER_BACKOFF_MANAGER_FACTORY,
-				TimingAdjustingKafkaBackOffManagerFactory.class);
+				PartitionPausingBackOffManagerFactory.class);
 	}
 
 	private void registerSingletons() {
@@ -108,13 +108,13 @@ public class RetryTopicBootstrapper {
 		if (ApplicationContextAware.class.isAssignableFrom(factory.getClass())) {
 			((ApplicationContextAware) factory).setApplicationContext(this.applicationContext);
 		}
-		if (TimingAdjustingKafkaBackOffManagerFactory.class.isAssignableFrom(factory.getClass())) {
-			setupTimingAdjustingBackOffFactory((TimingAdjustingKafkaBackOffManagerFactory) factory);
+		if (PartitionPausingBackOffManagerFactory.class.isAssignableFrom(factory.getClass())) {
+			setupTimingAdjustingBackOffFactory((PartitionPausingBackOffManagerFactory) factory);
 		}
 		return factory.create();
 	}
 
-	private void setupTimingAdjustingBackOffFactory(TimingAdjustingKafkaBackOffManagerFactory factory) {
+	private void setupTimingAdjustingBackOffFactory(PartitionPausingBackOffManagerFactory factory) {
 		if (this.applicationContext.containsBean(RetryTopicInternalBeanNames.BACKOFF_TASK_EXECUTOR)) {
 			factory.setTaskExecutor(this.applicationContext
 					.getBean(RetryTopicInternalBeanNames.BACKOFF_TASK_EXECUTOR, TaskExecutor.class));

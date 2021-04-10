@@ -41,7 +41,7 @@ import org.springframework.kafka.retrytopic.TestClockUtils;
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)
-class KafkaConsumerBackoffManagerTests {
+class PartitionPausingBackoffManagerTests {
 
 	@Mock
 	private KafkaListenerEndpointRegistry registry;
@@ -81,15 +81,15 @@ class KafkaConsumerBackoffManagerTests {
 		// given
 		given(this.registry.getListenerContainer(testListenerId)).willReturn(listenerContainer);
 		given(registry.getListenerContainer(testListenerId)).willReturn(listenerContainer);
-		KafkaConsumerBackoffManager backoffManager =
-				new KafkaConsumerBackoffManager(registry, timingAdjustmentManager, clock);
+		PartitionPausingBackoffManager backoffManager =
+				new PartitionPausingBackoffManager(registry, timingAdjustmentManager, clock);
 
 		long dueTimestamp = originalTimestamp + 5000;
 		KafkaConsumerBackoffManager.Context context =
 				backoffManager.createContext(dueTimestamp, testListenerId, topicPartition, consumer);
 
 		// then
-		KafkaBackoffException backoffException = catchThrowableOfType(() -> backoffManager.maybeBackoff(context),
+		KafkaBackoffException backoffException = catchThrowableOfType(() -> backoffManager.backOffIfNecessary(context),
 				KafkaBackoffException.class);
 
 		// when
@@ -104,13 +104,13 @@ class KafkaConsumerBackoffManagerTests {
 	void shouldNotBackoffGivenDueTimestampIsPast() {
 
 		// given
-		KafkaConsumerBackoffManager backoffManager =
-				new KafkaConsumerBackoffManager(registry, timingAdjustmentManager, clock);
+		PartitionPausingBackoffManager backoffManager =
+				new PartitionPausingBackoffManager(registry, timingAdjustmentManager, clock);
 		KafkaConsumerBackoffManager.Context context =
 				backoffManager.createContext(originalTimestamp - 5000, testListenerId, topicPartition, consumer);
 
 		// then
-		backoffManager.maybeBackoff(context);
+		backoffManager.backOffIfNecessary(context);
 
 		// when
 		assertThat(backoffManager.getBackOffContext(topicPartition)).isNull();
@@ -126,8 +126,8 @@ class KafkaConsumerBackoffManagerTests {
 		given(listenerContainer.getContainerProperties()).willReturn(containerProperties);
 		given(containerProperties.getPollTimeout()).willReturn(pollTimeout);
 
-		KafkaConsumerBackoffManager backoffManager =
-				new KafkaConsumerBackoffManager(registry, timingAdjustmentManager, clock);
+		PartitionPausingBackoffManager backoffManager =
+				new PartitionPausingBackoffManager(registry, timingAdjustmentManager, clock);
 
 		long dueTimestamp = originalTimestamp + 5000;
 		KafkaConsumerBackoffManager.Context context =
@@ -162,8 +162,8 @@ class KafkaConsumerBackoffManagerTests {
 		given(timingAdjustmentManager
 				.adjustTiming(consumer, topicPartition, pollTimeout, getTimeUntilDue(dueTimestamp)))
 				.willReturn(0L);
-		KafkaConsumerBackoffManager backoffManager =
-				new KafkaConsumerBackoffManager(registry, timingAdjustmentManager, clock);
+		PartitionPausingBackoffManager backoffManager =
+				new PartitionPausingBackoffManager(registry, timingAdjustmentManager, clock);
 		KafkaConsumerBackoffManager.Context context =
 				backoffManager.createContext(dueTimestamp, testListenerId, topicPartition, consumer);
 		backoffManager.addBackoff(context, topicPartition);
@@ -193,8 +193,8 @@ class KafkaConsumerBackoffManagerTests {
 		given(timingAdjustmentManager
 				.adjustTiming(consumer, topicPartition, pollTimeout, getTimeUntilDue(dueTimestamp)))
 				.willReturn(1000L);
-		KafkaConsumerBackoffManager backoffManager =
-				new KafkaConsumerBackoffManager(registry, timingAdjustmentManager, clock);
+		PartitionPausingBackoffManager backoffManager =
+				new PartitionPausingBackoffManager(registry, timingAdjustmentManager, clock);
 		KafkaConsumerBackoffManager.Context context =
 				backoffManager.createContext(dueTimestamp, testListenerId, topicPartition, consumer);
 		backoffManager.addBackoff(context, topicPartition);

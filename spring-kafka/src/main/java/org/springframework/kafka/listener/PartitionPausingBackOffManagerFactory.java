@@ -32,7 +32,7 @@ import org.springframework.util.Assert;
  * @author Tomaz Fernandes
  * @since 2.7
  */
-public class TimingAdjustingKafkaBackOffManagerFactory extends AbstractKafkaBackOffManagerFactory {
+public class PartitionPausingBackOffManagerFactory extends AbstractKafkaBackOffManagerFactory {
 
 	private boolean timingAdjustmentEnabled = true;
 
@@ -48,7 +48,7 @@ public class TimingAdjustingKafkaBackOffManagerFactory extends AbstractKafkaBack
 	 *
 	 * @param timingAdjustmentManager the {@link KafkaConsumerTimingAdjuster} to be used.
 	 */
-	public TimingAdjustingKafkaBackOffManagerFactory(KafkaConsumerTimingAdjuster timingAdjustmentManager) {
+	public PartitionPausingBackOffManagerFactory(KafkaConsumerTimingAdjuster timingAdjustmentManager) {
 		this.clock = getDefaultClock();
 		setTimingAdjustmentManager(timingAdjustmentManager);
 	}
@@ -59,7 +59,7 @@ public class TimingAdjustingKafkaBackOffManagerFactory extends AbstractKafkaBack
 	 *
 	 * @param timingAdjustmentManagerTaskExecutor the {@link TaskExecutor} to be used.
 	 */
-	public TimingAdjustingKafkaBackOffManagerFactory(TaskExecutor timingAdjustmentManagerTaskExecutor) {
+	public PartitionPausingBackOffManagerFactory(TaskExecutor timingAdjustmentManagerTaskExecutor) {
 		this.clock = getDefaultClock();
 		setTaskExecutor(timingAdjustmentManagerTaskExecutor);
 	}
@@ -70,7 +70,7 @@ public class TimingAdjustingKafkaBackOffManagerFactory extends AbstractKafkaBack
 	 *
 	 * @param timingAdjustmentEnabled the {@link KafkaConsumerTimingAdjuster} to be used.
 	 */
-	public TimingAdjustingKafkaBackOffManagerFactory(boolean timingAdjustmentEnabled) {
+	public PartitionPausingBackOffManagerFactory(boolean timingAdjustmentEnabled) {
 		this.clock = getDefaultClock();
 		setTimingAdjustmentEnabled(timingAdjustmentEnabled);
 	}
@@ -80,7 +80,7 @@ public class TimingAdjustingKafkaBackOffManagerFactory extends AbstractKafkaBack
 	 *
 	 * @param listenerContainerRegistry the {@link ListenerContainerRegistry} to be used.
 	 */
-	public TimingAdjustingKafkaBackOffManagerFactory(ListenerContainerRegistry listenerContainerRegistry) {
+	public PartitionPausingBackOffManagerFactory(ListenerContainerRegistry listenerContainerRegistry) {
 		super(listenerContainerRegistry);
 		this.clock = getDefaultClock();
 	}
@@ -88,7 +88,7 @@ public class TimingAdjustingKafkaBackOffManagerFactory extends AbstractKafkaBack
 	/**
 	 * Constructs a factory instance with default dependencies.
 	 */
-	public TimingAdjustingKafkaBackOffManagerFactory() {
+	public PartitionPausingBackOffManagerFactory() {
 		this.clock = getDefaultClock();
 	}
 
@@ -97,7 +97,7 @@ public class TimingAdjustingKafkaBackOffManagerFactory extends AbstractKafkaBack
 	 * with the provided {@link Clock}.
 	 * @param clock the clock instance to be used.
 	 */
-	public TimingAdjustingKafkaBackOffManagerFactory(Clock clock) {
+	public PartitionPausingBackOffManagerFactory(Clock clock) {
 		this.clock = clock;
 	}
 
@@ -133,7 +133,7 @@ public class TimingAdjustingKafkaBackOffManagerFactory extends AbstractKafkaBack
 
 	@Override
 	protected KafkaConsumerBackoffManager doCreateManager(ListenerContainerRegistry registry) {
-		KafkaConsumerBackoffManager kafkaConsumerBackoffManager = getKafkaConsumerBackoffManager(registry);
+		PartitionPausingBackoffManager kafkaConsumerBackoffManager = getKafkaConsumerBackoffManager(registry);
 		super.addApplicationListener(kafkaConsumerBackoffManager);
 		return kafkaConsumerBackoffManager;
 	}
@@ -142,10 +142,10 @@ public class TimingAdjustingKafkaBackOffManagerFactory extends AbstractKafkaBack
 		return Clock.systemUTC();
 	}
 
-	private KafkaConsumerBackoffManager getKafkaConsumerBackoffManager(ListenerContainerRegistry registry) {
+	private PartitionPausingBackoffManager getKafkaConsumerBackoffManager(ListenerContainerRegistry registry) {
 		return this.timingAdjustmentEnabled
-			? new KafkaConsumerBackoffManager(registry, getOrCreateBackOffTimingAdjustmentManager(), this.clock)
-			: new KafkaConsumerBackoffManager(registry, this.clock);
+			? new PartitionPausingBackoffManager(registry, getOrCreateBackOffTimingAdjustmentManager(), this.clock)
+			: new PartitionPausingBackoffManager(registry, this.clock);
 	}
 
 	private KafkaConsumerTimingAdjuster getOrCreateBackOffTimingAdjustmentManager() {
