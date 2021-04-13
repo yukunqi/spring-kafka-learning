@@ -139,6 +139,7 @@ public class PartitionPausingBackoffManager implements KafkaConsumerBackoffManag
 	@Override
 	public void backOffIfNecessary(Context context) {
 		long backoffTime = context.getDueTimestamp() - getCurrentMillisFromClock();
+		LOGGER.debug(() -> "Back off time: " + backoffTime + " Context: " + context);
 		if (backoffTime > 0) {
 			pauseConsumptionAndThrow(context, backoffTime);
 		}

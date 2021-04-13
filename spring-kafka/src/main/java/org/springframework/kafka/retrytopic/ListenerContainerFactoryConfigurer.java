@@ -98,10 +98,10 @@ public class ListenerContainerFactoryConfigurer {
 			ConcurrentKafkaListenerContainerFactory<?, ?> containerFactory, Configuration configuration) {
 		return isCached(containerFactory)
 				? containerFactory
-				: doConfigure(containerFactory, configuration.backOffValues);
+				: addToCache(doConfigure(containerFactory, configuration.backOffValues));
 	}
 
-	public ConcurrentKafkaListenerContainerFactory<?, ?> configureWithoutBackOff(
+	public ConcurrentKafkaListenerContainerFactory<?, ?> configureWithoutBackOffValues(
 			ConcurrentKafkaListenerContainerFactory<?, ?> containerFactory, Configuration configuration) {
 		return isCached(containerFactory)
 				? containerFactory
@@ -114,7 +114,7 @@ public class ListenerContainerFactoryConfigurer {
 				setupBackoffAwareMessageListenerAdapter(container, backOffValues));
 		containerFactory
 				.setErrorHandler(createErrorHandler(this.deadLetterPublishingRecovererFactory.create()));
-		return addToCache(containerFactory);
+		return containerFactory;
 	}
 
 	private boolean isCached(ConcurrentKafkaListenerContainerFactory<?, ?> containerFactory) {

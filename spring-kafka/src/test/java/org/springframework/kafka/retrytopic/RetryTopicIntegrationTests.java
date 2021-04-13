@@ -72,14 +72,14 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  */
 @SpringJUnitConfig
 @DirtiesContext
-@EmbeddedKafka(topics = { RetryableTopicIntegrationTests.FIRST_TOPIC,
-		RetryableTopicIntegrationTests.SECOND_TOPIC,
-		RetryableTopicIntegrationTests.THIRD_TOPIC,
-		RetryableTopicIntegrationTests.FOURTH_TOPIC }, partitions = 1)
+@EmbeddedKafka(topics = { RetryTopicIntegrationTests.FIRST_TOPIC,
+		RetryTopicIntegrationTests.SECOND_TOPIC,
+		RetryTopicIntegrationTests.THIRD_TOPIC,
+		RetryTopicIntegrationTests.FOURTH_TOPIC }, partitions = 1)
 @TestPropertySource(properties = "five.attempts=5")
-public class RetryableTopicIntegrationTests {
+public class RetryTopicIntegrationTests {
 
-	private static final Logger logger = LoggerFactory.getLogger(RetryableTopicIntegrationTests.class);
+	private static final Logger logger = LoggerFactory.getLogger(RetryTopicIntegrationTests.class);
 
 	public final static String FIRST_TOPIC = "myRetryTopic1";
 
@@ -183,7 +183,7 @@ public class RetryableTopicIntegrationTests {
 		CountDownLatchContainer container;
 
 		@RetryableTopic(attempts = "${five.attempts}",
-				backoff = @Backoff(delay = 70, maxDelay = 120, multiplier = 1.5),
+				backoff = @Backoff(delay = 250, maxDelay = 1000, multiplier = 1.5),
 				numPartitions = "#{3}",
 				timeout = "${missing.property:2000}",
 				include = MyRetryException.class, kafkaTemplate = "kafkaTemplate")
@@ -207,7 +207,7 @@ public class RetryableTopicIntegrationTests {
 		@Autowired
 		CountDownLatchContainer container;
 
-		@RetryableTopic(dltStrategy = DltStrategy.NO_DLT, attempts = "4", backoff = @Backoff(50),
+		@RetryableTopic(dltStrategy = DltStrategy.NO_DLT, attempts = "4", backoff = @Backoff(300),
 				kafkaTemplate = "kafkaTemplate")
 		@KafkaListener(topics = FOURTH_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
 		public void listenNoDlt(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
@@ -320,7 +320,7 @@ public class RetryableTopicIntegrationTests {
 		public RetryTopicConfiguration secondRetryTopic(KafkaTemplate<String, String> template) {
 			return RetryTopicConfigurationBuilder
 					.newInstance()
-					.exponentialBackoff(50, 2, 10000)
+					.exponentialBackoff(500, 2, 10000)
 					.retryOn(Arrays.asList(IllegalStateException.class, IllegalAccessException.class))
 					.traversingCauses()
 					.includeTopic(SECOND_TOPIC)
@@ -343,7 +343,6 @@ public class RetryableTopicIntegrationTests {
 		public ThirdTopicListener thirdTopicListener() {
 			return new ThirdTopicListener();
 		}
-
 
 		@Bean
 		public FourthTopicListener fourthTopicListener() {
@@ -482,10 +481,6 @@ public class RetryableTopicIntegrationTests {
 				ConsumerFactory<String, String> consumerFactory) {
 
 			ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
-			ContainerProperties props = factory.getContainerProperties();
-			props.setIdleEventInterval(100L);
-			props.setPollTimeout(50L);
-			props.setIdlePartitionEventInterval(100L);
 			factory.setConsumerFactory(consumerFactory);
 			factory.setConcurrency(1);
 			return factory;

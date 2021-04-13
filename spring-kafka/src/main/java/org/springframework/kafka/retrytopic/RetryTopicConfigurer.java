@@ -355,7 +355,7 @@ public class RetryTopicConfigurer {
 				.resolveFactoryForMainEndpoint(providedFactory, defaultFactoryBeanName,
 						configuration.forContainerFactoryResolver());
 		return this.listenerContainerFactoryConfigurer
-				.configureWithoutBackOff(resolvedFactory, configuration.forContainerFactoryConfigurer());
+				.configureWithoutBackOffValues(resolvedFactory, configuration.forContainerFactoryConfigurer());
 	}
 
 	private ConcurrentKafkaListenerContainerFactory<?, ?> resolveAndConfigureFactoryForRetryEndpoint(

@@ -304,7 +304,7 @@ class ListenerContainerFactoryConfigurerTests {
 				new ListenerContainerFactoryConfigurer(kafkaConsumerBackoffManager,
 						deadLetterPublishingRecovererFactory, clock);
 		configurer
-				.configureWithoutBackOff(containerFactory, configuration.forContainerFactoryConfigurer());
+				.configureWithoutBackOffValues(containerFactory, configuration.forContainerFactoryConfigurer());
 
 		// then
 		then(containerFactory).should(times(1))
