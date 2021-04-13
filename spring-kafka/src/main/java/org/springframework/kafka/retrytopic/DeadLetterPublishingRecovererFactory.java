@@ -144,7 +144,8 @@ public class DeadLetterPublishingRecovererFactory {
 		long originalTimestamp = new BigInteger(originalTimestampHeader).longValue();
 		long failureTimestamp = getFailureTimestamp(e);
 		long nextExecutionTimestamp =  failureTimestamp + this.destinationTopicResolver
-				.getDestinationTopicByName(consumerRecord.topic()).getDestinationDelay();
+				.resolveDestinationTopic(consumerRecord.topic(), getAttempts(consumerRecord), e, originalTimestamp)
+				.getDestinationDelay();
 		LOGGER.debug(() -> String.format("FailureTimestamp: %s, Original timestamp: %s, nextExecutionTimestamp: %s",
 				failureTimestamp, originalTimestamp, nextExecutionTimestamp));
 		return nextExecutionTimestamp;
