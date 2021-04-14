@@ -1,6 +1,6 @@
 === What's New in 2.7 Since 2.6
 
-This section covers the changes made from version 2.5 to version 2.6.
+This section covers the changes made from version 2.6 to version 2.7.
 For changes in earlier version, see <<history>>.
 
 [[x27-kafka-client]]
