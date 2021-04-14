@@ -8,6 +8,14 @@ For changes in earlier version, see <<history>>.
 
 This version requires the 2.7.0 `kafka-clients`.
 
+[[x-27-nonblock-retry]]
+==== Non-Blocking Delayed Retries Using Topics
+
+This significant new feature is added in this release.
+When strict ordering is not important, failed deliveries can be sent to another topic to be consumed later.
+A series of such retry topics can be configured, with increasing delays.
+See <<retry-topic>> for more information.
+
 [[x27-container]]
 ==== Listener Container Changes
 
