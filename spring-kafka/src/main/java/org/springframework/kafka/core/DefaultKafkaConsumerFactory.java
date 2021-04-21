@@ -324,7 +324,7 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 			}
 		}
 		for (ConsumerPostProcessor<K, V> pp : this.postProcessors) {
-			pp.apply(kafkaConsumer);
+			kafkaConsumer = pp.apply(kafkaConsumer);
 		}
 		return kafkaConsumer;
 	}
