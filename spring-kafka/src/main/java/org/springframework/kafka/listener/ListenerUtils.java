@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2020 the original author or authors.
+ * Copyright 2017-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -153,10 +153,7 @@ public final class ListenerUtils {
 	 * @param lastIntervals a thread local containing the previous {@link BackOff}
 	 * interval for this thread.
 	 * @since 2.3.12
-	 * @deprecated since 2.7 in favor of
-	 * {@link #unrecoverableBackOff(BackOff, ThreadLocal, ThreadLocal, MessageListenerContainer)}.
 	 */
-	@Deprecated
 	public static void unrecoverableBackOff(BackOff backOff, ThreadLocal<BackOffExecution> executions,
 			ThreadLocal<Long> lastIntervals) {
 
@@ -169,7 +166,7 @@ public final class ListenerUtils {
 		if (interval == BackOffExecution.STOP) {
 			interval = lastIntervals.get();
 			if (interval == null) {
-				interval = Long.valueOf(0);
+				interval = 0L;
 			}
 		}
 		lastIntervals.set(interval);
