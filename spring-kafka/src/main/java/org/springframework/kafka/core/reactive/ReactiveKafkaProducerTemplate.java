@@ -121,7 +121,17 @@ public class ReactiveKafkaProducerTemplate<K, V> implements AutoCloseable, Dispo
 		return this.sender.send(records);
 	}
 
-	public Mono<Void> flush() {
+	/**
+	 * Flush the producer.
+	 * @return {@link Mono#empty()}.
+	 * @deprecated - flush does not make sense in the context of a reactive flow since,
+	 * the send completion signal is a send result, which implies that a flush is
+	 * redundant. If you use this method with reactor-kafka 1.3 or later, it must be
+	 * scheduled to avoid a deadlock; see
+	 * https://issues.apache.org/jira/browse/KAFKA-10790 (since 2.7).
+	 */
+	@Deprecated
+	public Mono<?> flush() {
 		return doOnProducer(producer -> {
 			producer.flush();
 			return null;
