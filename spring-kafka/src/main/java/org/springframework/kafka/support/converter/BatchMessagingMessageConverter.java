@@ -135,7 +135,7 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 		this.rawRecordHeader = rawRecordHeader;
 	}
 
-	@Override
+	@Override // NOSONAR
 	public Message<?> toMessage(List<ConsumerRecord<?, ?>> records, @Nullable Acknowledgment acknowledgment,
 			Consumer<?, ?> consumer, Type type) {
 

@@ -119,21 +119,21 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 
 	public static final int DEFAULT_ZK_SESSION_TIMEOUT = 6000;
 
-	private static final Method getBrokerState;
+	private static final Method GET_BROKER_STATE_METHOD;
 
 	static {
 		try {
 			Method method = KafkaServer.class.getDeclaredMethod("brokerState");
 			if (method.getReturnType().equals(AtomicReference.class)) {
-				getBrokerState = method;
+				GET_BROKER_STATE_METHOD = method;
 			}
 			else {
-				getBrokerState = null;
+				GET_BROKER_STATE_METHOD = null;
 			}
 		}
 		catch (NoSuchMethodException | SecurityException e) {
-			throw new RuntimeException("Failed to determine KafkaServer.brokerState() method; client version: "
-					+ AppInfoParser.getVersion());
+			throw new IllegalStateException("Failed to determine KafkaServer.brokerState() method; client version: "
+					+ AppInfoParser.getVersion(), e);
 		}
 	}
 
@@ -579,9 +579,9 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	}
 
 	private boolean brokerRunning(KafkaServer kafkaServer) {
-		if (getBrokerState != null) {
+		if (GET_BROKER_STATE_METHOD != null) {
 			try {
-				return !getBrokerState.invoke(kafkaServer).toString().equals("NOT_RUNNING");
+				return !GET_BROKER_STATE_METHOD.invoke(kafkaServer).toString().equals("NOT_RUNNING");
 			}
 			catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
 				throw new IllegalStateException(ex);

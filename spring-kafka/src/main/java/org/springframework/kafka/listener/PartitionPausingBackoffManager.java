@@ -196,7 +196,7 @@ public class PartitionPausingBackoffManager implements KafkaConsumerBackoffManag
 					"Skipping timing adjustment for TopicPartition %s.", context.getTopicPartition()));
 			return 0L;
 		}
-		return this.kafkaConsumerTimingAdjuster.adjustTiming(
+		return this.kafkaConsumerTimingAdjuster.adjustTiming( // NOSONAR
 						context.getConsumerForTimingAdjustment(),
 						context.getTopicPartition(), pollTimeout, timeUntilDue);
 	}

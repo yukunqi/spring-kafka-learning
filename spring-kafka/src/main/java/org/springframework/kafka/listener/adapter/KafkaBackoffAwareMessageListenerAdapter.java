@@ -116,7 +116,9 @@ public class KafkaBackoffAwareMessageListenerAdapter<K, V>
 		}
 	}
 
-	private KafkaConsumerBackoffManager.Context createContext(ConsumerRecord<K, V> data, long nextExecutionTimestamp, Consumer<?, ?> consumer) {
+	private KafkaConsumerBackoffManager.Context createContext(ConsumerRecord<K, V> data, long nextExecutionTimestamp,
+			Consumer<?, ?> consumer) {
+
 		return this.kafkaConsumerBackoffManager.createContext(nextExecutionTimestamp, this.listenerId,
 				new TopicPartition(data.topic(), data.partition()), consumer);
 	}
