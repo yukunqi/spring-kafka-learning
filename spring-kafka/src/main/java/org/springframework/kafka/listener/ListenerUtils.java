@@ -153,7 +153,10 @@ public final class ListenerUtils {
 	 * @param lastIntervals a thread local containing the previous {@link BackOff}
 	 * interval for this thread.
 	 * @since 2.3.12
+	 * @deprecated since 2.7 in favor of
+	 * {@link #unrecoverableBackOff(BackOff, ThreadLocal, ThreadLocal, MessageListenerContainer)}.
 	 */
+	@Deprecated
 	public static void unrecoverableBackOff(BackOff backOff, ThreadLocal<BackOffExecution> executions,
 			ThreadLocal<Long> lastIntervals) {
 
