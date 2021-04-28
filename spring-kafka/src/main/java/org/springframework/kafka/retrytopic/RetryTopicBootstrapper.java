@@ -20,6 +20,7 @@ import java.time.Clock;
 import java.util.function.Supplier;
 
 import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.config.SingletonBeanRegistry;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.RootBeanDefinition;
@@ -87,6 +88,16 @@ public class RetryTopicBootstrapper {
 		registerIfNotContains(RetryTopicInternalBeanNames.BACKOFF_SLEEPER_BEAN_NAME, ThreadWaitSleeper.class);
 		registerIfNotContains(RetryTopicInternalBeanNames.INTERNAL_KAFKA_CONSUMER_BACKOFF_MANAGER_FACTORY,
 				PartitionPausingBackOffManagerFactory.class);
+
+		// Register a RetryTopicNamesProviderFactory implementation only if none is already present in the context
+		try {
+			this.applicationContext.getBean(RetryTopicNamesProviderFactory.class);
+		}
+		catch (NoSuchBeanDefinitionException e) {
+			((BeanDefinitionRegistry) this.applicationContext).registerBeanDefinition(
+					RetryTopicInternalBeanNames.RETRY_TOPIC_NAMES_PROVIDER_FACTORY,
+					new RootBeanDefinition(SuffixingRetryTopicNamesProviderFactory.class));
+		}
 	}
 
 	private void registerSingletons() {
@@ -140,4 +151,5 @@ public class RetryTopicBootstrapper {
 			((SingletonBeanRegistry) this.beanFactory).registerSingleton(beanName, singletonSupplier.get());
 		}
 	}
+
 }

@@ -173,7 +173,7 @@ class RetryTopicConfigurerTests {
 
 		// setup
 		RetryTopicConfigurer configurer = new RetryTopicConfigurer(destinationTopicProcessor, containerFactoryResolver,
-				listenerContainerFactoryConfigurer, beanFactory);
+				listenerContainerFactoryConfigurer, beanFactory, new SuffixingRetryTopicNamesProviderFactory());
 
 		// when - then
 		assertThatIllegalArgumentException().isThrownBy(
@@ -229,7 +229,7 @@ class RetryTopicConfigurerTests {
 				lcfcConfiguration);
 
 		RetryTopicConfigurer configurer = new RetryTopicConfigurer(destinationTopicProcessor, containerFactoryResolver,
-				listenerContainerFactoryConfigurer, defaultListableBeanFactory);
+				listenerContainerFactoryConfigurer, defaultListableBeanFactory, new SuffixingRetryTopicNamesProviderFactory());
 
 		// when
 		configurer.processMainAndRetryListeners(endpointProcessor, mainEndpoint, configuration, registrar,
