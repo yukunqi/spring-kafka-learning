@@ -40,7 +40,6 @@ import org.springframework.kafka.support.converter.BatchMessageConverter;
 import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.lang.Nullable;
-import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.converter.SmartMessageConverter;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
@@ -119,8 +118,9 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 
 	/**
 	 * Set a spring-messaging {@link SmartMessageConverter} to convert the record value to
-	 * the desired type. This will also cause the {@link MessageHeaders#CONTENT_TYPE} to be
-	 * converted to String when mapped inbound.
+	 * the desired type. This will also cause the
+	 * {@link org.springframework.messaging.MessageHeaders#CONTENT_TYPE} to be converted
+	 * to String when mapped inbound.
 	 * @param messagingConverter the converter.
 	 * @since 2.7.1
 	 */
