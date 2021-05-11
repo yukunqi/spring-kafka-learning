@@ -63,7 +63,7 @@ ext {
 	log4jVersion = '2.14.1'
 	micrometerVersion = '1.6.6'
 	mockitoVersion = '3.9.0'
-	reactorVersion = '2020.0.6'
+	reactorVersion = '2020.0.7'
 	scalaVersion = '2.13'
 	springBootVersion = '2.4.4' // docs module
 	springDataVersion = '2021.0.0'
