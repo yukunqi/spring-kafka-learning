@@ -367,7 +367,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	/**
 	 * Set an interceptor to be called before calling the record listener.
-	 * Does not apply to batch listeners.
 	 * @param batchInterceptor the interceptor.
 	 * @since 2.6.6
 	 * @see #setInterceptBeforeTx(boolean)
