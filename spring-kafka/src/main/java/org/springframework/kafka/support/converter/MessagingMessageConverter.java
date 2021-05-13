@@ -163,21 +163,7 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 
 		Map<String, Object> rawHeaders = kafkaMessageHeaders.getRawHeaders();
 		if (record.headers() != null) {
-			if (this.headerMapper != null) {
-				this.headerMapper.toHeaders(record.headers(), rawHeaders);
-			}
-			else {
-				this.logger.debug(() ->
-						"No header mapper is available; Jackson is required for the default mapper; "
-						+ "headers (if present) are not mapped but provided raw in "
-						+ KafkaHeaders.NATIVE_HEADERS);
-				rawHeaders.put(KafkaHeaders.NATIVE_HEADERS, record.headers());
-				Header contentType = record.headers().lastHeader(MessageHeaders.CONTENT_TYPE);
-				if (contentType != null) {
-					rawHeaders.put(MessageHeaders.CONTENT_TYPE,
-							new String(contentType.value(), StandardCharsets.UTF_8));
-				}
-			}
+			mapOrAddHeaders(record, rawHeaders);
 		}
 		String ttName = record.timestampType() != null ? record.timestampType().name() : null;
 		commonHeaders(acknowledgment, consumer, rawHeaders, record.key(), record.topic(), record.partition(),
@@ -195,6 +181,24 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 			}
 		}
 		return message;
+	}
+
+	private void mapOrAddHeaders(ConsumerRecord<?, ?> record, Map<String, Object> rawHeaders) {
+		if (this.headerMapper != null) {
+			this.headerMapper.toHeaders(record.headers(), rawHeaders);
+		}
+		else {
+			this.logger.debug(() ->
+					"No header mapper is available; Jackson is required for the default mapper; "
+					+ "headers (if present) are not mapped but provided raw in "
+					+ KafkaHeaders.NATIVE_HEADERS);
+			rawHeaders.put(KafkaHeaders.NATIVE_HEADERS, record.headers());
+			Header contentType = record.headers().lastHeader(MessageHeaders.CONTENT_TYPE);
+			if (contentType != null) {
+				rawHeaders.put(MessageHeaders.CONTENT_TYPE,
+						new String(contentType.value(), StandardCharsets.UTF_8));
+			}
+		}
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
