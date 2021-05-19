@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -31,12 +32,20 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AlterConfigOp;
+import org.apache.kafka.clients.admin.AlterConfigOp.OpType;
+import org.apache.kafka.clients.admin.AlterConfigsResult;
+import org.apache.kafka.clients.admin.Config;
+import org.apache.kafka.clients.admin.ConfigEntry;
 import org.apache.kafka.clients.admin.CreatePartitionsResult;
 import org.apache.kafka.clients.admin.CreateTopicsResult;
+import org.apache.kafka.clients.admin.DescribeConfigsResult;
 import org.apache.kafka.clients.admin.DescribeTopicsResult;
 import org.apache.kafka.clients.admin.NewPartitions;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
+import org.apache.kafka.common.config.ConfigResource;
+import org.apache.kafka.common.config.ConfigResource.Type;
 import org.apache.kafka.common.errors.InvalidPartitionsException;
 import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.errors.UnsupportedVersionException;
@@ -237,13 +246,99 @@ public class KafkaAdmin extends KafkaResourceFactory
 							.map(NewTopic::name)
 							.collect(Collectors.toList()));
 			List<NewTopic> topicsToAdd = new ArrayList<>();
-			Map<String, NewPartitions> topicsToModify = checkPartitions(topicNameToTopic, topicInfo, topicsToAdd);
+			Map<String, NewPartitions> topicsWithPartitionMismatches =
+					checkPartitions(topicNameToTopic, topicInfo, topicsToAdd);
 			if (topicsToAdd.size() > 0) {
 				addTopics(adminClient, topicsToAdd);
 			}
-			if (topicsToModify.size() > 0) {
-				modifyTopics(adminClient, topicsToModify);
+			if (topicsWithPartitionMismatches.size() > 0) {
+				createMissingPartitions(adminClient, topicsWithPartitionMismatches);
 			}
+			Map<ConfigResource, List<ConfigEntry>> mismatchingConfigs =
+					checkTopicsForConfigMismatches(adminClient, topics);
+			if (!mismatchingConfigs.isEmpty()) {
+				adjustConfigMismatches(adminClient, topics, mismatchingConfigs);
+			}
+		}
+	}
+
+	private Map<ConfigResource, List<ConfigEntry>> checkTopicsForConfigMismatches(
+			AdminClient adminClient, Collection<NewTopic> topics) {
+		List<ConfigResource> configResources = topics.stream()
+				.map(topic -> new ConfigResource(Type.TOPIC, topic.name()))
+				.collect(Collectors.toList());
+
+		DescribeConfigsResult describeConfigsResult = adminClient.describeConfigs(configResources);
+		try {
+			Map<ConfigResource, Config> topicsConfig = describeConfigsResult.all()
+					.get(this.operationTimeout, TimeUnit.SECONDS);
+
+			Map<ConfigResource, List<ConfigEntry>> configMismatches = new HashMap<>();
+			for (Map.Entry<ConfigResource, Config> topicConfig : topicsConfig.entrySet()) {
+				Optional<NewTopic> topicOptional = topics.stream()
+						.filter(p -> p.name().equals(topicConfig.getKey().name()))
+						.findFirst();
+
+				List<ConfigEntry> configMismatchesEntries = new ArrayList<>();
+				if (topicOptional.isPresent() && topicOptional.get().configs() != null) {
+					for (Map.Entry<String, String> desiredConfigParameter : topicOptional.get().configs().entrySet()) {
+						ConfigEntry actualConfigParameter = topicConfig.getValue().get(desiredConfigParameter.getKey());
+						if (!actualConfigParameter.value().equals(desiredConfigParameter.getValue())) {
+							configMismatchesEntries.add(actualConfigParameter);
+						}
+
+						if (configMismatchesEntries.size() > 0) {
+							configMismatches.put(topicConfig.getKey(), configMismatchesEntries);
+						}
+					}
+				}
+			}
+			return configMismatches;
+		}
+		catch (InterruptedException ie) {
+			Thread.currentThread().interrupt();
+			throw new KafkaException("Interrupted while getting topic descriptions", ie);
+		}
+		catch (ExecutionException | TimeoutException ex) {
+			throw new KafkaException("Failed to obtain topic descriptions", ex);
+		}
+	}
+
+	private void adjustConfigMismatches(AdminClient adminClient, Collection<NewTopic> topics,
+			Map<ConfigResource, List<ConfigEntry>> mismatchingConfigs) {
+		for (Map.Entry<ConfigResource, List<ConfigEntry>> mismatchingConfigsOfTopic : mismatchingConfigs.entrySet()) {
+			ConfigResource topicConfigResource = mismatchingConfigsOfTopic.getKey();
+
+			Optional<NewTopic> topicOptional = topics.stream().filter(p -> p.name().equals(topicConfigResource.name()))
+					.findFirst();
+			if (topicOptional.isPresent()) {
+				for (ConfigEntry mismatchConfigEntry : mismatchingConfigsOfTopic.getValue()) {
+					List<AlterConfigOp> alterConfigOperations = new ArrayList<>();
+					Map<String, String> desiredConfigs = topicOptional.get().configs();
+					if (desiredConfigs.get(mismatchConfigEntry.name()) != null) {
+						alterConfigOperations.add(
+								new AlterConfigOp(
+										new ConfigEntry(mismatchConfigEntry.name(),
+												desiredConfigs.get(mismatchConfigEntry.name())),
+										OpType.SET));
+					}
+					if (alterConfigOperations.size() > 0) {
+						try {
+							AlterConfigsResult alterConfigsResult = adminClient
+									.incrementalAlterConfigs(Map.of(topicConfigResource, alterConfigOperations));
+							alterConfigsResult.all().get(this.operationTimeout, TimeUnit.SECONDS);
+						}
+						catch (InterruptedException ie) {
+							Thread.currentThread().interrupt();
+							throw new KafkaException("Interrupted while getting topic descriptions", ie);
+						}
+						catch (ExecutionException | TimeoutException ex) {
+							throw new KafkaException("Failed to obtain topic descriptions", ex);
+						}
+					}
+				}
+			}
+
 		}
 	}
 
@@ -304,7 +399,7 @@ public class KafkaAdmin extends KafkaResourceFactory
 		}
 	}
 
-	private void modifyTopics(AdminClient adminClient, Map<String, NewPartitions> topicsToModify) {
+	private void createMissingPartitions(AdminClient adminClient, Map<String, NewPartitions> topicsToModify) {
 		CreatePartitionsResult partitionsResult = adminClient.createPartitions(topicsToModify);
 		try {
 			partitionsResult.all().get(this.operationTimeout, TimeUnit.SECONDS);
