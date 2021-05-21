@@ -376,7 +376,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	protected void initializeContainer(C instance, KafkaListenerEndpoint endpoint) {
 		ContainerProperties properties = instance.getContainerProperties();
 		BeanUtils.copyProperties(this.containerProperties, properties, "topics", "topicPartitions", "topicPattern",
-				"messageListener", "ackCount", "ackTime", "kafkaConsumerProperties");
+				"messageListener", "ackCount", "ackTime", "consumerProperties", "kafkaConsumerProperties");
 		JavaUtils.INSTANCE
 				.acceptIfNotNull(this.afterRollbackProcessor, instance::setAfterRollbackProcessor)
 				.acceptIfCondition(this.containerProperties.getAckCount() > 0, this.containerProperties.getAckCount(),
