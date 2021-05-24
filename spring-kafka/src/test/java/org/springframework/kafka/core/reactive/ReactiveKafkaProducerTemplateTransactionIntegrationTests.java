@@ -279,7 +279,7 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 				.verify(DEFAULT_VERIFY_TIMEOUT);
 	}
 
-	@LogLevels(categories = "reactor.kafka.receiver.internals.ConsumerEventLoop", level = "DEBUG",
+	@LogLevels(categories = "reactor.kafka.receiver.internals.ConsumerEventLoop", level = "TRACE",
 			classes = { JUnitUtils.class, LogLevelsCondition.class,
 					ReactiveKafkaProducerTemplateTransactionIntegrationTests.class})
 	@Test
