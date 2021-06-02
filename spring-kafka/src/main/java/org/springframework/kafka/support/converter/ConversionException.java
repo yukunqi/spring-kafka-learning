@@ -74,7 +74,7 @@ public class ConversionException extends KafkaException {
 	 */
 	public ConversionException(String message, List<ConsumerRecord<?, ?>> records, Throwable cause) {
 		super(message, cause);
-		this.record = record;
+		this.record = null;
 		this.records.addAll(records);
 		this.message = null;
 	}
