@@ -107,7 +107,6 @@ public class ConversionException extends KafkaException {
 	 * @return the record.
 	 * @since 2.7.2
 	 */
-	@Nullable
 	public List<ConsumerRecord<?, ?>> getRecords() {
 		return Collections.unmodifiableList(this.records);
 	}
