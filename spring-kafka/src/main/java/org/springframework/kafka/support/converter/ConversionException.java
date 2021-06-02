@@ -16,6 +16,10 @@
 
 package org.springframework.kafka.support.converter;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.kafka.KafkaException;
@@ -32,6 +36,8 @@ import org.springframework.messaging.Message;
 public class ConversionException extends KafkaException {
 
 	private final ConsumerRecord<?, ?> record;
+
+	private final List<ConsumerRecord<?, ?>> records = new ArrayList<>();
 
 	private final Message<?> message;
 
@@ -62,6 +68,20 @@ public class ConversionException extends KafkaException {
 	/**
 	 * Construct an instance with the provided properties.
 	 * @param message A text message describing the reason.
+	 * @param records the consumer records.
+	 * @param cause the cause.
+	 * @since 2.7.2
+	 */
+	public ConversionException(String message, List<ConsumerRecord<?, ?>> records, Throwable cause) {
+		super(message, cause);
+		this.record = record;
+		this.records.addAll(records);
+		this.message = null;
+	}
+
+	/**
+	 * Construct an instance with the provided properties.
+	 * @param message A text message describing the reason.
 	 * @param msg a {@link Message} converted from a consumer record.
 	 * @param cause the cause.
 	 * @since 2.7.2
@@ -80,6 +100,16 @@ public class ConversionException extends KafkaException {
 	@Nullable
 	public ConsumerRecord<?, ?> getRecord() {
 		return this.record;
+	}
+
+	/**
+	 * Return the consumer record, if available.
+	 * @return the record.
+	 * @since 2.7.2
+	 */
+	@Nullable
+	public List<ConsumerRecord<?, ?>> getRecords() {
+		return Collections.unmodifiableList(this.records);
 	}
 
 	/**
