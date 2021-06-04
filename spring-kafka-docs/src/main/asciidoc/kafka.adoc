@@ -1868,7 +1868,7 @@ void listen(Object in, @Header(KafkaHeaders.RECORD_METADATA) ConsumerRecordMetad
 
 Starting with version 2.7.2, you can now programmatically modify annotation attributes before the container is created.
 To do so, add one or more `KafkaListenerAnnotationBeanPostProcessor.AnnotationEnhancer` to the application context.
-`AnnotationEnhancer` is a `BiFunction<Map<String, Object>, AnnotatedElement, Map<String, Object>` and must return a a map of attributes.
+`AnnotationEnhancer` is a `BiFunction<Map<String, Object>, AnnotatedElement, Map<String, Object>` and must return a map of attributes.
 The attribute values can contain SpEL and/or property placeholders; the enhancer is called before any resolution is performed.
 If more than one enhancer is present, and they implement `Ordered`, they will be invoked in order.
 
