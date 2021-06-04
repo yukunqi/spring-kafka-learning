@@ -51,13 +51,14 @@ import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.ObjectFactory;
 import org.springframework.beans.factory.SmartInitializingSingleton;
-import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 import org.springframework.beans.factory.config.BeanExpressionContext;
 import org.springframework.beans.factory.config.BeanExpressionResolver;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.config.Scope;
+import org.springframework.beans.factory.support.BeanDefinitionRegistry;
+import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -84,6 +85,7 @@ import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.retrytopic.RetryTopicBootstrapper;
 import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
 import org.springframework.kafka.retrytopic.RetryTopicConfigurer;
+import org.springframework.kafka.retrytopic.RetryTopicInternalBeanNames;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
@@ -481,19 +483,25 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	}
 
 	private RetryTopicConfigurer getRetryTopicConfigurer() {
-		try {
-			return this.beanFactory.getBean(RetryTopicConfigurer.class);
+		bootstrapRetryTopicIfNecessary();
+		return this.beanFactory.getBean(RetryTopicInternalBeanNames.RETRY_TOPIC_CONFIGURER, RetryTopicConfigurer.class);
+	}
+
+	private void bootstrapRetryTopicIfNecessary() {
+		if (!(this.beanFactory instanceof BeanDefinitionRegistry)) {
+			throw new IllegalStateException("BeanFactory must be an instance of "
+					+ BeanDefinitionRegistry.class.getSimpleName()
+					+ " to bootstrap the RetryTopic functionality. Provided beanFactory: "
+					+ this.beanFactory.getClass().getSimpleName());
 		}
-		catch (NoSuchBeanDefinitionException e) {
-			if (!(this.beanFactory instanceof AutowireCapableBeanFactory)) {
-				throw new IllegalStateException("BeanFactory must be an instance of "
-						+ AutowireCapableBeanFactory.class.getSimpleName()
-						+ " Provided beanFactory: " + this.beanFactory.getClass().getSimpleName(), e);
-			}
-			((AutowireCapableBeanFactory) this.beanFactory)
-					.createBean(RetryTopicBootstrapper.class)
-					.bootstrapRetryTopic();
-			return this.beanFactory.getBean(RetryTopicConfigurer.class);
+		BeanDefinitionRegistry registry = (BeanDefinitionRegistry) this.beanFactory;
+		if (!registry.containsBeanDefinition(RetryTopicInternalBeanNames
+				.RETRY_TOPIC_BOOTSTRAPPER)) {
+			registry.registerBeanDefinition(RetryTopicInternalBeanNames
+							.RETRY_TOPIC_BOOTSTRAPPER,
+					new RootBeanDefinition(RetryTopicBootstrapper.class));
+			this.beanFactory.getBean(RetryTopicInternalBeanNames
+					.RETRY_TOPIC_BOOTSTRAPPER, RetryTopicBootstrapper.class).bootstrapRetryTopic();
 		}
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,8 +33,6 @@ public abstract class RetryTopicInternalBeanNames {
 
 	static final String KAFKA_CONSUMER_BACKOFF_MANAGER = "internalKafkaConsumerBackoffManager";
 
-	static final String RETRY_TOPIC_CONFIGURER = "internalRetryTopicConfigurer";
-
 	static final String LISTENER_CONTAINER_FACTORY_RESOLVER_NAME = "internalListenerContainerFactoryResolver";
 
 	static final String LISTENER_CONTAINER_FACTORY_CONFIGURER_NAME = "internalListenerContainerFactoryConfigurer";
@@ -64,5 +62,15 @@ public abstract class RetryTopicInternalBeanNames {
 	 * Default Kafka template bean name for publishing to retry topics.
 	 */
 	public static final String DEFAULT_KAFKA_TEMPLATE_BEAN_NAME = "retryTopicDefaultKafkaTemplate";
+
+	/**
+	 * RetryTopicBootstrapper bean name.
+	 */
+	public static final String RETRY_TOPIC_BOOTSTRAPPER = "internalRetryTopicBootstrapper";
+
+	/**
+	 * RetryTopicConfigurer bean name.
+	 */
+	public static final String RETRY_TOPIC_CONFIGURER = "internalRetryTopicConfigurer";
 
 }
