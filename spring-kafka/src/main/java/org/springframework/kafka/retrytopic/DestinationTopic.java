@@ -87,6 +87,14 @@ public class DestinationTopic {
 	}
 
 	@Override
+	public String toString() {
+		return "DestinationTopic{" +
+				"destinationName='" + this.destinationName + '\'' +
+				", properties=" + this.properties +
+				'}';
+	}
+
+	@Override
 	public boolean equals(Object o) {
 		if (this == o) {
 			return true;
@@ -189,6 +197,21 @@ public class DestinationTopic {
 		public int hashCode() {
 			return Objects.hash(this.delayMs, this.suffix, this.type, this.maxAttempts, this.numPartitions,
 					this.dltStrategy, this.kafkaOperations);
+		}
+
+		@Override
+		public String toString() {
+			return "Properties{" +
+					"delayMs=" + this.delayMs +
+					", suffix='" + this.suffix + '\'' +
+					", type=" + this.type +
+					", maxAttempts=" + this.maxAttempts +
+					", numPartitions=" + this.numPartitions +
+					", dltStrategy=" + this.dltStrategy +
+					", kafkaOperations=" + this.kafkaOperations +
+					", shouldRetryOn=" + this.shouldRetryOn +
+					", timeout=" + this.timeout +
+					'}';
 		}
 
 		public boolean isMainEndpoint() {

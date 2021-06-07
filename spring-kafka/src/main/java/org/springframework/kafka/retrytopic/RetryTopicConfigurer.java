@@ -17,11 +17,8 @@
 package org.springframework.kafka.retrytopic;
 
 import java.lang.reflect.Method;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.admin.NewTopic;
@@ -37,8 +34,6 @@ import org.springframework.kafka.config.KafkaListenerEndpointRegistrar;
 import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
 import org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint;
 import org.springframework.kafka.listener.ListenerUtils;
-import org.springframework.kafka.retrytopic.RetryTopicNamesProviderFactory.RetryTopicNamesProvider;
-import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
 
 
@@ -284,7 +279,7 @@ public class RetryTopicConfigurer {
 									String defaultContainerFactoryBeanName) {
 		this.destinationTopicProcessor
 				.processDestinationTopicProperties(destinationTopicProperties ->
-						processAndRegisterEndpoints(mainEndpoint,
+						processAndRegisterEndpoint(mainEndpoint,
 								endpointProcessor,
 								factory,
 								defaultContainerFactoryBeanName,
@@ -295,7 +290,7 @@ public class RetryTopicConfigurer {
 						context);
 	}
 
-	private void processAndRegisterEndpoints(MethodKafkaListenerEndpoint<?, ?> mainEndpoint, EndpointProcessor endpointProcessor,
+	private void processAndRegisterEndpoint(MethodKafkaListenerEndpoint<?, ?> mainEndpoint, EndpointProcessor endpointProcessor,
 											KafkaListenerContainerFactory<?> factory,
 											String defaultFactoryBeanName,
 											KafkaListenerEndpointRegistrar registrar,
@@ -321,14 +316,14 @@ public class RetryTopicConfigurer {
 						.forEach(topicNamesHolder ->
 								this.destinationTopicProcessor
 										.registerDestinationTopic(topicNamesHolder.getMainTopic(),
-												topicNamesHolder.getProcessedTopic(),
+												topicNamesHolder.getCustomizedTopic(),
 												destinationTopicProperties, context));
 
 		registrar.registerEndpoint(endpoint, resolvedFactory);
 		endpoint.setBeanFactory(this.beanFactory);
 	}
 
-	private EndpointHandlerMethod getEndpointHandlerMethod(MethodKafkaListenerEndpoint<?, ?> mainEndpoint,
+	protected EndpointHandlerMethod getEndpointHandlerMethod(MethodKafkaListenerEndpoint<?, ?> mainEndpoint,
 														RetryTopicConfiguration configuration,
 														DestinationTopic.Properties props) {
 		EndpointHandlerMethod dltHandlerMethod = configuration.getDltHandlerMethod();
@@ -343,7 +338,7 @@ public class RetryTopicConfigurer {
 				: topics -> { };
 	}
 
-	private void createNewTopicBeans(Collection<String> topics, RetryTopicConfiguration.TopicCreation config) {
+	protected void createNewTopicBeans(Collection<String> topics, RetryTopicConfiguration.TopicCreation config) {
 		topics.forEach(topic ->
 				((DefaultListableBeanFactory) this.beanFactory)
 						.registerSingleton(topic + "-topicRegistrationBean",
@@ -351,7 +346,7 @@ public class RetryTopicConfigurer {
 		);
 	}
 
-	private EndpointCustomizer createEndpointCustomizer(
+	protected EndpointCustomizer createEndpointCustomizer(
 			EndpointHandlerMethod endpointBeanMethod, DestinationTopic.Properties destinationTopicProperties) {
 
 		return new EndpointCustomizerFactory(destinationTopicProperties,
@@ -404,99 +399,6 @@ public class RetryTopicConfigurer {
 
 		default void process(MethodKafkaListenerEndpoint<?, ?> listenerEndpoint) {
 			accept(listenerEndpoint);
-		}
-	}
-
-	private interface EndpointCustomizer extends Function<MethodKafkaListenerEndpoint<?, ?>, Collection<TopicNamesHolder>> {
-		default Collection<TopicNamesHolder> customizeEndpointAndCollectTopics(MethodKafkaListenerEndpoint<?, ?> listenerEndpoint) {
-			return apply(listenerEndpoint);
-		}
-	}
-
-
-	static final class EndpointCustomizerFactory {
-
-		private final DestinationTopic.Properties destinationProperties;
-
-		private final EndpointHandlerMethod beanMethod;
-
-		private final BeanFactory beanFactory;
-
-		private final RetryTopicNamesProviderFactory retryTopicNamesProviderFactory;
-
-		EndpointCustomizerFactory(DestinationTopic.Properties destinationProperties, EndpointHandlerMethod beanMethod,
-			BeanFactory beanFactory, RetryTopicNamesProviderFactory retryTopicNamesProviderFactory) {
-
-			this.destinationProperties = destinationProperties;
-			this.beanMethod = beanMethod;
-			this.beanFactory = beanFactory;
-			this.retryTopicNamesProviderFactory = retryTopicNamesProviderFactory;
-		}
-
-		public EndpointCustomizer createEndpointCustomizer() {
-			return addSuffixesAndMethod(this.destinationProperties, this.beanMethod.resolveBean(this.beanFactory),
-					this.beanMethod.getMethod());
-		}
-
-		private EndpointCustomizer addSuffixesAndMethod(DestinationTopic.Properties properties, Object bean, Method method) {
-			RetryTopicNamesProvider namesProvider = this.retryTopicNamesProviderFactory.createRetryTopicNamesProvider(properties);
-			return endpoint -> {
-				Collection<TopicNamesHolder> topics = customizeAndRegisterTopics(namesProvider, endpoint);
-				endpoint.setId(namesProvider.getEndpointId(endpoint));
-				endpoint.setGroupId(namesProvider.getGroupId(endpoint));
-				endpoint.setTopics(topics.stream().map(TopicNamesHolder::getProcessedTopic).toArray(String[]::new));
-				endpoint.setClientIdPrefix(namesProvider.getClientIdPrefix(endpoint));
-				endpoint.setGroup(namesProvider.getGroup(endpoint));
-				endpoint.setBean(bean);
-				endpoint.setMethod(method);
-				return topics;
-			};
-		}
-
-		private Collection<TopicNamesHolder> customizeAndRegisterTopics(RetryTopicNamesProvider namesProvider,
-																		MethodKafkaListenerEndpoint<?, ?> endpoint) {
-
-			return getTopics(endpoint)
-					.stream()
-					.map(topic -> new TopicNamesHolder(topic, namesProvider.getTopicName(topic)))
-					.collect(Collectors.toList());
-		}
-
-		private Collection<String> getTopics(MethodKafkaListenerEndpoint<?, ?> endpoint) {
-			Collection<String> topics = endpoint.getTopics();
-			if (topics.isEmpty()) {
-				TopicPartitionOffset[] topicPartitionsToAssign = endpoint.getTopicPartitionsToAssign();
-				if (topicPartitionsToAssign != null && topicPartitionsToAssign.length > 0) {
-					topics = Arrays.stream(topicPartitionsToAssign)
-							.map(TopicPartitionOffset::getTopic)
-							.collect(Collectors.toList());
-				}
-			}
-
-			if (topics.isEmpty()) {
-				throw new IllegalStateException("No topics where provided for RetryTopicConfiguration.");
-			}
-			return topics;
-		}
-	}
-
-	private static final class TopicNamesHolder {
-
-		private final String mainTopic;
-
-		private final String processedTopic;
-
-		TopicNamesHolder(String mainTopic, String processedTopic) {
-			this.mainTopic = mainTopic;
-			this.processedTopic = processedTopic;
-		}
-
-		String getMainTopic() {
-			return this.mainTopic;
-		}
-
-		String getProcessedTopic() {
-			return this.processedTopic;
 		}
 	}
 
