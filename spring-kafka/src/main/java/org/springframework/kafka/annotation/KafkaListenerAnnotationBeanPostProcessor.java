@@ -316,8 +316,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 						.collect(Collectors.toList());
 				this.enhancer = (attrs, element) -> {
 					Map<String, Object> newAttrs = attrs;
-					for (AnnotationEnhancer enhancer : enhancers) {
-						newAttrs = enhancer.apply(newAttrs, element);
+					for (AnnotationEnhancer enh : enhancers) {
+						newAttrs = enh.apply(newAttrs, element);
 					}
 					return attrs;
 				};
