@@ -41,6 +41,7 @@ import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.ListenerContainerRegistry;
 import org.springframework.kafka.listener.MessageListenerContainer;
+import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
@@ -98,6 +99,7 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 	 * @see #getListenerContainerIds()
 	 */
 	@Override
+	@Nullable
 	public MessageListenerContainer getListenerContainer(String id) {
 		Assert.hasText(id, "Container identifier must not be empty");
 		return this.listenerContainers.get(id);

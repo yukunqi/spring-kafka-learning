@@ -19,6 +19,8 @@ package org.springframework.kafka.listener;
 import java.util.Collection;
 import java.util.Set;
 
+import org.springframework.lang.Nullable;
+
 /**
  * A registry for listener containers.
  *
@@ -36,6 +38,7 @@ public interface ListenerContainerRegistry {
 	 * @see org.springframework.kafka.config.KafkaListenerEndpoint#getId()
 	 * @see #getListenerContainerIds()
 	 */
+	@Nullable
 	MessageListenerContainer getListenerContainer(String id);
 
 	/**
