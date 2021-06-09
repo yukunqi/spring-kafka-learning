@@ -209,7 +209,7 @@ public class PartitionPausingBackoffManager implements KafkaConsumerBackoffManag
 	}
 
 	private MessageListenerContainer getListenerContainerFromContext(Context context) {
-		return this.listenerContainerRegistry.getListenerContainer(context.getListenerId());
+		return this.listenerContainerRegistry.getListenerContainer(context.getListenerId()); // NOSONAR
 	}
 
 	protected void addBackoff(Context context, TopicPartition topicPartition) {
