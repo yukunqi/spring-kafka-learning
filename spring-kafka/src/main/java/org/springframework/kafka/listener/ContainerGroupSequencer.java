@@ -94,7 +94,7 @@ public class ContainerGroupSequencer implements ApplicationContextAware,
 	 * default, the containers in the final group remain running.
 	 * @param stopLastGroupWhenIdle true to stop containers in the final group.
 	 */
-	public void setStopLastGroupWhenIdle(boolean stopLastGroupWhenIdle) {
+	public synchronized void setStopLastGroupWhenIdle(boolean stopLastGroupWhenIdle) {
 		this.stopLastGroupWhenIdle = stopLastGroupWhenIdle;
 	}
 
@@ -103,21 +103,18 @@ public class ContainerGroupSequencer implements ApplicationContextAware,
 		LOGGER.debug(() -> event.toString());
 		MessageListenerContainer parent = event.getContainer(MessageListenerContainer.class);
 		MessageListenerContainer container = (MessageListenerContainer) event.getSource();
-		if (this.running) {
-			if (this.currentGroup != null && this.currentGroup.contains(parent)) {
-				if (this.iterator.hasNext() || this.stopLastGroupWhenIdle) {
-					this.executor.execute(() -> {
-						LOGGER.debug(() -> "Stopping: " + container);
-						container.stop(() -> {
-							if (!parent.isChildRunning()) {
-								this.executor.execute(() -> {
-									stopParentAndCheckGroup(parent);
-								});
-							}
+		boolean inCurrentGroup = this.currentGroup != null && this.currentGroup.contains(parent);
+		if (this.running && inCurrentGroup && (this.iterator.hasNext() || this.stopLastGroupWhenIdle)) {
+			this.executor.execute(() -> {
+				LOGGER.debug(() -> "Stopping: " + container);
+				container.stop(() -> {
+					if (!parent.isChildRunning()) {
+						this.executor.execute(() -> {
+							stopParentAndCheckGroup(parent);
 						});
-					});
-				}
-			}
+					}
+				});
+			});
 		}
 	}
 

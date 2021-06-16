@@ -459,6 +459,7 @@ public class ContainerProperties extends ConsumerProperties {
 		return this.shutdownTimeout;
 	}
 
+	@Nullable
 	public Long getIdleEventInterval() {
 		return this.idleEventInterval;
 	}

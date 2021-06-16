@@ -1506,10 +1506,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void checkIdle() {
-			if (this.containerProperties.getIdleEventInterval() != null) {
+			Long idleEventInterval = this.containerProperties.getIdleEventInterval();
+			if (idleEventInterval != null) {
 				long now = System.currentTimeMillis();
-				if (now > this.lastReceive + this.containerProperties.getIdleEventInterval()
-						&& now > this.lastAlertAt + this.containerProperties.getIdleEventInterval()) {
+				if (now > this.lastReceive + idleEventInterval
+						&& now > this.lastAlertAt + idleEventInterval) {
 					this.wasIdle = true;
 					publishIdleContainerEvent(now - this.lastReceive, this.consumer, this.consumerPaused);
 					this.lastAlertAt = now;
