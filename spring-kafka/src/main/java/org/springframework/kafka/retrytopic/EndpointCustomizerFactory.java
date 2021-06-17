@@ -57,7 +57,7 @@ public class EndpointCustomizerFactory {
 		this.retryTopicNamesProviderFactory = retryTopicNamesProviderFactory;
 	}
 
-	final public EndpointCustomizer createEndpointCustomizer() {
+	public final EndpointCustomizer createEndpointCustomizer() {
 		return addSuffixesAndMethod(this.destinationProperties, this.beanMethod.resolveBean(this.beanFactory),
 				this.beanMethod.getMethod());
 	}
