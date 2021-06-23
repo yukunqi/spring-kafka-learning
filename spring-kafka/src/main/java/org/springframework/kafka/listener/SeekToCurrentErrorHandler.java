@@ -109,10 +109,8 @@ public class SeekToCurrentErrorHandler extends FailedRecordProcessor implements 
 	public void handle(Exception thrownException, @Nullable List<ConsumerRecord<?, ?>> records,
 			Consumer<?, ?> consumer, MessageListenerContainer container) {
 
-		if (records != null) {
-			SeekUtils.seekOrRecover(thrownException, records, consumer, container, isCommitRecovered(),
-					getRecoveryStrategy(records, thrownException), this.logger, getLogLevel());
-		}
+		SeekUtils.seekOrRecover(thrownException, records, consumer, container, isCommitRecovered(),
+				getRecoveryStrategy(records, thrownException), this.logger, getLogLevel());
 	}
 
 }

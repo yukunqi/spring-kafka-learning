@@ -185,7 +185,7 @@ public final class SeekUtils {
 	 * @param level the log level for the thrown exception after handling.
 	 * @since 2.7
 	 */
-	public static void seekOrRecover(Exception thrownException, List<ConsumerRecord<?, ?>> records,
+	public static void seekOrRecover(Exception thrownException, @Nullable List<ConsumerRecord<?, ?>> records,
 			Consumer<?, ?> consumer, MessageListenerContainer container, boolean commitRecovered,
 			RecoveryStrategy recovery, LogAccessor logger, Level level) {
 
@@ -202,7 +202,7 @@ public final class SeekUtils {
 			}
 		}
 
-		if (!doSeeks(records, consumer, thrownException, true, recovery, container, logger)) {
+		if (records == null || !doSeeks(records, consumer, thrownException, true, recovery, container, logger)) {
 			throw new KafkaException("Seek to current after exception", level, thrownException);
 		}
 		if (commitRecovered) {
