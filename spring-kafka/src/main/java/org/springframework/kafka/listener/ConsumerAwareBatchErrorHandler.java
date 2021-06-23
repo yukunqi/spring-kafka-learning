@@ -41,7 +41,7 @@ public interface ConsumerAwareBatchErrorHandler extends BatchErrorHandler {
 	void handle(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer);
 
 	@Override
-	default void handle(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
+	default void handle(Exception thrownException, @Nullable ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
 
 		handle(thrownException, data, consumer);

@@ -23,6 +23,7 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 
 import org.springframework.kafka.KafkaException;
+import org.springframework.lang.Nullable;
 import org.springframework.util.backoff.BackOff;
 import org.springframework.util.backoff.BackOffExecution;
 
@@ -55,26 +56,28 @@ public class SeekToCurrentBatchErrorHandler extends KafkaExceptionLogLevelAware
 	}
 
 	@Override
-	public void handle(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
+	public void handle(Exception thrownException, @Nullable ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
 
-		data.partitions()
-				.stream()
-				.collect(
-						Collectors.toMap(tp -> tp,
-								tp -> data.records(tp).get(0).offset(), (u, v) -> (long) v, LinkedHashMap::new))
-				.forEach(consumer::seek);
+		if (data != null) {
+			data.partitions()
+					.stream()
+					.collect(
+							Collectors.toMap(tp -> tp,
+									tp -> data.records(tp).get(0).offset(), (u, v) -> (long) v, LinkedHashMap::new))
+					.forEach(consumer::seek);
 
-		if (this.backOff != null) {
-			try {
-				ListenerUtils.unrecoverableBackOff(this.backOff, this.backOffs, this.lastIntervals, container);
+			if (this.backOff != null) {
+				try {
+					ListenerUtils.unrecoverableBackOff(this.backOff, this.backOffs, this.lastIntervals, container);
+				}
+				catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+				}
 			}
-			catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-			}
+
+			throw new KafkaException("Seek to current after exception", getLogLevel(), thrownException);
 		}
-
-		throw new KafkaException("Seek to current after exception", getLogLevel(), thrownException);
 	}
 
 	@Override
