@@ -919,7 +919,7 @@ public class KafkaMessageListenerContainerTests {
 		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[] {
 				new TopicPartitionOffset("foo", 0) };
 		ContainerProperties containerProps = new ContainerProperties(topicPartition);
-		containerProps.setNoPollThreshold(2.0f);
+		containerProps.setNoPollThreshold(5.0f);
 		containerProps.setPollTimeout(100);
 		containerProps.setMonitorInterval(1);
 		containerProps.setMessageListener(mock(MessageListener.class));
