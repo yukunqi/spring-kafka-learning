@@ -1447,7 +1447,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private void sleepFor(Duration duration) {
 			try {
-				TimeUnit.MILLISECONDS.sleep(duration.toMillis());
+				ListenerUtils.stoppableSleep(KafkaMessageListenerContainer.this, duration.toMillis());
 			}
 			catch (InterruptedException e) {
 				this.logger.error(e, "Interrupted while sleeping");
