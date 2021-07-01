@@ -98,7 +98,7 @@ See <<messaging-message-conversion>> for more information.
 [[x27-sequencing]]
 ==== Sequencing `@KafkaListener` s
 
-See <<container-sequencing>> for more information.
+See <<sequencing>> for more information.
 
 [[x27-exp-backoff]]
 ==== `ExponentialBackOffWithMaxRetries`
