@@ -2900,12 +2900,17 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						"nack() can only be called on the consumer thread");
 				Assert.isTrue(sleep >= 0, "sleep cannot be negative");
 				ListenerConsumer.this.nackSleep = sleep;
-				ListenerConsumer.this.deferredOffsets.forEach((part, recs) -> recs.clear());
+				synchronized (ListenerConsumer.this) {
+					if (ListenerConsumer.this.offsetsInThisBatch != null) {
+						ListenerConsumer.this.offsetsInThisBatch.forEach((part, recs) -> recs.clear());
+						ListenerConsumer.this.deferredOffsets.forEach((part, recs) -> recs.clear());
+					}
+				}
 			}
 
 			@Override
 			public String toString() {
-				return "Acknowledgment for " + this.record;
+				return "Acknowledgment for " + ListenerUtils.recordToString(this.record, true);
 			}
 
 		}
@@ -2944,6 +2949,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				Assert.isTrue(index >= 0 && index < this.records.count(), "index out of bounds");
 				ListenerConsumer.this.nackIndex = index;
 				ListenerConsumer.this.nackSleep = sleep;
+				synchronized (ListenerConsumer.this) {
+					if (ListenerConsumer.this.offsetsInThisBatch != null) {
+						ListenerConsumer.this.offsetsInThisBatch.forEach((part, recs) -> recs.clear());
+						ListenerConsumer.this.deferredOffsets.forEach((part, recs) -> recs.clear());
+					}
+				}
 			}
 
 			@Override
