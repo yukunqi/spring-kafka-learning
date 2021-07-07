@@ -37,7 +37,7 @@ import org.junit.jupiter.api.Test;
 class KafkaStreamBrancherTests {
 
 	@Test
-	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@SuppressWarnings({ "unchecked", "rawtypes", "deprecation" })
 	void correctConsumersAreCalled() {
 		Predicate p1 = mock(Predicate.class);
 		Predicate p2 = mock(Predicate.class);

@@ -120,6 +120,7 @@ public class KafkaStreamsTests {
 	@Autowired
 	private AtomicBoolean stateChangeCalled;
 
+	@SuppressWarnings("deprecation")
 	@Test
 	public void testKStreams() throws Exception {
 		assertThat(this.embeddedKafka.getKafkaServer(0).config().autoCreateTopicsEnable()).isFalse();
