@@ -16,10 +16,12 @@
 
 package org.springframework.kafka.core;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -52,6 +54,11 @@ import org.springframework.util.concurrent.ListenableFuture;
  * @author Biju Kunjummen
  */
 public interface KafkaOperations<K, V> {
+
+	/**
+	 * Default timeout for {@link #receive(String, int, long)}.
+	 */
+	Duration DEFAULT_POLL_TIMEOUT = Duration.ofSeconds(5);
 
 	/**
 	 * Send the data to the default topic with no key or partition.
@@ -266,6 +273,30 @@ public interface KafkaOperations<K, V> {
 	default ProducerFactory<K, V> getProducerFactory() {
 		throw new UnsupportedOperationException("This implementation does not support this operation");
 	}
+
+	/**
+	 * Receive a single record with the default poll timeout (5 seconds).
+	 * @param topic the topic.
+	 * @param partition the partition.
+	 * @param offset the offset.
+	 * @return the record or null.
+	 * @since 2.8
+	 * @see #DEFAULT_POLL_TIMEOUT
+	 */
+	@Nullable
+	ConsumerRecord<K, V> receive(String topic, int partition, long offset);
+
+	/**
+	 * Receive a single record.
+	 * @param topic the topic.
+	 * @param partition the partition.
+	 * @param offset the offset.
+	 * @param pollTimeout the timeout.
+	 * @return the record or null.
+	 * @since 2.8
+	 */
+	@Nullable
+	ConsumerRecord<K, V> receive(String topic, int partition, long offset, Duration pollTimeout);
 
 	/**
 	 * A callback for executing arbitrary operations on the {@link Producer}.
