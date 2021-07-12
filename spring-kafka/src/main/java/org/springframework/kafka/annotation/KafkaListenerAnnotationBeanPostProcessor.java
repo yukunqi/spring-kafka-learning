@@ -465,7 +465,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 
 		RetryTopicConfigurer.EndpointProcessor endpointProcessor = endpointToProcess ->
-				this.doProcessKafkaListenerAnnotation(endpointToProcess, kafkaListener, bean);
+				this.processKafkaListenerAnnotationForRetryTopic(endpointToProcess, kafkaListener, bean);
 
 		String beanRef = kafkaListener.beanRef();
 		this.listenerScope.addListener(beanRef, bean);
@@ -546,28 +546,26 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			this.listenerScope.addListener(beanRef, bean);
 		}
 
-		doProcessKafkaListenerAnnotation(endpoint, kafkaListener, bean);
+		processKafkaListenerAnnotationBeforeRegistration(endpoint, kafkaListener, bean);
 
 		String containerFactory = resolve(kafkaListener.containerFactory());
 		KafkaListenerContainerFactory<?> listenerContainerFactory = resolveContainerFactory(kafkaListener, containerFactory, beanName);
 
 		this.registrar.registerEndpoint(endpoint, listenerContainerFactory);
 
-		endpoint.setBeanFactory(this.beanFactory);
-		String errorHandlerBeanName = resolveExpressionAsString(kafkaListener.errorHandler(), "errorHandler");
-		if (StringUtils.hasText(errorHandlerBeanName)) {
-			resolveErrorHandler(endpoint, kafkaListener);
-		}
-		String converterBeanName = resolveExpressionAsString(kafkaListener.contentTypeConverter(), "contentTypeConverter");
-		if (StringUtils.hasText(converterBeanName)) {
-			resolveContentTypeConverter(endpoint, kafkaListener);
-		}
+		processKafkaListenerEndpointAfterRegistration(endpoint, kafkaListener);
+
 		if (StringUtils.hasText(beanRef)) {
 			this.listenerScope.removeListener(beanRef);
 		}
 	}
 
-	private void doProcessKafkaListenerAnnotation(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener, Object bean) {
+	private void processKafkaListenerAnnotationForRetryTopic(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener, Object bean) {
+		processKafkaListenerAnnotationBeforeRegistration(endpoint, kafkaListener, bean);
+		processKafkaListenerEndpointAfterRegistration(endpoint, kafkaListener);
+	}
+
+	private void processKafkaListenerAnnotationBeforeRegistration(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener, Object bean) {
 		endpoint.setBean(bean);
 		endpoint.setMessageHandlerMethodFactory(this.messageHandlerMethodFactory);
 		endpoint.setId(getEndpointId(kafkaListener));
@@ -593,6 +591,18 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 		resolveKafkaProperties(endpoint, kafkaListener.properties());
 		endpoint.setSplitIterables(kafkaListener.splitIterables());
+	}
+
+	private void processKafkaListenerEndpointAfterRegistration(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener) {
+		endpoint.setBeanFactory(this.beanFactory);
+		String errorHandlerBeanName = resolveExpressionAsString(kafkaListener.errorHandler(), "errorHandler");
+		if (StringUtils.hasText(errorHandlerBeanName)) {
+			resolveErrorHandler(endpoint, kafkaListener);
+		}
+		String converterBeanName = resolveExpressionAsString(kafkaListener.contentTypeConverter(), "contentTypeConverter");
+		if (StringUtils.hasText(converterBeanName)) {
+			resolveContentTypeConverter(endpoint, kafkaListener);
+		}
 	}
 
 	private void resolveErrorHandler(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener) {
