@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.fail;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,9 +54,14 @@ import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.ContainerProperties;
+import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.converter.CompositeMessageConverter;
+import org.springframework.messaging.converter.GenericMessageConverter;
+import org.springframework.messaging.converter.SmartMessageConverter;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -105,6 +111,8 @@ public class RetryTopicIntegrationTests {
 		kafkaTemplate.send(FIRST_TOPIC, "Testing topic 1");
 		assertThat(awaitLatch(latchContainer.countDownLatch1)).isTrue();
 		assertThat(awaitLatch(latchContainer.customDltCountdownLatch)).isTrue();
+		assertThat(awaitLatch(latchContainer.customErrorHandlerCountdownLatch)).isTrue();
+		assertThat(awaitLatch(latchContainer.customMessageConverterCountdownLatch)).isTrue();
 	}
 
 	@Test
@@ -154,7 +162,8 @@ public class RetryTopicIntegrationTests {
 		@Autowired
 		CountDownLatchContainer container;
 
-		@KafkaListener(id = "firstTopicId", topics = FIRST_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
+		@KafkaListener(id = "firstTopicId", topics = FIRST_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY,
+				errorHandler = "myCustomErrorHandler", contentTypeConverter = "myCustomMessageConverter")
 		public void listen(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			logger.debug("Message {} received in topic {}", message, receivedTopic);
 				container.countDownLatch1.countDown();
@@ -256,6 +265,8 @@ public class RetryTopicIntegrationTests {
 		CountDownLatch countDownLatchDltOne = new CountDownLatch(1);
 		CountDownLatch countDownLatchDltTwo = new CountDownLatch(1);
 		CountDownLatch customDltCountdownLatch = new CountDownLatch(1);
+		CountDownLatch customErrorHandlerCountdownLatch = new CountDownLatch(6);
+		CountDownLatch customMessageConverterCountdownLatch = new CountDownLatch(6);
 
 		List<String> knownTopics = new ArrayList<>();
 
@@ -332,6 +343,26 @@ public class RetryTopicIntegrationTests {
 		@Bean
 		public FirstTopicListener firstTopicListener() {
 			return new FirstTopicListener();
+		}
+
+		@Bean
+		public KafkaListenerErrorHandler myCustomErrorHandler(CountDownLatchContainer container) {
+			return (message, exception) -> {
+				container.customErrorHandlerCountdownLatch.countDown();
+				throw exception;
+			};
+		}
+
+		@Bean
+		public SmartMessageConverter myCustomMessageConverter(CountDownLatchContainer container) {
+			return new CompositeMessageConverter(Collections.singletonList(new GenericMessageConverter())) {
+
+				@Override
+				public Object fromMessage(Message<?> message, Class<?> targetClass, Object conversionHint) {
+					container.customMessageConverterCountdownLatch.countDown();
+					return super.fromMessage(message, targetClass, conversionHint);
+				}
+			};
 		}
 
 		@Bean
