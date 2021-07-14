@@ -48,6 +48,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -2562,11 +2563,11 @@ public class KafkaMessageListenerContainerTests {
 		given(consumer.assignment()).willReturn(records.keySet());
 		final CountDownLatch pauseLatch1 = new CountDownLatch(2); // consumer, event publisher
 		final CountDownLatch pauseLatch2 = new CountDownLatch(2); // consumer, consumer
-		Set<TopicPartition> pausedParts = new HashSet<>();
+		Set<TopicPartition> pausedParts = ConcurrentHashMap.newKeySet();
 		willAnswer(i -> {
+			pausedParts.addAll(i.getArgument(0));
 			pauseLatch1.countDown();
 			pauseLatch2.countDown();
-			pausedParts.addAll(i.getArgument(0));
 			return null;
 		}).given(consumer).pause(records.keySet());
 		given(consumer.paused()).willReturn(pausedParts);
@@ -2584,8 +2585,8 @@ public class KafkaMessageListenerContainerTests {
 		});
 		final CountDownLatch resumeLatch = new CountDownLatch(2);
 		willAnswer(i -> {
-			resumeLatch.countDown();
 			pausedParts.removeAll(i.getArgument(0));
+			resumeLatch.countDown();
 			return null;
 		}).given(consumer).resume(any());
 		willAnswer(invoc -> {
@@ -2701,7 +2702,7 @@ public class KafkaMessageListenerContainerTests {
 		given(consumer.assignment()).willReturn(Set.of(new TopicPartition("foo", 0), new TopicPartition("foo", 1)));
 		final CountDownLatch pauseLatch1 = new CountDownLatch(1);
 		final CountDownLatch pauseLatch2 = new CountDownLatch(2);
-		Set<TopicPartition> pausedParts = new HashSet<>();
+		Set<TopicPartition> pausedParts = ConcurrentHashMap.newKeySet();
 		willAnswer(i -> {
 			pausedParts.addAll(i.getArgument(0));
 			pauseLatch1.countDown();
@@ -2715,8 +2716,8 @@ public class KafkaMessageListenerContainerTests {
 		});
 		final CountDownLatch resumeLatch = new CountDownLatch(1);
 		willAnswer(i -> {
-			resumeLatch.countDown();
 			pausedParts.removeAll(i.getArgument(0));
+			resumeLatch.countDown();
 			return null;
 		}).given(consumer).resume(any());
 		ContainerProperties containerProps = new ContainerProperties(new TopicPartitionOffset("foo", 0),
