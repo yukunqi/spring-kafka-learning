@@ -23,6 +23,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.KafkaException;
+import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
@@ -55,7 +56,7 @@ public class ContainerStoppingBatchErrorHandler extends KafkaExceptionLogLevelAw
 	}
 
 	@Override
-	public void handle(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
+	public void handle(Exception thrownException, @Nullable ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
 		this.executor.execute(() -> container.stop());
 		// isRunning is false before the container.stop() waits for listener thread

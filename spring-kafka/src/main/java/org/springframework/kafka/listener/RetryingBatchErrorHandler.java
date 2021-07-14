@@ -93,7 +93,7 @@ public class RetryingBatchErrorHandler extends KafkaExceptionLogLevelAware
 	}
 
 	@Override
-	public void handle(Exception thrownException, ConsumerRecords<?, ?> records,
+	public void handle(Exception thrownException, @Nullable ConsumerRecords<?, ?> records,
 			Consumer<?, ?> consumer, MessageListenerContainer container, Runnable invokeListener) {
 
 		if (records == null || records.count() == 0) {

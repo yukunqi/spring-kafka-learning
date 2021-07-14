@@ -155,9 +155,12 @@ public class RecoveringBatchErrorHandler extends FailedRecordProcessor
 		return i;
 	}
 
-	private void seekOrRecover(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
+	private void seekOrRecover(Exception thrownException, @Nullable ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
 			MessageListenerContainer container, int indexArg) {
 
+		if (data == null) {
+			return;
+		}
 		Iterator<?> iterator = data.iterator();
 		List<ConsumerRecord<?, ?>> toCommit = new ArrayList<>();
 		List<ConsumerRecord<?, ?>> remaining = new ArrayList<>();

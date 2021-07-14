@@ -109,7 +109,7 @@ public class SeekToCurrentErrorHandler extends FailedRecordProcessor implements 
 	public void handle(Exception thrownException, @Nullable List<ConsumerRecord<?, ?>> records,
 			Consumer<?, ?> consumer, MessageListenerContainer container) {
 
-		SeekUtils.seekOrRecover(thrownException, records, consumer, container, isCommitRecovered(),
+		SeekUtils.seekOrRecover(thrownException, records, consumer, container, isCommitRecovered(), // NOSONAR
 				getRecoveryStrategy(records, thrownException), this.logger, getLogLevel());
 	}
 

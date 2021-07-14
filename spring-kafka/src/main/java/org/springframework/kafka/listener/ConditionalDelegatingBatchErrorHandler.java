@@ -34,7 +34,7 @@ import org.springframework.util.Assert;
  * @since 2.7.4
  *
  */
-public class ConditionalDelegatingBatchErrorHandler implements ContainerAwareBatchErrorHandler {
+public class ConditionalDelegatingBatchErrorHandler implements ListenerInvokingBatchErrorHandler {
 
 	private final ContainerAwareBatchErrorHandler defaultErrorHandler;
 
@@ -70,7 +70,7 @@ public class ConditionalDelegatingBatchErrorHandler implements ContainerAwareBat
 	}
 
 	@Override
-	public void handle(Exception thrownException, ConsumerRecords<?, ?> records, Consumer<?, ?> consumer,
+	public void handle(Exception thrownException, @Nullable ConsumerRecords<?, ?> records, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
 
 		// Never called but, just in case
@@ -78,13 +78,13 @@ public class ConditionalDelegatingBatchErrorHandler implements ContainerAwareBat
 	}
 
 	@Override
-	public void handle(Exception thrownException, ConsumerRecords<?, ?> records, Consumer<?, ?> consumer,
+	public void handle(Exception thrownException, @Nullable ConsumerRecords<?, ?> records, Consumer<?, ?> consumer,
 			MessageListenerContainer container, Runnable invokeListener) {
 
 		doHandle(thrownException, records, consumer, container, invokeListener);
 	}
 
-	protected void doHandle(Exception thrownException, ConsumerRecords<?, ?> records, Consumer<?, ?> consumer,
+	protected void doHandle(Exception thrownException, @Nullable ConsumerRecords<?, ?> records, Consumer<?, ?> consumer,
 			MessageListenerContainer container, @Nullable Runnable invokeListener) {
 
 		Throwable cause = thrownException;

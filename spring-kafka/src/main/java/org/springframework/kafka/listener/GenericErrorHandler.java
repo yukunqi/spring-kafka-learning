@@ -45,7 +45,7 @@ public interface GenericErrorHandler<T> {
 	 * @param data the data.
 	 * @param consumer the consumer.
 	 */
-	default void handle(Exception thrownException, T data, Consumer<?, ?> consumer) {
+	default void handle(Exception thrownException, @Nullable T data, Consumer<?, ?> consumer) {
 		handle(thrownException, data);
 	}
 

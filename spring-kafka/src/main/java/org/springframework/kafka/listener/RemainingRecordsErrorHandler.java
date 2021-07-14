@@ -47,7 +47,7 @@ public interface RemainingRecordsErrorHandler extends ConsumerAwareErrorHandler 
 	 * @param records the remaining records including the one that failed.
 	 * @param consumer the consumer.
 	 */
-	void handle(Exception thrownException, List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer);
+	void handle(Exception thrownException, @Nullable List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer);
 
 	@Override
 	default void handle(Exception thrownException, @Nullable List<ConsumerRecord<?, ?>> records,

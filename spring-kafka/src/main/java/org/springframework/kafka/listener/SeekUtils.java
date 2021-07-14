@@ -202,7 +202,7 @@ public final class SeekUtils {
 			}
 		}
 
-		if (records == null || !doSeeks(records, consumer, thrownException, true, recovery, container, logger)) {
+		if (records == null || !doSeeks(records, consumer, thrownException, true, recovery, container, logger)) { // NOSONAR
 			throw new KafkaException("Seek to current after exception", level, thrownException);
 		}
 		if (commitRecovered) {

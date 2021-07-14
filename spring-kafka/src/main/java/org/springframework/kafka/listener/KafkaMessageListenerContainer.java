@@ -1534,16 +1534,19 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private void pausePartitionsIfNecessary() {
 			Set<TopicPartition> pausedConsumerPartitions = this.consumer.paused();
-			List<TopicPartition> partitionsToPause = getAssignedPartitions()
-					.stream()
-					.filter(tp -> isPartitionPauseRequested(tp)
-							&& !pausedConsumerPartitions.contains(tp))
-					.collect(Collectors.toList());
-			if (partitionsToPause.size() > 0) {
-				this.consumer.pause(partitionsToPause);
-				this.pausedPartitions.addAll(partitionsToPause);
-				this.logger.debug(() -> "Paused consumption from " + partitionsToPause);
-				partitionsToPause.forEach(KafkaMessageListenerContainer.this::publishConsumerPartitionPausedEvent);
+			Collection<TopicPartition> partitions = getAssignedPartitions();
+			if (partitions != null) {
+				List<TopicPartition> partitionsToPause = partitions
+						.stream()
+						.filter(tp -> isPartitionPauseRequested(tp)
+								&& !pausedConsumerPartitions.contains(tp))
+						.collect(Collectors.toList());
+				if (partitionsToPause.size() > 0) {
+					this.consumer.pause(partitionsToPause);
+					this.pausedPartitions.addAll(partitionsToPause);
+					this.logger.debug(() -> "Paused consumption from " + partitionsToPause);
+					partitionsToPause.forEach(KafkaMessageListenerContainer.this::publishConsumerPartitionPausedEvent);
+				}
 			}
 		}
 

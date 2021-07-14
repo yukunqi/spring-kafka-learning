@@ -19,6 +19,8 @@ package org.springframework.kafka.listener;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 
+import org.springframework.lang.Nullable;
+
 /**
  * Handles errors thrown during the execution of a {@link BatchMessageListener}.
  * The listener should communicate which position(s) in the list failed in the
@@ -37,7 +39,7 @@ public interface BatchErrorHandler extends GenericErrorHandler<ConsumerRecords<?
 	 * @param consumer the consumer.
 	 * @param container the container.
 	 */
-	default void handle(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
+	default void handle(Exception thrownException, @Nullable ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
 		handle(thrownException, data);
 	}
@@ -51,7 +53,7 @@ public interface BatchErrorHandler extends GenericErrorHandler<ConsumerRecords<?
 	 * @param invokeListener a callback to re-invoke the listener.
 	 * @since 2.3.7
 	 */
-	default void handle(Exception thrownException, ConsumerRecords<?, ?> data,
+	default void handle(Exception thrownException, @Nullable ConsumerRecords<?, ?> data,
 			Consumer<?, ?> consumer, MessageListenerContainer container, Runnable invokeListener) {
 
 		handle(thrownException, data);

@@ -74,7 +74,6 @@ public class ConditionalDelegatingErrorHandler implements ContainerAwareErrorHan
 	public void handle(Exception thrownException, @Nullable List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
 
-		boolean handled = false;
 		Throwable cause = thrownException;
 		if (cause instanceof ListenerExecutionFailedException) {
 			cause = thrownException.getCause();
@@ -83,7 +82,6 @@ public class ConditionalDelegatingErrorHandler implements ContainerAwareErrorHan
 			Class<? extends Throwable> causeClass = cause.getClass();
 			for (Entry<Class<? extends Throwable>, ContainerAwareErrorHandler> entry : this.delegates.entrySet()) {
 				if (entry.getKey().isAssignableFrom(causeClass)) {
-					handled = true;
 					entry.getValue().handle(thrownException, records, consumer, container);
 					return;
 				}

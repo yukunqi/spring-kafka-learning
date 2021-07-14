@@ -19,6 +19,8 @@ package org.springframework.kafka.listener;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 
+import org.springframework.lang.Nullable;
+
 /**
  * A batch error handler that is capable of invoking the listener during error handling.
  *
@@ -30,14 +32,14 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 public interface ListenerInvokingBatchErrorHandler extends ContainerAwareBatchErrorHandler {
 
 	@Override
-	default void handle(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
+	default void handle(Exception thrownException, @Nullable ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
 
 		throw new UnsupportedOperationException("Container should never call this");
 	}
 
 	@Override
-	void handle(Exception thrownException, ConsumerRecords<?, ?> records,
+	void handle(Exception thrownException, @Nullable ConsumerRecords<?, ?> records,
 			Consumer<?, ?> consumer, MessageListenerContainer container, Runnable invokeListener);
 
 }
