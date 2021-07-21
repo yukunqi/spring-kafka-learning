@@ -89,7 +89,7 @@ public class DefaultErrorHandler extends FailedBatchProcessor implements CommonE
 		super(recoverer, backOff, createFallback(backOff, recoverer));
 	}
 
-	private static CommonErrorHandler createFallback(BackOff backOff, ConsumerRecordRecoverer recoverer) {
+	private static CommonErrorHandler createFallback(BackOff backOff, @Nullable ConsumerRecordRecoverer recoverer) {
 		return new ErrorHandlerAdapter(new RetryingBatchErrorHandler(backOff, recoverer));
 	}
 
