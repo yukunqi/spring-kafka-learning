@@ -2712,6 +2712,18 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					partitions.put(tp, new OffsetMetadata(off.offset(), false, SeekPosition.TIMESTAMP));
 				}
 			});
+			doInitialSeeks(partitions, beginnings, ends);
+			if (this.consumerSeekAwareListener != null) {
+				this.consumerSeekAwareListener.onPartitionsAssigned(partitions.keySet().stream()
+							.map(tp -> new SimpleEntry<>(tp, this.consumer.position(tp)))
+							.collect(Collectors.toMap(entry -> entry.getKey(), entry -> entry.getValue())),
+						this.seekCallback);
+			}
+		}
+
+		private void doInitialSeeks(Map<TopicPartition, OffsetMetadata> partitions, Set<TopicPartition> beginnings,
+				Set<TopicPartition> ends) {
+
 			if (beginnings.size() > 0) {
 				this.consumer.seekToBeginning(beginnings);
 			}
@@ -2745,12 +2757,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 								+ " at " + newOffsetToLog + ". Position is " + this.consumer.position(topicPartition));
 					}
 				}
-			}
-			if (this.consumerSeekAwareListener != null) {
-				this.consumerSeekAwareListener.onPartitionsAssigned(partitions.keySet().stream()
-							.map(tp -> new SimpleEntry<>(tp, this.consumer.position(tp)))
-							.collect(Collectors.toMap(entry -> entry.getKey(), entry -> entry.getValue())),
-						this.seekCallback);
 			}
 		}
 
