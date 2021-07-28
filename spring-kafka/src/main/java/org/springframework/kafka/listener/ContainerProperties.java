@@ -32,7 +32,6 @@ import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.core.task.AsyncListenableTaskExecutor;
 import org.springframework.kafka.support.TopicPartitionOffset;
-import org.springframework.kafka.transaction.KafkaTransactionManager;
 import org.springframework.lang.Nullable;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -753,11 +752,11 @@ public class ContainerProperties extends ConsumerProperties {
 	 * the container's transaction template. Note that this is only generally useful when
 	 * used with a {@link #setTransactionManager(PlatformTransactionManager)
 	 * PlatformTransactionManager} that supports a custom definition; this does NOT
-	 * include the {@link KafkaTransactionManager} which has no concept of transaction
-	 * timeout. It can be useful to start, for example a database transaction, in the
-	 * container, rather than using {@code @Transactional} on the listener, because then a
-	 * record interceptor, or filter in a listener adapter can participate in the
-	 * transaction.
+	 * include the {@link org.springframework.kafka.transaction.KafkaTransactionManager}
+	 * which has no concept of transaction timeout. It can be useful to start, for example
+	 * a database transaction, in the container, rather than using {@code @Transactional}
+	 * on the listener, because then a record interceptor, or filter in a listener adapter
+	 * can participate in the transaction.
 	 * @param transactionDefinition the definition.
 	 * @since 2.5.4
 	 * @see #setTransactionManager(PlatformTransactionManager)
