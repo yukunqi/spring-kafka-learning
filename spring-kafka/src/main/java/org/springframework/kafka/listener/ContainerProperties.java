@@ -380,7 +380,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 * Set the executor for threads that poll the consumer.
 	 * @param consumerTaskExecutor the executor
 	 */
-	public void setConsumerTaskExecutor(AsyncListenableTaskExecutor consumerTaskExecutor) {
+	public void setConsumerTaskExecutor(@Nullable AsyncListenableTaskExecutor consumerTaskExecutor) {
 		this.consumerTaskExecutor = consumerTaskExecutor;
 	}
 
@@ -418,7 +418,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 * no records and this interval has elapsed since a record was returned.
 	 * @param idleEventInterval the interval.
 	 */
-	public void setIdleEventInterval(Long idleEventInterval) {
+	public void setIdleEventInterval(@Nullable Long idleEventInterval) {
 		this.idleEventInterval = idleEventInterval;
 	}
 
@@ -427,7 +427,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 * no records for a partition and this interval has elapsed since a record was returned.
 	 * @param idlePartitionEventInterval the interval.
 	 */
-	public void setIdlePartitionEventInterval(Long idlePartitionEventInterval) {
+	public void setIdlePartitionEventInterval(@Nullable Long idlePartitionEventInterval) {
 		this.idlePartitionEventInterval = idlePartitionEventInterval;
 	}
 
@@ -519,7 +519,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 * @since 1.3.1
 	 * @see #setMonitorInterval(int)
 	 */
-	public void setScheduler(TaskScheduler scheduler) {
+	public void setScheduler(@Nullable TaskScheduler scheduler) {
 		this.scheduler = scheduler;
 	}
 
@@ -676,7 +676,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 * @param subBatchPerPartition true for a separate transaction for each partition.
 	 * @since 2.3.2
 	 */
-	public void setSubBatchPerPartition(boolean subBatchPerPartition) {
+	public void setSubBatchPerPartition(@Nullable boolean subBatchPerPartition) {
 		this.subBatchPerPartition = subBatchPerPartition;
 	}
 
@@ -760,7 +760,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 * @since 2.5.4
 	 * @see #setTransactionManager(PlatformTransactionManager)
 	 */
-	public void setTransactionDefinition(TransactionDefinition transactionDefinition) {
+	public void setTransactionDefinition(@Nullable TransactionDefinition transactionDefinition) {
 		this.transactionDefinition = transactionDefinition;
 	}
 
