@@ -50,8 +50,7 @@ public class LoggingProducerListenerTests {
 			string.set(stringer.get());
 			return null;
 		}).given(logger).error(any(), any(Supplier.class));
-		pl.onError(new ProducerRecord("foo", 0, new byte[3], new byte[1111]), null,
-				new RuntimeException());
+		pl.onError(new ProducerRecord("foo", 0, new byte[3], new byte[1111]), new RuntimeException());
 		assertThat(string.get()).contains("byte[3]");
 		assertThat(string.get()).contains("byte[1111]");
 	}
