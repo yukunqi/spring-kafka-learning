@@ -109,7 +109,7 @@ public class RecoveringBatchErrorHandler extends FailedBatchProcessor
 	public void handle(Exception thrownException, @Nullable ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
 
-		doHandle(thrownException, data, consumer, container, () -> { });
+		doHandle(thrownException, data, consumer, container, () -> { }); // NOSONAR
 	}
 
 }

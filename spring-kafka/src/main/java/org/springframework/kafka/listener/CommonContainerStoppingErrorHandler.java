@@ -87,7 +87,7 @@ public class CommonContainerStoppingErrorHandler extends KafkaExceptionLogLevelA
 		this.executor.execute(() -> container.stop());
 		// isRunning is false before the container.stop() waits for listener thread
 		try {
-			ListenerUtils.stoppableSleep(container, 10_000);
+			ListenerUtils.stoppableSleep(container, 10_000); // NOSONAR
 		}
 		catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
