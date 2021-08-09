@@ -618,17 +618,17 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 
 		static class Original {
 
-			final String offsetHeader;
+			final String offsetHeader; // NOSONAR
 
-			final String timestampHeader;
+			final String timestampHeader; // NOSONAR
 
-			final String timestampTypeHeader;
+			final String timestampTypeHeader; // NOSONAR
 
-			final String topicHeader;
+			final String topicHeader; // NOSONAR
 
-			final String partitionHeader;
+			final String partitionHeader; // NOSONAR
 
-			final String consumerGroup;
+			final String consumerGroup; // NOSONAR
 
 			Original(String offsetHeader,
 					String timestampHeader,
@@ -647,19 +647,19 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 
 		static class ExceptionInfo {
 
-			final String keyExceptionFqcn;
+			final String keyExceptionFqcn; // NOSONAR
 
-			final String exceptionFqcn;
+			final String exceptionFqcn; // NOSONAR
 
-			final String exceptionCauseFqcn;
+			final String exceptionCauseFqcn; // NOSONAR
 
-			final String keyExceptionMessage;
+			final String keyExceptionMessage; // NOSONAR
 
-			final String exceptionMessage;
+			final String exceptionMessage; // NOSONAR
 
-			final String keyExceptionStacktrace;
+			final String keyExceptionStacktrace; // NOSONAR
 
-			final String exceptionStacktrace;
+			final String exceptionStacktrace; // NOSONAR
 
 			ExceptionInfo(String keyExceptionFqcn,
 					String exceptionFqcn,
