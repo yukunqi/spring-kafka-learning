@@ -676,7 +676,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 * @param subBatchPerPartition true for a separate transaction for each partition.
 	 * @since 2.3.2
 	 */
-	public void setSubBatchPerPartition(@Nullable boolean subBatchPerPartition) {
+	public void setSubBatchPerPartition(@Nullable Boolean subBatchPerPartition) {
 		this.subBatchPerPartition = subBatchPerPartition;
 	}
 
