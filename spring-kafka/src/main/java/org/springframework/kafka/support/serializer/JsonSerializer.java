@@ -41,6 +41,10 @@ import com.fasterxml.jackson.databind.ObjectWriter;
 /**
  * Generic {@link org.apache.kafka.common.serialization.Serializer Serializer} for sending
  * Java objects to Kafka as JSON.
+ * <p>
+ * IMPORTANT: Configuration must be done completely with property setters or via
+ * {@link #configure(Map, boolean)}, not a mixture. If any setters have been called,
+ * {@link #configure(Map, boolean)} will be a no-op.
  *
  * @param <T> class of the entity, representing messages
  *
@@ -71,6 +75,10 @@ public class JsonSerializer<T> implements Serializer<T> {
 	protected Jackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper(); // NOSONAR
 
 	private boolean typeMapperExplicitlySet = false;
+
+	private boolean setterCalled;
+
+	private boolean configured;
 
 	public JsonSerializer() {
 		this((JavaType) null, JacksonUtils.enhancedObjectMapper());
@@ -105,6 +113,7 @@ public class JsonSerializer<T> implements Serializer<T> {
 	 */
 	public void setAddTypeInfo(boolean addTypeInfo) {
 		this.addTypeInfo = addTypeInfo;
+		this.setterCalled = true;
 	}
 
 	public Jackson2JavaTypeMapper getTypeMapper() {
@@ -120,6 +129,7 @@ public class JsonSerializer<T> implements Serializer<T> {
 		Assert.notNull(typeMapper, "'typeMapper' cannot be null");
 		this.typeMapper = typeMapper;
 		this.typeMapperExplicitlySet = true;
+		this.setterCalled = true;
 	}
 
 	/**
@@ -132,10 +142,17 @@ public class JsonSerializer<T> implements Serializer<T> {
 			((AbstractJavaTypeMapper) getTypeMapper())
 					.setUseForKey(isKey);
 		}
+		this.setterCalled = true;
 	}
 
 	@Override
-	public void configure(Map<String, ?> configs, boolean isKey) {
+	public synchronized void configure(Map<String, ?> configs, boolean isKey) {
+		if (this.configured) {
+			return;
+		}
+		Assert.state(!this.setterCalled
+				|| (!configs.containsKey(ADD_TYPE_INFO_HEADERS) && !configs.containsKey(TYPE_MAPPINGS)),
+				"JsonSerializer must be configured with property setters, or via configuration properties; not both");
 		setUseTypeMapperForKey(isKey);
 		if (configs.containsKey(ADD_TYPE_INFO_HEADERS)) {
 			Object config = configs.get(ADD_TYPE_INFO_HEADERS);
@@ -154,6 +171,7 @@ public class JsonSerializer<T> implements Serializer<T> {
 			((AbstractJavaTypeMapper) this.typeMapper)
 					.setIdClassMapping(createMappings((String) configs.get(TYPE_MAPPINGS)));
 		}
+		this.configured = true;
 	}
 
 	protected static Map<String, Class<?>> createMappings(String mappings) {
