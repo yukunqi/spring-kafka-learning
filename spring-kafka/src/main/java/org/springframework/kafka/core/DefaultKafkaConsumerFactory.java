@@ -131,7 +131,9 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 		this.valueDeserializerSupplier = valueDeserializerSupplier(valueDeserializerSupplier);
 	}
 
-	private Supplier<Deserializer<K>> keyDeserializerSupplier(Supplier<Deserializer<K>> keyDeserializerSupplier) {
+	private Supplier<Deserializer<K>> keyDeserializerSupplier(
+			@Nullable Supplier<Deserializer<K>> keyDeserializerSupplier) {
+
 		return keyDeserializerSupplier == null
 				? () -> null
 				: () -> {
@@ -143,7 +145,9 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 				};
 	}
 
-	private Supplier<Deserializer<V>> valueDeserializerSupplier(Supplier<Deserializer<V>> valueDeserializerSupplier) {
+	private Supplier<Deserializer<V>> valueDeserializerSupplier(
+			@Nullable Supplier<Deserializer<V>> valueDeserializerSupplier) {
+
 		return valueDeserializerSupplier == null
 				? () -> null
 				: () -> {

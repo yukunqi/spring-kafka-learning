@@ -215,7 +215,9 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		this.configs.put("internal.auto.downgrade.txn.commit", true);
 	}
 
-	private Supplier<Serializer<K>> keySerializerSupplier(Supplier<Serializer<K>> keySerializerSupplier) {
+	private Supplier<Serializer<K>> keySerializerSupplier(
+			@Nullable Supplier<Serializer<K>> keySerializerSupplier) {
+
 		this.rawKeySerializerSupplier = keySerializerSupplier;
 		return keySerializerSupplier == null
 				? () -> null
@@ -228,7 +230,9 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 				};
 	}
 
-	private Supplier<Serializer<V>> valueSerializerSupplier(Supplier<Serializer<V>> valueSerializerSupplier) {
+	private Supplier<Serializer<V>> valueSerializerSupplier(
+			@Nullable Supplier<Serializer<V>> valueSerializerSupplier) {
+
 		this.rawValueSerializerSupplier = valueSerializerSupplier;
 		return valueSerializerSupplier == null
 				? () -> null
