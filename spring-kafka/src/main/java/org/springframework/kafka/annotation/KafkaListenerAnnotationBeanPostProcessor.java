@@ -438,7 +438,11 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		for (KafkaListener classLevelListener : classLevelListeners) {
 			MultiMethodKafkaListenerEndpoint<K, V> endpoint =
 					new MultiMethodKafkaListenerEndpoint<>(checkedMethods, defaultMethod, bean);
-			processListener(endpoint, classLevelListener, bean, beanName);
+			String beanRef = classLevelListener.beanRef();
+			this.listenerScope.addListener(beanRef, bean);
+			processListener(endpoint, classLevelListener, bean, beanName, resolveTopics(classLevelListener),
+					resolveTopicPartitions(classLevelListener));
+			this.listenerScope.removeListener(beanRef);
 		}
 	}
 
@@ -447,28 +451,42 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		MethodKafkaListenerEndpoint<K, V> endpoint = new MethodKafkaListenerEndpoint<>();
 		endpoint.setMethod(methodToUse);
 
-		if (!processMainAndRetryListeners(kafkaListener, bean, beanName, methodToUse, endpoint)) {
-			processListener(endpoint, kafkaListener, bean, beanName);
+		String beanRef = kafkaListener.beanRef();
+		this.listenerScope.addListener(beanRef, bean);
+		String[] topics = resolveTopics(kafkaListener);
+		TopicPartitionOffset[] tps = resolveTopicPartitions(kafkaListener);
+		if (!processMainAndRetryListeners(kafkaListener, bean, beanName, methodToUse, endpoint, topics, tps)) {
+			processListener(endpoint, kafkaListener, bean, beanName, topics, tps);
 		}
+		this.listenerScope.removeListener(beanRef);
 	}
 
 	private boolean processMainAndRetryListeners(KafkaListener kafkaListener, Object bean, String beanName,
-												Method methodToUse, MethodKafkaListenerEndpoint<K, V> endpoint) {
+			Method methodToUse, MethodKafkaListenerEndpoint<K, V> endpoint, String[] topics,
+			TopicPartitionOffset[] tps) {
+
+		String[] retryableCandidates = topics;
+		if (retryableCandidates.length == 0 && tps.length > 0) {
+			retryableCandidates = Arrays.stream(tps)
+					.map(tp -> tp.getTopic())
+					.distinct()
+					.collect(Collectors.toList())
+					.toArray(new String[0]);
+		}
 
 		RetryTopicConfiguration retryTopicConfiguration = new RetryTopicConfigurationProvider(this.beanFactory,
 				this.resolver, this.expressionContext)
-						.findRetryConfigurationFor(kafkaListener.topics(), methodToUse, bean);
+						.findRetryConfigurationFor(retryableCandidates, methodToUse, bean);
 
 		if (retryTopicConfiguration == null) {
-			this.logger.debug("No retry topic configuration found for topics " + Arrays.asList(kafkaListener.topics()));
+			String[] candidates = retryableCandidates;
+			this.logger.debug(() ->
+					"No retry topic configuration found for topics " + Arrays.toString(candidates));
 			return false;
 		}
 
 		RetryTopicConfigurer.EndpointProcessor endpointProcessor = endpointToProcess ->
-				this.processKafkaListenerAnnotationForRetryTopic(endpointToProcess, kafkaListener, bean);
-
-		String beanRef = kafkaListener.beanRef();
-		this.listenerScope.addListener(beanRef, bean);
+				this.processKafkaListenerAnnotationForRetryTopic(endpointToProcess, kafkaListener, bean, topics, tps);
 
 		KafkaListenerContainerFactory<?> factory =
 				resolveContainerFactory(kafkaListener, resolve(kafkaListener.containerFactory()), beanName);
@@ -476,8 +494,6 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		getRetryTopicConfigurer()
 				.processMainAndRetryListeners(endpointProcessor, endpoint, retryTopicConfiguration,
 						this.registrar, factory, this.defaultContainerFactoryBeanName);
-
-		this.listenerScope.removeListener(beanRef);
 		return true;
 	}
 
@@ -539,14 +555,9 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	}
 
 	protected void processListener(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener,
-								Object bean, String beanName) {
+								Object bean, String beanName, String[] topics, TopicPartitionOffset[] tps) {
 
-		String beanRef = kafkaListener.beanRef();
-		if (StringUtils.hasText(beanRef)) {
-			this.listenerScope.addListener(beanRef, bean);
-		}
-
-		processKafkaListenerAnnotationBeforeRegistration(endpoint, kafkaListener, bean);
+		processKafkaListenerAnnotationBeforeRegistration(endpoint, kafkaListener, bean, topics, tps);
 
 		String containerFactory = resolve(kafkaListener.containerFactory());
 		KafkaListenerContainerFactory<?> listenerContainerFactory = resolveContainerFactory(kafkaListener, containerFactory, beanName);
@@ -554,24 +565,24 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		this.registrar.registerEndpoint(endpoint, listenerContainerFactory);
 
 		processKafkaListenerEndpointAfterRegistration(endpoint, kafkaListener);
-
-		if (StringUtils.hasText(beanRef)) {
-			this.listenerScope.removeListener(beanRef);
-		}
 	}
 
-	private void processKafkaListenerAnnotationForRetryTopic(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener, Object bean) {
-		processKafkaListenerAnnotationBeforeRegistration(endpoint, kafkaListener, bean);
+	private void processKafkaListenerAnnotationForRetryTopic(MethodKafkaListenerEndpoint<?, ?> endpoint,
+			KafkaListener kafkaListener, Object bean, String[] topics, TopicPartitionOffset[] tps) {
+
+		processKafkaListenerAnnotationBeforeRegistration(endpoint, kafkaListener, bean, topics, tps);
 		processKafkaListenerEndpointAfterRegistration(endpoint, kafkaListener);
 	}
 
-	private void processKafkaListenerAnnotationBeforeRegistration(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener, Object bean) {
+	private void processKafkaListenerAnnotationBeforeRegistration(MethodKafkaListenerEndpoint<?, ?> endpoint,
+			KafkaListener kafkaListener, Object bean, String[] topics, TopicPartitionOffset[] tps) {
+
 		endpoint.setBean(bean);
 		endpoint.setMessageHandlerMethodFactory(this.messageHandlerMethodFactory);
 		endpoint.setId(getEndpointId(kafkaListener));
 		endpoint.setGroupId(getEndpointGroupId(kafkaListener, endpoint.getId()));
-		endpoint.setTopicPartitions(resolveTopicPartitions(kafkaListener));
-		endpoint.setTopics(resolveTopics(kafkaListener));
+		endpoint.setTopicPartitions(tps);
+		endpoint.setTopics(topics);
 		endpoint.setTopicPattern(resolvePattern(kafkaListener));
 		endpoint.setClientIdPrefix(resolveExpressionAsString(kafkaListener.clientIdPrefix(), "clientIdPrefix"));
 		String group = kafkaListener.containerGroup();
@@ -1076,7 +1087,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	}
 
-	private static class ListenerScope implements Scope {
+	static class ListenerScope implements Scope {
 
 		private final Map<String, Object> listeners = new HashMap<>();
 
