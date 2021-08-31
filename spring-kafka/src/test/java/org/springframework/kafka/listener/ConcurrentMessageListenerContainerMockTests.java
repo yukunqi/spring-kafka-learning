@@ -450,8 +450,11 @@ public class ConcurrentMessageListenerContainerMockTests {
 		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
 		final Consumer consumer = mock(Consumer.class);
 		TopicPartition tp0 = new TopicPartition("foo", 0);
-		ConsumerRecord record = new ConsumerRecord("foo", 0, 0L, "bar", "baz");
-		ConsumerRecords records = new ConsumerRecords(Collections.singletonMap(tp0, Collections.singletonList(record)));
+		ConsumerRecord record1 = new ConsumerRecord("foo", 0, 0L, "bar", "baz");
+		ConsumerRecord record2 = new ConsumerRecord("foo", 0, 1L, null, null);
+		ConsumerRecords records = batch
+				? new ConsumerRecords(Collections.singletonMap(tp0, List.of(record1, record2)))
+				: new ConsumerRecords(Collections.singletonMap(tp0, Collections.singletonList(record1)));
 		ConsumerRecords empty = new ConsumerRecords<>(Collections.emptyMap());
 		AtomicInteger firstOrSecondPoll = new AtomicInteger();
 		willAnswer(invocation -> {
@@ -470,11 +473,13 @@ public class ConcurrentMessageListenerContainerMockTests {
 		ContainerProperties containerProperties = new ContainerProperties("foo");
 		containerProperties.setGroupId("grp");
 		AtomicBoolean first = new AtomicBoolean(true);
+		AtomicReference<List<ConsumerRecord<String, String>>> received = new AtomicReference<>();
 		if (batch) {
-			containerProperties.setMessageListener((BatchMessageListener) recs -> {
+			containerProperties.setMessageListener((BatchMessageListener<String, String>) recs -> {
 				if (first.getAndSet(false)) {
 					throw new RuntimeException("test");
 				}
+				received.set(recs);
 			});
 		}
 		else {
@@ -546,7 +551,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 			public ConsumerRecords intercept(ConsumerRecords recs, Consumer consumer) {
 				order.add("interceptor");
 				latch.countDown();
-				return recs;
+				return new ConsumerRecords(Collections.singletonMap(tp0, Collections.singletonList(record1)));
 			}
 
 			@Override
@@ -585,6 +590,9 @@ public class ConcurrentMessageListenerContainerMockTests {
 					assertThat(order).containsExactly("tx", "tx", "interceptor", "failure", "tx", "interceptor",
 							"success");
 				}
+			}
+			if (batch) {
+				assertThat(received.get()).hasSize(1);
 			}
 		}
 		finally {
