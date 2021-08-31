@@ -510,7 +510,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 		}
 		catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
-			throw new KafkaException(pubFailMessage(outRecord, inRecord));
+			throw new KafkaException(pubFailMessage(outRecord, inRecord), e);
 		}
 		catch (ExecutionException | TimeoutException e) {
 			throw new KafkaException(pubFailMessage(outRecord, inRecord), e);

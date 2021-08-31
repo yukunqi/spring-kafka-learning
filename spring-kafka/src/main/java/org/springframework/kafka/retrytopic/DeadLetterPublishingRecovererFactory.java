@@ -38,10 +38,6 @@ import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.SeekUtils;
 import org.springframework.kafka.listener.TimestampedException;
 import org.springframework.kafka.support.KafkaHeaders;
-import org.springframework.kafka.support.converter.ConversionException;
-import org.springframework.kafka.support.serializer.DeserializationException;
-import org.springframework.messaging.converter.MessageConversionException;
-import org.springframework.messaging.handler.invocation.MethodArgumentResolutionException;
 import org.springframework.util.Assert;
 
 /**
@@ -50,6 +46,7 @@ import org.springframework.util.Assert;
  * forward the messages using the {@link DestinationTopicResolver}.
  *
  * @author Tomaz Fernandes
+ * @author Gary Russell
  * @since 2.7
  *
  */
@@ -73,10 +70,10 @@ public class DeadLetterPublishingRecovererFactory {
 	 * Add exception type to the default list. By default, the following exceptions will
 	 * not be retried:
 	 * <ul>
-	 * <li>{@link DeserializationException}</li>
-	 * <li>{@link MessageConversionException}</li>
-	 * <li>{@link ConversionException}</li>
-	 * <li>{@link MethodArgumentResolutionException}</li>
+	 * <li>{@link org.springframework.kafka.support.serializer.DeserializationException}</li>
+	 * <li>{@link org.springframework.messaging.converter.MessageConversionException}</li>
+	 * <li>{@link org.springframework.kafka.support.converter.ConversionException}</li>
+	 * <li>{@link org.springframework.messaging.handler.invocation.MethodArgumentResolutionException}</li>
 	 * <li>{@link NoSuchMethodException}</li>
 	 * <li>{@link ClassCastException}</li>
 	 * </ul>
@@ -94,10 +91,10 @@ public class DeadLetterPublishingRecovererFactory {
 	 * Remove an exception type from the configured list. By default, the following
 	 * exceptions will not be retried:
 	 * <ul>
-	 * <li>{@link DeserializationException}</li>
-	 * <li>{@link MessageConversionException}</li>
-	 * <li>{@link ConversionException}</li>
-	 * <li>{@link MethodArgumentResolutionException}</li>
+	 * <li>{@link org.springframework.kafka.support.serializer.DeserializationException}</li>
+	 * <li>{@link org.springframework.messaging.converter.MessageConversionException}</li>
+	 * <li>{@link org.springframework.kafka.support.converter.ConversionException}</li>
+	 * <li>{@link org.springframework.messaging.handler.invocation.MethodArgumentResolutionException}</li>
 	 * <li>{@link NoSuchMethodException}</li>
 	 * <li>{@link ClassCastException}</li>
 	 * </ul>
