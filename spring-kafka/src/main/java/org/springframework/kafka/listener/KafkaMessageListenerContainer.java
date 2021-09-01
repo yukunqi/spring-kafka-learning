@@ -516,6 +516,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 	private final class ListenerConsumer implements SchedulingAwareRunnable, ConsumerSeekCallback {
 
+		private static final String COMMITTING = "Committing: ";
+
 		private static final String ERROR_HANDLER_THREW_AN_EXCEPTION = "Error handler threw an exception";
 
 		private static final String UNCHECKED = "unchecked";
@@ -1826,7 +1828,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			Map<TopicPartition, OffsetAndMetadata> commits = Collections.singletonMap(
 					new TopicPartition(record.topic(), record.partition()),
 					new OffsetAndMetadata(record.offset() + 1));
-			this.commitLogger.log(() -> "Committing: " + commits);
+			this.commitLogger.log(() -> COMMITTING + commits);
 			if (this.producer != null) {
 				doSendOffsets(this.producer, commits);
 			}
@@ -1845,7 +1847,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						new OffsetAndMetadata(records.records(part)
 								.get(records.records(part).size() - 1).offset() + 1));
 			}
-			this.commitLogger.log(() -> "Committing: " + commits);
+			this.commitLogger.log(() -> COMMITTING + commits);
 			if (this.producer != null) {
 				doSendOffsets(this.producer, commits);
 			}
@@ -2613,7 +2615,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						Collections.singletonMap(new TopicPartition(record.topic(), record.partition()),
 								new OffsetAndMetadata(record.offset() + 1));
 				if (this.producer == null) {
-					this.commitLogger.log(() -> "Committing: " + offsetsToCommit);
+					this.commitLogger.log(() -> COMMITTING + offsetsToCommit);
 					if (this.syncCommits) {
 						commitSync(offsetsToCommit);
 					}
@@ -2873,7 +2875,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			Map<TopicPartition, OffsetAndMetadata> commits = buildCommits();
 			this.logger.debug(() -> "Commit list: " + commits);
 			if (!commits.isEmpty()) {
-				this.commitLogger.log(() -> "Committing: " + commits);
+				this.commitLogger.log(() -> COMMITTING + commits);
 				try {
 					if (this.syncCommits) {
 						commitSync(commits);
