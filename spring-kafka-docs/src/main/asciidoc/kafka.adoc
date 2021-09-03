@@ -1277,6 +1277,8 @@ Starting with version 2.8, you can now set the container property `asyncAcks`, w
 The listener container will defer the out-of-order commits until the missing acknowledgments are received.
 The consumer will be paused (no new records delivered) until all the offsets for the previous poll have been committed.
 
+IMPORTANT: While this feature allows applications to process records asynchronously, it should be understood that it increases the possibility of duplicate deliveries after a failure.
+
 [[kafka-listener-annotation]]
 ===== `@KafkaListener` Annotation
 
