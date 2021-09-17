@@ -33,7 +33,7 @@ import org.springframework.lang.Nullable;
  *
  */
 @FunctionalInterface
-public interface RecordInterceptor<K, V> {
+public interface RecordInterceptor<K, V> extends BeforeAfterPollProcessor<K, V> {
 
 	/**
 	 * Perform some action on the record or return a different one. If null is returned

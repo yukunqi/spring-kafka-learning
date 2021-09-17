@@ -32,7 +32,7 @@ import org.springframework.lang.Nullable;
  *
  */
 @FunctionalInterface
-public interface BatchInterceptor<K, V> {
+public interface BatchInterceptor<K, V> extends BeforeAfterPollProcessor<K, V> {
 
 	/**
 	 * Perform some action on the records or return a different one. If null is returned

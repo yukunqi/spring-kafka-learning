@@ -1236,6 +1236,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				catch (Exception e) {
 					handleConsumerException(e);
 				}
+				finally {
+					clearThreadState();
+				}
 			}
 			wrapUp(exitThrowable);
 		}
@@ -1307,6 +1310,26 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (records == null || records.count() == 0
 					|| records.partitions().size() < this.consumer.assignment().size()) {
 				checkIdlePartitions();
+			}
+		}
+
+		private void clearThreadState() {
+			if (this.isBatchListener) {
+				interceptClearThreadState(this.commonBatchInterceptor);
+			}
+			else {
+				interceptClearThreadState(this.commonRecordInterceptor);
+			}
+		}
+
+		private void interceptClearThreadState(BeforeAfterPollProcessor<K, V> processor) {
+			if (processor != null) {
+				try {
+					processor.clearThreadState(this.consumer);
+				}
+				catch (Exception e) {
+					this.logger.error(e, "BeforeAfterPollProcessor.clearThreadState threw an exception");
+				}
 			}
 		}
 
@@ -1447,11 +1470,32 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private ConsumerRecords<K, V> pollConsumer() {
+			beforePoll();
 			try {
 				return this.consumer.poll(this.pollTimeout);
 			}
 			catch (WakeupException ex) {
 				return ConsumerRecords.empty();
+			}
+		}
+
+		private void beforePoll() {
+			if (this.isBatchListener) {
+				interceptBeforePoll(this.commonBatchInterceptor);
+			}
+			else {
+				interceptBeforePoll(this.commonRecordInterceptor);
+			}
+		}
+
+		private void interceptBeforePoll(BeforeAfterPollProcessor<K, V> processor) {
+			if (processor != null) {
+				try {
+					processor.beforePoll(this.consumer);
+				}
+				catch (Exception e) {
+					this.logger.error(e, "BeforeAfterPollProcessor.beforePoll threw an exception");
+				}
 			}
 		}
 
@@ -2082,7 +2126,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					}
 				}
 				catch (Exception e) {
-					this.logger.error(e, "BatchInterceptor threw an exception");
+					this.logger.error(e, "BatchInterceptor.success/failure threw an exception");
 				}
 			}
 		}
@@ -2463,7 +2507,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					}
 				}
 				catch (Exception e) {
-					this.logger.error(e, "RecordInterceptor threw an exception");
+					this.logger.error(e, "RecordInterceptor.success/failure threw an exception");
 				}
 			}
 		}
