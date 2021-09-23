@@ -2252,7 +2252,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		 * Invoke the listener with each record in a separate transaction.
 		 * @param records the records.
 		 */
-		@SuppressWarnings(RAW_TYPES)
+		@SuppressWarnings(RAW_TYPES) // NOSONAR complexity
 		private void invokeRecordListenerInTx(final ConsumerRecords<K, V> records) {
 			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
 			while (iterator.hasNext()) {
