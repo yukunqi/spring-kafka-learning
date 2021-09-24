@@ -1194,11 +1194,11 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		public Object convert(@Nullable Object source, TypeDescriptor sourceType, TypeDescriptor targetType) {
 			byte[] bytes = (byte[]) source;
 			if (targetType.getType().equals(long.class) || targetType.getType().equals(Long.class)) {
-				Assert.state(bytes.length >= 8, "At least 8 bytes needed to convert a byte[] to a long");
+				Assert.state(bytes.length >= 8, "At least 8 bytes needed to convert a byte[] to a long"); // NOSONAR
 				return ByteBuffer.wrap(bytes).getLong();
 			}
 			else if (targetType.getType().equals(int.class) || targetType.getType().equals(Integer.class)) {
-				Assert.state(bytes.length >= 4, "At least 4 bytes needed to convert a byte[] to an integer");
+				Assert.state(bytes.length >= 4, "At least 4 bytes needed to convert a byte[] to an integer"); // NOSONAR
 				return ByteBuffer.wrap(bytes).getInt();
 			}
 			else if (targetType.getType().equals(short.class) || targetType.getType().equals(Short.class)) {
@@ -1216,7 +1216,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		public boolean matches(TypeDescriptor sourceType, TypeDescriptor targetType) {
 			if (sourceType.getType().equals(byte[].class)) {
 				Class<?> target = targetType.getType();
-				return target.equals(long.class) || target.equals(int.class) || target.equals(short.class)
+				return target.equals(long.class) || target.equals(int.class) || target.equals(short.class) // NOSONAR
 						|| target.equals(byte.class) || target.equals(Long.class) || target.equals(Integer.class)
 						|| target.equals(Short.class) || target.equals(Byte.class);
 			}
