@@ -35,9 +35,8 @@ import org.springframework.util.Assert;
  * @param <K> the key type.
  * @param <V> the value type.
  *
- * @deprecated since 2.8 - use a suitably configured error handler instead.
- *
  * @author Gary Russell
+ * @deprecated since 2.8 - use a suitably configured error handler instead.
  *
  */
 @Deprecated

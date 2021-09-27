@@ -30,11 +30,9 @@ import org.springframework.util.Assert;
  * An error handler that delegates to different error handlers, depending on the exception
  * type.
  *
- * @deprecated in favor of {@link CommonDelegatingErrorHandler}.
- *
  * @author Gary Russell
  * @since 2.7.4
- *
+ * @deprecated in favor of {@link CommonDelegatingErrorHandler}.
  */
 @Deprecated
 public class ConditionalDelegatingBatchErrorHandler implements ListenerInvokingBatchErrorHandler {

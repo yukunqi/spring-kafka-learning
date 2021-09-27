@@ -22,12 +22,11 @@ package org.springframework.kafka.config;
  * implementation of this interface is found in the application context (or one is marked
  * as {@link org.springframework.context.annotation.Primary}, it will be invoked after the
  * factory bean has been created and before it is started.
- * @deprecated in favor of {@code StreamsBuilderFactoryBeanConfigurer} due to a name
- * clash with a similar class in Spring Boot.
  *
  * @author Gary Russell
  * @since 2.3
- *
+ * @deprecated in favor of {@code StreamsBuilderFactoryBeanConfigurer} due to a name
+ * clash with a similar class in Spring Boot.
  */
 @Deprecated
 @FunctionalInterface

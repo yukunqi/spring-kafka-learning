@@ -203,7 +203,7 @@ subprojects { subproject ->
 
 	checkstyle {
 		configDirectory.set(rootProject.file("src/checkstyle"))
-		toolVersion = '8.38'
+		toolVersion = '9.0'
 	}
 
 	jacocoTestReport {

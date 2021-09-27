@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2020 the original author or authors.
+ * Copyright 2015-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,8 +45,8 @@ public abstract class KafkaEvent extends ApplicationEvent {
 	 * @param type the container type (e.g. {@code MessageListenerContainer.class}).
 	 * @param <T> the type.
 	 * @return the container.
-	 * @see #getSource(Class)
 	 * @since 2.2.1
+	 * @see #getSource(Class)
 	 */
 	@SuppressWarnings("unchecked")
 	public <T> T getContainer(Class<T> type) {
@@ -62,9 +62,9 @@ public abstract class KafkaEvent extends ApplicationEvent {
 	 * @param type the container type (e.g. {@code MessageListenerContainer.class}).
 	 * @param <T> the type.
 	 * @return the container.
+	 * @since 2.2.1
 	 * @see #getContainer(Class)
 	 * @see #getSource()
-	 * @since 2.2.1
 	 */
 	@SuppressWarnings("unchecked")
 	public <T> T getSource(Class<T> type) {

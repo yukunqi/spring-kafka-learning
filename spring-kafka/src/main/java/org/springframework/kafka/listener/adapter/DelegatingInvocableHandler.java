@@ -108,9 +108,9 @@ public class DelegatingInvocableHandler {
 	 * @param bean the bean.
 	 * @param beanExpressionResolver the resolver.
 	 * @param beanExpressionContext the context.
+	 * @since 2.1.3
 	 * @deprecated in favor of
 	 * {@link #DelegatingInvocableHandler(List, InvocableHandlerMethod, Object, BeanExpressionResolver, BeanExpressionContext, BeanFactory, Validator)}
-	 * @since 2.1.3
 	 */
 	@Deprecated
 	public DelegatingInvocableHandler(List<InvocableHandlerMethod> handlers,

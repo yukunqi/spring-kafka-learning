@@ -27,10 +27,9 @@ import org.springframework.lang.Nullable;
 /**
  * Simple handler that logs each record.
  *
- * @deprecated - use the {@link CommonLoggingErrorHandler} instead.
- *
  * @author Gary Russell
  * @since 1.1
+ * @deprecated - use the {@link CommonLoggingErrorHandler} instead.
  */
 @Deprecated
 public class BatchLoggingErrorHandler implements BatchErrorHandler {

@@ -30,10 +30,9 @@ import org.springframework.util.Assert;
  * A container error handler that stops the container after an exception
  * is thrown by the listener.
  *
- * @deprecated in favor of {@link CommonContainerStoppingErrorHandler}.
- *
  * @author Gary Russell
  * @since 2.1
+ * @deprecated in favor of {@link CommonContainerStoppingErrorHandler}.
  *
  */
 @Deprecated

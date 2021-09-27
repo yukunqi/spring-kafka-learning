@@ -193,9 +193,9 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	/**
 	 * Obsolete.
+	 * @param exceptionHandler the handler.
 	 * @deprecated in favor of
 	 * {@link #setStreamsUncaughtExceptionHandler(StreamsUncaughtExceptionHandler)}.
-	 * @param exceptionHandler the handler.
 	 */
 	@Deprecated
 	public void setUncaughtExceptionHandler(Thread.UncaughtExceptionHandler exceptionHandler) {

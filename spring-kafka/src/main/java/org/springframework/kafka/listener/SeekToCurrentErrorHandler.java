@@ -30,13 +30,11 @@ import org.springframework.util.backoff.BackOff;
  * records. Used to rewind partitions after a message failure so that it can be
  * replayed.
  *
- * @deprecated in favor of {@link DefaultErrorHandler}.
- *
  * @author Gary Russell
  * @author Artem Bilan
  *
  * @since 2.0.1
- *
+ * @deprecated in favor of {@link DefaultErrorHandler}.
  */
 @Deprecated
 public class SeekToCurrentErrorHandler extends FailedRecordProcessor implements ContainerAwareErrorHandler {

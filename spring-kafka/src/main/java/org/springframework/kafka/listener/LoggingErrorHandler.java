@@ -25,10 +25,9 @@ import org.springframework.lang.Nullable;
 /**
  * The {@link ErrorHandler} implementation for logging purpose.
  *
- * @deprecated - use the {@link CommonLoggingErrorHandler} instead.
- *
  * @author Marius Bogoevici
  * @author Gary Russell
+ * @deprecated - use the {@link CommonLoggingErrorHandler} instead.
  */
 @Deprecated
 public class LoggingErrorHandler implements ErrorHandler {

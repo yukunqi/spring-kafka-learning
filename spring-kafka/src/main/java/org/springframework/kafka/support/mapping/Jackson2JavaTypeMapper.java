@@ -39,7 +39,16 @@ public interface Jackson2JavaTypeMapper extends ClassMapper {
 	 * headers. Only applies if both exist.
 	 */
 	enum TypePrecedence {
-		INFERRED, TYPE_ID
+
+		/**
+		 * The type is inferred from the destination method.
+		 */
+		INFERRED,
+
+		/**
+		 * The type is obtained from headers.
+		 */
+		TYPE_ID
 	}
 
 	void fromJavaType(JavaType javaType, Headers headers);
