@@ -171,7 +171,7 @@ public class ContainerProperties extends ConsumerProperties {
 		BETA(V2);
 
 
-		final EOSMode mode;
+		private final EOSMode mode;
 
 		EOSMode() {
 			this.mode = this;
