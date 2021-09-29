@@ -257,8 +257,8 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 	}
 
 	@Nullable
-	public T removeDelegate(String selector) {
-		return this.delegates.remove(selector);
+	public T removeDelegate(Pattern pattern) {
+		return this.delegates.remove(pattern);
 	}
 
 	/**
