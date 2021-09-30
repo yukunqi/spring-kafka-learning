@@ -35,14 +35,16 @@ import org.springframework.util.Assert;
  */
 public class DelegatingByTypeSerializer implements Serializer<Object> {
 
-	@SuppressWarnings("rawtypes")
+	private static final String RAWTYPES = "rawtypes";
+
+	@SuppressWarnings(RAWTYPES)
 	private final Map<Class<?>, Serializer> delegates = new HashMap<>();
 
 	/**
 	 * Construct an instance with the map of delegates.
 	 * @param delegates the delegates.
 	 */
-	@SuppressWarnings("rawtypes")
+	@SuppressWarnings(RAWTYPES)
 	public DelegatingByTypeSerializer(Map<Class<?>, Serializer> delegates) {
 		Assert.notNull(delegates, "'delegates' cannot be null");
 		Assert.noNullElements(delegates.values(), "Serializers in delegates map cannot be null");
@@ -55,21 +57,21 @@ public class DelegatingByTypeSerializer implements Serializer<Object> {
 		this.delegates.values().forEach(del -> del.configure(configs, isKey));
 	}
 
-	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@SuppressWarnings({ RAWTYPES, "unchecked" })
 	@Override
 	public byte[] serialize(String topic, Object data) {
 		Serializer delegate = findDelegate(data);
 		return delegate.serialize(topic, data);
 	}
 
-	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@SuppressWarnings({ "unchecked", RAWTYPES })
 	@Override
 	public byte[] serialize(String topic, Headers headers, Object data) {
 		Serializer delegate = findDelegate(data);
 		return delegate.serialize(topic, headers, data);
 	}
 
-	@SuppressWarnings("rawtypes")
+	@SuppressWarnings(RAWTYPES)
 	private Serializer findDelegate(Object data) {
 		Serializer delegate = this.delegates.get(data.getClass());
 		if (delegate == null) {

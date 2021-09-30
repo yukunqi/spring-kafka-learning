@@ -41,6 +41,8 @@ import org.springframework.util.StringUtils;
  */
 public abstract class DelegatingByTopicSerialization<T extends Closeable> implements Closeable {
 
+	private static final String UNCHECKED = "unchecked";
+
 	private static final LogAccessor LOGGER = new LogAccessor(DelegatingDeserializer.class);
 
 	/**
@@ -74,7 +76,7 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 
 	private T defaultDelegate;
 
-	protected boolean forKeys;
+	private boolean forKeys;
 
 	private boolean cased = true;
 
@@ -94,7 +96,7 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 		this.cased = caseSensitive;
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings(UNCHECKED)
 	protected void configure(Map<String, ?> configs, boolean isKey) {
 		this.forKeys = isKey;
 		Object insensitive = configs.get(CASE_SENSITIVE);
@@ -140,7 +142,7 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 		});
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings(UNCHECKED)
 	protected void build(Map<String, ?> configs, boolean isKey, String configKey, Object delegate, Pattern pattern) {
 
 		if (isInstance(delegate)) {
@@ -159,7 +161,7 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 		}
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings(UNCHECKED)
 	protected void buildDefault(Map<String, ?> configs, String configKey, boolean isKey, Object delegate) {
 
 		if (isInstance(delegate)) {
@@ -239,7 +241,7 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 			@Nullable Pattern pattern, Class<?> clazz) {
 
 		try {
-			@SuppressWarnings("unchecked")
+			@SuppressWarnings(UNCHECKED)
 			T delegate = (T) clazz.getDeclaredConstructor().newInstance();
 			configureDelegate(configs, isKey, delegate);
 			if (pattern != null) {
@@ -266,7 +268,7 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 	 * @param topic the topic.
 	 * @return the delegate.
 	 */
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings(UNCHECKED)
 	protected T findDelegate(String topic) {
 		T delegate = null;
 		for (Entry<Pattern, T> entry : this.delegates.entrySet()) {
