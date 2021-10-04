@@ -149,7 +149,7 @@ public class ConcurrentMessageListenerContainerTests {
 		container.setConcurrency(2);
 		container.setBeanName("testAuto");
 		List<KafkaEvent> events = new ArrayList<>();
-		CountDownLatch stopLatch = new CountDownLatch(3);
+		CountDownLatch stopLatch = new CountDownLatch(4);
 		container.setApplicationEventPublisher(e -> {
 			events.add((KafkaEvent) e);
 			if (e instanceof ContainerStoppedEvent) {
@@ -181,6 +181,7 @@ public class ConcurrentMessageListenerContainerTests {
 		template.flush();
 		assertThat(intercepted.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(payloads).containsExactlyInAnyOrder("foo", "bar", "qux");
 		for (String threadName : listenerThreadNames) {
 			assertThat(threadName).contains("-C-");
 		}
@@ -193,9 +194,13 @@ public class ConcurrentMessageListenerContainerTests {
 		}
 		assertThat(container.metrics()).isNotNull();
 		Set<KafkaMessageListenerContainer<Integer, String>> children = new HashSet<>(containers);
+		assertThat(container.isInExpectedState()).isTrue();
+		container.getContainers().get(0).stopAbnormally(() -> { });
+		assertThat(container.isInExpectedState()).isFalse();
+		container.getContainers().get(0).start();
 		container.stop();
 		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
-		assertThat(payloads).containsExactlyInAnyOrder("foo", "bar", "qux");
+		assertThat(container.isInExpectedState()).isTrue();
 		events.forEach(e -> {
 			assertThat(e.getContainer(MessageListenerContainer.class)).isSameAs(container);
 			if (e instanceof ContainerStoppedEvent) {
