@@ -33,6 +33,8 @@ import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.core.task.AsyncListenableTaskExecutor;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
@@ -59,6 +61,8 @@ import org.springframework.util.Assert;
 public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageListenerContainer<K, V> {
 
 	private final List<KafkaMessageListenerContainer<K, V>> containers = new ArrayList<>();
+
+	private final List<AsyncListenableTaskExecutor> executors = new ArrayList<>();
 
 	private int concurrency = 1;
 
@@ -210,7 +214,8 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	private void configureChildContainer(int index, KafkaMessageListenerContainer<K, V> container) {
 		String beanName = getBeanName();
-		container.setBeanName((beanName != null ? beanName : "consumer") + "-" + index);
+		beanName = (beanName == null ? "consumer" : beanName) + "-" + index;
+		container.setBeanName(beanName);
 		ApplicationContext applicationContext = getApplicationContext();
 		if (applicationContext != null) {
 			container.setApplicationContext(applicationContext);
@@ -230,6 +235,17 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 			stopAbnormally(() -> {
 			});
 		});
+		AsyncListenableTaskExecutor exec = container.getContainerProperties().getConsumerTaskExecutor();
+		if (exec == null) {
+			if ((this.executors.size() > index)) {
+				exec = this.executors.get(index);
+			}
+			else {
+				exec = new SimpleAsyncTaskExecutor(beanName + "-C-");
+				this.executors.add(exec);
+			}
+			container.getContainerProperties().setConsumerTaskExecutor(exec);
+		}
 	}
 
 	private KafkaMessageListenerContainer<K, V> constructContainer(ContainerProperties containerProperties,
