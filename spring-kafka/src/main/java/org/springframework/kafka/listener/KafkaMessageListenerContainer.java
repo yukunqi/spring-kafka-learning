@@ -2864,7 +2864,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 			@Override
 			public String toString() {
-				return "Acknowledgment for " + this.record;
+				return "Acknowledgment for " + ListenerUtils.recordToString(this.record);
 			}
 
 		}
