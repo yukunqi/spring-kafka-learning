@@ -60,14 +60,14 @@ ext {
 	junitJupiterVersion = '5.6.3'
 	kafkaVersion = '2.5.1'
 	log4jVersion = '2.13.3'
-	micrometerVersion = '1.5.14'
+	micrometerVersion = '1.5.17'
 	mockitoVersion = '3.3.3'
-	reactorVersion = 'Dysprosium-SR20'
+	reactorVersion = 'Dysprosium-SR24'
 	scalaVersion = '2.12'
 	scalaLibVersion = '2.12.11'
 	springDataCommonsVersion = '2.3.9.RELEASE'
 	springRetryVersion = '1.2.5.RELEASE'
-	springVersion = '5.2.15.RELEASE'
+	springVersion = '5.2.18.RELEASE'
 
 	idPrefix = 'kafka'
 }
