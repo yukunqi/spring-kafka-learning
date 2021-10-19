@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 the original author or authors.
+ * Copyright 2020-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
 
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.Metric;
@@ -102,7 +103,21 @@ public class RoutingKafkaTemplate extends KafkaTemplate<Object, Object> {
 	}
 
 	@Override
+	@Deprecated
 	public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, String consumerGroupId) {
+		throw new UnsupportedOperationException(THIS_METHOD_IS_NOT_SUPPORTED);
+	}
+
+	@Override
+	@Deprecated
+	public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets) {
+		throw new UnsupportedOperationException(THIS_METHOD_IS_NOT_SUPPORTED);
+	}
+
+	@Override
+	public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets,
+			ConsumerGroupMetadata groupMetadata) {
+
 		throw new UnsupportedOperationException(THIS_METHOD_IS_NOT_SUPPORTED);
 	}
 

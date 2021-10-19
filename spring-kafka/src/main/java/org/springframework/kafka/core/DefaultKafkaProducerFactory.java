@@ -976,6 +976,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 			}
 		}
 
+		@SuppressWarnings("deprecation")
 		@Override
 		public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, String consumerGroupId)
 				throws ProducerFencedException {
