@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2020 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@ import org.springframework.lang.Nullable;
  * @param <V> the value type.
  *
  * @author Gary Russell
+ * @author Thomas Strauß
  */
 public interface ProducerFactory<K, V> {
 
@@ -272,6 +273,25 @@ public interface ProducerFactory<K, V> {
 		return null;
 	}
 
+	/**
+	 * Copy the properties of the instance and the given properties to create a new producer factory.
+	 * <p>The copy shall prioritize the override properties over the configured values.
+	 * It is in the responsibility of the factory implementation to make sure the
+	 * configuration of the new factory is identical, complete and correct.</p>
+	 * <p>ProducerPostProcessor and Listeners must stay intact.</p>
+	 * <p>If the factory does not implement this method, an exception will be thrown.</p>
+	 * <p>Note: see
+	 * {@link org.springframework.kafka.core.DefaultKafkaProducerFactory#copyWithConfigurationOverride}</p>
+	 * @param overrideProperties the properties to be applied to the new factory
+	 * @return {@link org.springframework.kafka.core.ProducerFactory} with properties
+	 * applied
+	 * @since 2.5.17
+	 * @see org.springframework.kafka.core.KafkaTemplate#KafkaTemplate(ProducerFactory, java.util.Map)
+	 */
+	default ProducerFactory<K, V> copyWithConfigurationOverride(Map<String, Object> overrideProperties) {
+		throw new UnsupportedOperationException(
+				"This factory implementation doesn't support creating reconfigured copies.");
+	}
 
 	/**
 	 * Called whenever a producer is added or removed.
@@ -294,9 +314,8 @@ public interface ProducerFactory<K, V> {
 		}
 
 		/**
-		 * An exsting producer was removed.
-		 * @param id the producer id (factory bean name and client.id separated by a
-		 * period).
+		 * An existing producer was removed.
+		 * @param id the producer id (factory bean name and client.id separated by a period).
 		 * @param producer the producer.
 		 */
 		default void producerRemoved(String id, Producer<K, V> producer) {
