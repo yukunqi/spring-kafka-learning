@@ -31,6 +31,7 @@ import static org.springframework.kafka.test.assertj.KafkaConditions.value;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -88,7 +89,8 @@ import org.springframework.util.concurrent.SettableListenableFuture;
  * @author Artem Bilan
  * @author Igor Stepanov
  * @author Biju Kunjummen
- * @author Endika Guti?rrez
+ * @author Endika Gutierrez
+ * @author Thomas Strauß
  */
 @EmbeddedKafka(topics = { KafkaTemplateTests.INT_KEY_TOPIC, KafkaTemplateTests.STRING_KEY_TOPIC })
 public class KafkaTemplateTests {
@@ -101,11 +103,26 @@ public class KafkaTemplateTests {
 
 	private static Consumer<Integer, String> consumer;
 
+	private static final ProducerFactory.Listener<String, String> noopListener = new ProducerFactory.Listener<>() {
+
+		@Override
+		public void producerAdded(String id, Producer<String, String> producer) {
+		}
+
+		@Override
+		public void producerRemoved(String id, Producer<String, String> producer) {
+		}
+
+	};
+
+	private static final ProducerPostProcessor<String, String> noopProducerPostProcessor = processor -> processor;
+
+
 	@BeforeAll
 	public static void setUp() {
 		embeddedKafka = EmbeddedKafkaCondition.getBroker();
 		Map<String, Object> consumerProps = KafkaTestUtils
-				.consumerProps("KafkaTemplatetests" + UUID.randomUUID().toString(), "false", embeddedKafka);
+				.consumerProps("KafkaTemplatetests" + UUID.randomUUID(), "false", embeddedKafka);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		consumer = cf.createConsumer();
 		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, INT_KEY_TOPIC);
@@ -125,7 +142,7 @@ public class KafkaTemplateTests {
 			ProxyFactory prox = new ProxyFactory();
 			prox.setTarget(prod);
 			@SuppressWarnings("unchecked")
-			Producer<Integer, String> proxy =  (Producer<Integer, String>) prox.getProxy();
+			Producer<Integer, String> proxy = (Producer<Integer, String>) prox.getProxy();
 			wrapped.set(proxy);
 			return proxy;
 		});
@@ -292,7 +309,7 @@ public class KafkaTemplateTests {
 		}
 		PL pl1 = new PL();
 		PL pl2 = new PL();
-		CompositeProducerListener<Integer, String> cpl = new CompositeProducerListener<>(new PL[] { pl1, pl2 });
+		CompositeProducerListener<Integer, String> cpl = new CompositeProducerListener<>(new PL[]{ pl1, pl2 });
 		template.setProducerListener(cpl);
 		template.sendDefault("foo");
 		template.flush();
@@ -344,7 +361,7 @@ public class KafkaTemplateTests {
 		template.flush();
 		final CountDownLatch latch = new CountDownLatch(1);
 		final AtomicReference<SendResult<Integer, String>> theResult = new AtomicReference<>();
-		future.addCallback(new ListenableFutureCallback<SendResult<Integer, String>>() {
+		future.addCallback(new ListenableFutureCallback<>() {
 
 			@Override
 			public void onSuccess(SendResult<Integer, String> result) {
@@ -378,7 +395,7 @@ public class KafkaTemplateTests {
 		final CountDownLatch latch = new CountDownLatch(1);
 		final AtomicReference<SendResult<Integer, String>> theResult = new AtomicReference<>();
 		AtomicReference<String> value = new AtomicReference<>();
-		future.addCallback(new KafkaSendCallback<Integer, String>() {
+		future.addCallback(new KafkaSendCallback<>() {
 
 			@Override
 			public void onSuccess(SendResult<Integer, String> result) {
@@ -443,22 +460,103 @@ public class KafkaTemplateTests {
 	}
 
 	@Test
-	void testConfigOverrides() {
+	void testConfigOverridesWithDefaultKafkaProducerFactory() {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		pf.setPhysicalCloseTimeout(6);
 		pf.setProducerPerConsumerPartition(false);
 		pf.setProducerPerThread(true);
+		pf.addPostProcessor(noopProducerPostProcessor);
+		pf.addListener(noopListener);
 		Map<String, Object> overrides = new HashMap<>();
 		overrides.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
 		overrides.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "TX");
 		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf, true, overrides);
+		// modify the overrides map TXNid and clone it again
+		overrides.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "TX2");
+		KafkaTemplate<String, String> templateWTX2 = new KafkaTemplate<>(template.getProducerFactory(), true, overrides);
+		// clone the factory again with empty properties
+		KafkaTemplate<String, String> templateWTX2_2 = new KafkaTemplate<>(templateWTX2.getProducerFactory(), true,
+				Collections.singletonMap("dummy", "dont use"));
+		assertThat(template.getProducerFactory()).isOfAnyClassIn(DefaultKafkaProducerFactory.class);
 		assertThat(template.getProducerFactory().getConfigurationProperties()
 				.get(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG)).isEqualTo(StringSerializer.class);
 		assertThat(template.getProducerFactory().getPhysicalCloseTimeout()).isEqualTo(Duration.ofSeconds(6));
 		assertThat(template.getProducerFactory().isProducerPerConsumerPartition()).isFalse();
 		assertThat(template.getProducerFactory().isProducerPerThread()).isTrue();
 		assertThat(template.isTransactional()).isTrue();
+		assertThat(template.getProducerFactory().getListeners()).isEqualTo(pf.getListeners());
+		assertThat(template.getProducerFactory().getListeners().size()).isEqualTo(1);
+		assertThat(template.getProducerFactory().getPostProcessors()).isEqualTo(pf.getPostProcessors());
+		assertThat(template.getProducerFactory().getPostProcessors().size()).isEqualTo(1);
+
+		// then: initially we created without TX
+		assertThat(pf.getTransactionIdPrefix()).isBlank();
+		// and: we added TX to the first copy factory
+		assertThat(template.getProducerFactory().getTransactionIdPrefix()).isEqualTo("TX");
+		// and: we modified TX to TX2 in the second copy factory
+		assertThat(templateWTX2.getProducerFactory().getTransactionIdPrefix()).isEqualTo("TX2");
+		// and: we reuse the id from the template (TX2) in the third copy factory
+		assertThat(templateWTX2_2.getProducerFactory().getTransactionIdPrefix()).isEqualTo("TX2");
+	}
+
+	@Test
+	void testConfigOverridesWithCustomProducerFactory() {
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		ProducerFactory<String, String> pf = new ProducerFactory<>() {
+
+			@Override
+			public Producer<String, String> createProducer() {
+				return null;
+			}
+
+			@Override
+			public List<Listener<String, String>> getListeners() {
+				return Collections.singletonList(noopListener);
+			}
+
+			@Override
+			public List<ProducerPostProcessor<String, String>> getPostProcessors() {
+				return Collections.singletonList(noopProducerPostProcessor);
+			}
+
+			@Override
+			public Map<String, Object> getConfigurationProperties() {
+				return Collections.singletonMap(ProducerConfig.ACKS_CONFIG, "all");
+			}
+
+			@Override
+			public Duration getPhysicalCloseTimeout() {
+				return Duration.ofSeconds(6);
+			}
+
+			@Override
+			public boolean isProducerPerConsumerPartition() {
+				return true;
+			}
+
+			@Override
+			public boolean isProducerPerThread() {
+				return false;
+			}
+		};
+
+		Map<String, Object> overrides = new HashMap<>();
+		overrides.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+		overrides.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "TX");
+		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf, true, overrides);
+		assertThat(template.getProducerFactory()).isOfAnyClassIn(DefaultKafkaProducerFactory.class);
+		assertThat(template.getProducerFactory().getConfigurationProperties()
+				.get(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG)).isEqualTo(StringSerializer.class);
+		assertThat(template.getProducerFactory().getPhysicalCloseTimeout()).isEqualTo(Duration.ofSeconds(6));
+		assertThat(template.getProducerFactory().isProducerPerConsumerPartition()).isTrue();
+		assertThat(template.getProducerFactory().isProducerPerThread()).isFalse();
+		assertThat(template.isTransactional()).isTrue();
+		assertThat(template.getProducerFactory().getListeners()).isEqualTo(pf.getListeners());
+		assertThat(template.getProducerFactory().getListeners().size()).isEqualTo(1);
+		assertThat(template.getProducerFactory().getPostProcessors()).isEqualTo(pf.getPostProcessors());
+		assertThat(template.getProducerFactory().getPostProcessors().size()).isEqualTo(1);
+		assertThat(template.getProducerFactory().getTransactionIdPrefix()).isEqualTo("TX");
 	}
 
 	@Test
@@ -485,7 +583,7 @@ public class KafkaTemplateTests {
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
 
 		assertThatExceptionOfType(KafkaException.class).isThrownBy(() ->
-			template.send("missing.topic", "foo"))
+						template.send("missing.topic", "foo"))
 				.withCauseExactlyInstanceOf(TimeoutException.class);
 		pf.destroy();
 	}
