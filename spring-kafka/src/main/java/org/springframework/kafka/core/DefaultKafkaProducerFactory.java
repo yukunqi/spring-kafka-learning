@@ -108,10 +108,11 @@ import org.springframework.util.StringUtils;
  * @author Nakul Mishra
  * @author Artem Bilan
  * @author Chris Gilbert
+ * @author Thomas Strauß
  */
 public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		implements ProducerFactory<K, V>, ApplicationContextAware,
-			BeanNameAware, ApplicationListener<ContextStoppedEvent>, DisposableBean {
+		BeanNameAware, ApplicationListener<ContextStoppedEvent>, DisposableBean {
 
 	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(DefaultKafkaProducerFactory.class));
 
@@ -362,6 +363,63 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	}
 
 	/**
+	 * Copy properties of the instance and the given properties to create a new producer factory.
+	 * <p>If the {@link org.springframework.kafka.core.DefaultKafkaProducerFactory} makes a
+	 * copy of itself, the transaction id prefix is recovered from the properties. If
+	 * you want to change the ID config, add a new
+	 * {@link org.apache.kafka.clients.producer.ProducerConfig#TRANSACTIONAL_ID_CONFIG}
+	 * key to the override config.</p>
+	 * @param overrideProperties the properties to be applied to the new factory
+	 * @return {@link org.springframework.kafka.core.DefaultKafkaProducerFactory} with
+	 *  properties applied
+	 */
+	@Override
+	public ProducerFactory<K, V> copyWithConfigurationOverride(Map<String, Object> overrideProperties) {
+		Map<String, Object> producerProperties = new HashMap<>(getConfigurationProperties());
+		producerProperties.putAll(overrideProperties);
+		producerProperties = ensureExistingTransactionIdPrefixInProperties(producerProperties);
+		DefaultKafkaProducerFactory<K, V> newFactory =
+				new DefaultKafkaProducerFactory<>(producerProperties,
+						getKeySerializerSupplier(),
+						getValueSerializerSupplier());
+		newFactory.setPhysicalCloseTimeout((int) getPhysicalCloseTimeout().getSeconds());
+		newFactory.setProducerPerConsumerPartition(isProducerPerConsumerPartition());
+		newFactory.setProducerPerThread(isProducerPerThread());
+		for (ProducerPostProcessor<K, V> templatePostProcessor : getPostProcessors()) {
+			newFactory.addPostProcessor(templatePostProcessor);
+		}
+		for (ProducerFactory.Listener<K, V> templateListener : getListeners()) {
+			newFactory.addListener(templateListener);
+		}
+		return newFactory;
+	}
+
+
+	/**
+	 * Ensures that the returned properties map contains a transaction id prefix.
+	 * The {@link org.springframework.kafka.core.DefaultKafkaProducerFactory}
+	 * modifies the local properties copy, the txn key is removed and
+	 * stored locally in a property. To make a proper copy of the properties in a
+	 * new factory, the transactionId has to be reinserted prior use.
+	 * The incoming properties are checked for a transactionId key. If none is
+	 * there, the one existing in the factory is added.
+	 * @param producerProperties the properties to be used for the new factory
+	 * @return the producerProperties or a copy with the transaction ID set
+	 */
+	private Map<String, Object> ensureExistingTransactionIdPrefixInProperties(Map<String, Object> producerProperties) {
+		String transactionIdPrefix = getTransactionIdPrefix();
+		if (StringUtils.hasText(transactionIdPrefix)) {
+			if (!producerProperties.containsKey(ProducerConfig.TRANSACTIONAL_ID_CONFIG)) {
+				Map<String, Object> producerPropertiesWithTxnId = new HashMap<>(producerProperties);
+				producerPropertiesWithTxnId.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, transactionIdPrefix);
+				return producerPropertiesWithTxnId;
+			}
+		}
+
+		return producerProperties;
+	}
+
+	/**
 	 * Add a listener.
 	 * @param listener the listener.
 	 * @since 2.5
@@ -418,8 +476,8 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 				Assert.isTrue(entry.getValue() instanceof String, () -> "'" + ProducerConfig.TRANSACTIONAL_ID_CONFIG
 						+ "' must be a String, not a " + entry.getClass().getName());
 				Assert.isTrue(this.transactionIdPrefix != null
-							? entry.getValue() != null
-							: entry.getValue() == null,
+								? entry.getValue() != null
+								: entry.getValue() == null,
 						"Cannot change transactional capability");
 				this.transactionIdPrefix = (String) entry.getValue();
 			}
@@ -695,7 +753,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 				BlockingQueue<CloseSafeProducer<K, V>> txIdCache = getCache(producerToRemove.txIdPrefix);
 				if (producerToRemove.epoch != this.epoch.get()
 						|| (txIdCache != null && !txIdCache.contains(producerToRemove)
-								&& !txIdCache.offer(producerToRemove))) {
+						&& !txIdCache.offer(producerToRemove))) {
 					producerToRemove.closeDelegate(timeout, this.listeners);
 					return true;
 				}
@@ -943,7 +1001,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 			LOGGER.debug(() -> toString() + " abortTransaction()");
 			if (this.producerFailed != null) {
 				LOGGER.debug(() -> "abortTransaction ignored - previous txFailed: " + this.producerFailed.getMessage()
-					+ ": " + this);
+						+ ": " + this);
 			}
 			else {
 				try {

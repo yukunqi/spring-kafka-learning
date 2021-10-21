@@ -75,7 +75,8 @@ import org.springframework.util.concurrent.SettableListenableFuture;
  * @author Igor Stepanov
  * @author Artem Bilan
  * @author Biju Kunjummen
- * @author Endika Guti?rrez
+ * @author Endika Gutierrez
+ * @author Thomas Strauß
  */
 public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationContextAware, BeanNameAware,
 		ApplicationListener<ContextStoppedEvent>, DisposableBean {
@@ -160,8 +161,16 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	 * to occur immediately, regardless of that setting, or if you wish to block until the
 	 * broker has acknowledged receipt according to the producer's {@code acks} property.
 	 * If the configOverrides is not null or empty, a new
-	 * {@link DefaultKafkaProducerFactory} will be created with merged producer properties
-	 * with the overrides being applied after the supplied factory's properties.
+	 * {@link ProducerFactory} will be created using
+	 * {@link org.springframework.kafka.core.ProducerFactory#copyWithConfigurationOverride(java.util.Map)}
+	 * The factory shall apply the overrides after the supplied factory's properties.
+	 * The {@link org.springframework.kafka.core.ProducerPostProcessor}s from the
+	 * original factory are copied over to keep instrumentation alive.
+	 * Registered {@link org.springframework.kafka.core.ProducerFactory.Listener}s are
+	 * also added to the new factory. If the factory implementation does not support
+	 * the copy operation, a generic copy of the ProducerFactory is created which will
+	 * be of type
+	 * DefaultKafkaProducerFactory.
 	 * @param producerFactory the producer factory.
 	 * @param autoFlush true to flush after each send.
 	 * @param configOverrides producer configuration properties to override.
@@ -176,19 +185,55 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		this.micrometerEnabled = KafkaUtils.MICROMETER_PRESENT;
 		this.customProducerFactory = configOverrides != null && configOverrides.size() > 0;
 		if (this.customProducerFactory) {
-			Map<String, Object> configs = new HashMap<>(producerFactory.getConfigurationProperties());
-			configs.putAll(configOverrides);
-			DefaultKafkaProducerFactory<K, V> newFactory = new DefaultKafkaProducerFactory<>(configs,
-					producerFactory.getKeySerializerSupplier(), producerFactory.getValueSerializerSupplier());
-			newFactory.setPhysicalCloseTimeout((int) producerFactory.getPhysicalCloseTimeout().getSeconds());
-			newFactory.setProducerPerConsumerPartition(producerFactory.isProducerPerConsumerPartition());
-			newFactory.setProducerPerThread(producerFactory.isProducerPerThread());
-			this.producerFactory = newFactory;
+			this.producerFactory = copyProducerFactoryWithOverrides(producerFactory, configOverrides);
 		}
 		else {
 			this.producerFactory = producerFactory;
 		}
 		this.transactional = this.producerFactory.transactionCapable();
+	}
+
+	private ProducerFactory<K, V> copyProducerFactoryWithOverrides(ProducerFactory<K, V> templateFactory,
+			Map<String, Object> configOverrides) {
+
+		ProducerFactory<K, V> newFactory;
+		try {
+			newFactory = templateFactory.copyWithConfigurationOverride(configOverrides);
+		}
+		catch (UnsupportedOperationException e) {
+			newFactory = handleNonCopyableProducerFactory(templateFactory, configOverrides);
+		}
+
+		return newFactory;
+	}
+
+	/**
+	 * This method copies a ProducerFactory that misses the implementation of
+	 * {@link org.springframework.kafka.core.ProducerFactory#copyWithConfigurationOverride(java.util.Map)}.
+	 *
+	 * @param templateFactory the ProducerFactory to copy from
+	 * @param configOverrides new properties to be applied onto the templateFactory properties
+	 * @return a DefaultKafkaProducerFactory configured with configOverrides and all
+	 * public reachable settings of ProducerFactory
+	 */
+	private DefaultKafkaProducerFactory<K, V> handleNonCopyableProducerFactory(ProducerFactory<K, V> templateFactory,
+			Map<String, Object> configOverrides) {
+
+		Map<String, Object> producerProperties = new HashMap<>(templateFactory.getConfigurationProperties());
+		producerProperties.putAll(configOverrides);
+		DefaultKafkaProducerFactory<K, V> defaultFactory = new DefaultKafkaProducerFactory<>(producerProperties,
+				templateFactory.getKeySerializerSupplier(),
+				templateFactory.getValueSerializerSupplier());
+		defaultFactory.setPhysicalCloseTimeout((int) templateFactory.getPhysicalCloseTimeout().getSeconds());
+		defaultFactory.setProducerPerConsumerPartition(templateFactory.isProducerPerConsumerPartition());
+		defaultFactory.setProducerPerThread(templateFactory.isProducerPerThread());
+		for (ProducerPostProcessor<K, V> templatePostProcessor : templateFactory.getPostProcessors()) {
+			defaultFactory.addPostProcessor(templatePostProcessor);
+		}
+		for (ProducerFactory.Listener<K, V> templateListener : templateFactory.getListeners()) {
+			defaultFactory.addListener(templateListener);
+		}
+		return defaultFactory;
 	}
 
 	@Override
