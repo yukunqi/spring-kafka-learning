@@ -408,7 +408,6 @@ public class ReactiveKafkaProducerTemplateIntegrationTests {
 		Mono<Void> sendWithFlushMono = reactiveKafkaProducerTemplate
 				.send(Mono.just(SenderRecord
 						.create(new ProducerRecord<>(REACTIVE_INT_KEY_TOPIC, DEFAULT_KEY, DEFAULT_VALUE), null)))
-				.then(reactiveKafkaProducerTemplate.flush())
 				.then();
 
 		StepVerifier.create(sendWithFlushMono)

@@ -102,7 +102,8 @@ public class KafkaTemplateTests {
 
 	private static Consumer<Integer, String> consumer;
 
-	private static final ProducerFactory.Listener<String, String> noopListener = new ProducerFactory.Listener<>() {
+	private static final ProducerFactory.Listener<String, String> noopListener =
+			new ProducerFactory.Listener<String, String>() {
 
 		@Override
 		public void producerAdded(String id, Producer<String, String> producer) {
@@ -357,7 +358,7 @@ public class KafkaTemplateTests {
 		template.flush();
 		final CountDownLatch latch = new CountDownLatch(1);
 		final AtomicReference<SendResult<Integer, String>> theResult = new AtomicReference<>();
-		future.addCallback(new ListenableFutureCallback<>() {
+		future.addCallback(new ListenableFutureCallback<SendResult<Integer, String>>() {
 
 			@Override
 			public void onSuccess(SendResult<Integer, String> result) {
@@ -391,7 +392,7 @@ public class KafkaTemplateTests {
 		final CountDownLatch latch = new CountDownLatch(1);
 		final AtomicReference<SendResult<Integer, String>> theResult = new AtomicReference<>();
 		AtomicReference<String> value = new AtomicReference<>();
-		future.addCallback(new KafkaSendCallback<>() {
+		future.addCallback(new KafkaSendCallback<Integer, String>() {
 
 			@Override
 			public void onSuccess(SendResult<Integer, String> result) {
@@ -499,7 +500,7 @@ public class KafkaTemplateTests {
 	@Test
 	void testConfigOverridesWithCustomProducerFactory() {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		ProducerFactory<String, String> pf = new ProducerFactory<>() {
+		ProducerFactory<String, String> pf = new ProducerFactory<String, String>() {
 
 			@Override
 			public Producer<String, String> createProducer() {
