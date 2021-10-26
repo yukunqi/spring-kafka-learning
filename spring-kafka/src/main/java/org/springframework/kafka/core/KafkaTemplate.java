@@ -197,55 +197,12 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		this.micrometerEnabled = KafkaUtils.MICROMETER_PRESENT;
 		this.customProducerFactory = configOverrides != null && configOverrides.size() > 0;
 		if (this.customProducerFactory) {
-			this.producerFactory = copyProducerFactoryWithOverrides(producerFactory, configOverrides);
+			this.producerFactory = producerFactory.copyWithConfigurationOverride(configOverrides);
 		}
 		else {
 			this.producerFactory = producerFactory;
 		}
 		this.transactional = this.producerFactory.transactionCapable();
-	}
-
-	private ProducerFactory<K, V> copyProducerFactoryWithOverrides(ProducerFactory<K, V> templateFactory,
-			Map<String, Object> configOverrides) {
-
-		ProducerFactory<K, V> newFactory;
-		try {
-			newFactory = templateFactory.copyWithConfigurationOverride(configOverrides);
-		}
-		catch (UnsupportedOperationException e) {
-			newFactory = handleNonCopyableProducerFactory(templateFactory, configOverrides);
-		}
-
-		return newFactory;
-	}
-
-	/**
-	 * This method copies a ProducerFactory that misses the implementation of
-	 * {@link org.springframework.kafka.core.ProducerFactory#copyWithConfigurationOverride(java.util.Map)}.
-	 *
-	 * @param templateFactory the ProducerFactory to copy from
-	 * @param configOverrides new properties to be applied onto the templateFactory properties
-	 * @return a DefaultKafkaProducerFactory configured with configOverrides and all
-	 * public reachable settings of ProducerFactory
-	 */
-	private DefaultKafkaProducerFactory<K, V> handleNonCopyableProducerFactory(ProducerFactory<K, V> templateFactory,
-			Map<String, Object> configOverrides) {
-
-		Map<String, Object> producerProperties = new HashMap<>(templateFactory.getConfigurationProperties());
-		producerProperties.putAll(configOverrides);
-		DefaultKafkaProducerFactory<K, V> defaultFactory = new DefaultKafkaProducerFactory<>(producerProperties,
-				templateFactory.getKeySerializerSupplier(),
-				templateFactory.getValueSerializerSupplier());
-		defaultFactory.setPhysicalCloseTimeout((int) templateFactory.getPhysicalCloseTimeout().getSeconds());
-		defaultFactory.setProducerPerConsumerPartition(templateFactory.isProducerPerConsumerPartition());
-		defaultFactory.setProducerPerThread(templateFactory.isProducerPerThread());
-		for (ProducerPostProcessor<K, V> templatePostProcessor : templateFactory.getPostProcessors()) {
-			defaultFactory.addPostProcessor(templatePostProcessor);
-		}
-		for (ProducerFactory.Listener<K, V> templateListener : templateFactory.getListeners()) {
-			defaultFactory.addListener(templateListener);
-		}
-		return defaultFactory;
 	}
 
 	@Override
