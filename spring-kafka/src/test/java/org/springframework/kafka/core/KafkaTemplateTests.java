@@ -454,7 +454,7 @@ public class KafkaTemplateTests {
 		final CountDownLatch latch = new CountDownLatch(1);
 		final AtomicReference<SendResult<Integer, String>> theResult = new AtomicReference<>();
 		AtomicReference<String> value = new AtomicReference<>();
-		future.addCallback(result -> {}, (KafkaFailureCallback<Integer, String>) ex -> {
+		future.addCallback(result -> { }, (KafkaFailureCallback<Integer, String>) ex -> {
 			ProducerRecord<Integer, String> failed = ex.getFailedProducerRecord();
 			value.set(failed.value());
 			latch.countDown();
