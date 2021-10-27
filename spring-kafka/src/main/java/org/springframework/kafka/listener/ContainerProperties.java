@@ -474,6 +474,7 @@ public class ContainerProperties extends ConsumerProperties {
 		return this.idlePartitionEventInterval;
 	}
 
+	@Nullable
 	public PlatformTransactionManager getTransactionManager() {
 		return this.transactionManager;
 	}
@@ -486,7 +487,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 * @since 1.3
 	 * @see #setAckMode(AckMode)
 	 */
-	public void setTransactionManager(PlatformTransactionManager transactionManager) {
+	public void setTransactionManager(@Nullable PlatformTransactionManager transactionManager) {
 		this.transactionManager = transactionManager;
 	}
 
