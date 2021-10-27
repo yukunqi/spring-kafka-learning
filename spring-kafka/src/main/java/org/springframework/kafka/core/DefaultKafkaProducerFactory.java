@@ -470,13 +470,12 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	 * @return the producerProperties or a copy with the transaction ID set
 	 */
 	private Map<String, Object> ensureExistingTransactionIdPrefixInProperties(Map<String, Object> producerProperties) {
-		String transactionIdPrefix = getTransactionIdPrefix();
-		if (StringUtils.hasText(transactionIdPrefix)) {
-			if (!producerProperties.containsKey(ProducerConfig.TRANSACTIONAL_ID_CONFIG)) {
-				Map<String, Object> producerPropertiesWithTxnId = new HashMap<>(producerProperties);
-				producerPropertiesWithTxnId.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, transactionIdPrefix);
-				return producerPropertiesWithTxnId;
-			}
+		String txIdPrefix = getTransactionIdPrefix();
+		if (StringUtils.hasText(txIdPrefix)
+				&& !producerProperties.containsKey(ProducerConfig.TRANSACTIONAL_ID_CONFIG)) {
+			Map<String, Object> producerPropertiesWithTxnId = new HashMap<>(producerProperties);
+			producerPropertiesWithTxnId.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, txIdPrefix);
+			return producerPropertiesWithTxnId;
 		}
 
 		return producerProperties;
