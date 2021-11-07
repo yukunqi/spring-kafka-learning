@@ -5548,7 +5548,7 @@ The reason for the two properties is because, while you might want to retain onl
 
 `appendOriginalHeaders` is applied to all headers named `*ORIGINAL*` while `stripPreviousExceptionHeaders` is applied to all headers named `*EXCEPTION*`.
 
-Also see <<retry-headers>>.
+Also see <<retry-headers>> with <<retry-topic>>.
 
 [[exp-backoff]]
 ===== `ExponentialBackOffWithMaxRetries` Implementation

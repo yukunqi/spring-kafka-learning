@@ -364,11 +364,12 @@ When considering how to manage failure headers (original headers and exception h
 
 By default, it explicitly sets `appendOriginalHeaders` to `false` and leaves `stripPreviousExceptionHeaders` to the default used by the `DeadLetterPublishingRecover`.
 
-This means that, currently, records published to multiple retry topics may grow to large size, especially when the stack trace is large.
+This means that only the first "original" and last exception headers are retained with the default configuration.
+This is to avoid creation of excessively large messages (due to the stack trace header, for example) when many retry steps are involved.
 
 See <<dlpr-headers>> for more information.
 
-To reconfigure the framework to use different settings for these properties, replace standard `DeadLetterPublishingRecovererFactory` bean by adding a `recovererCustomizer`:
+To reconfigure the framework to use different settings for these properties, replace the standard `DeadLetterPublishingRecovererFactory` bean by adding a `recovererCustomizer`:
 
 ====
 [source, java]
