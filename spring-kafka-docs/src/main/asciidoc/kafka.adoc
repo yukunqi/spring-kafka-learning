@@ -4452,6 +4452,26 @@ consumerProps.put(ErrorHandlingDeserializer.VALUE_FUNCTION, FailedFooProvider.cl
 ----
 ====
 
+IMPORTANT: If the consumer is configured with an `ErrorHandlingDeserializer` it is important to configure the `KafkaTemplate` and its producer with a serializer that can handle normal objects as well as raw `byte[]` values, which result from deserialization exceptions.
+The generic value type of the template should be `Object`.
+One technique is to use the `DelegatingByTypeSerializer`; an example follows:
+
+====
+[source, java]
+----
+@Bean
+public ProducerFactory<String, Object> producerFactory() {
+  return new DefaultKafkaProducerFactory<>(producerConfiguration(), new StringSerializer(),
+    new DelegatingByTypeSerializer(Map.of(byte[].class, new ByteArraySerializer(),
+          MyNormalObject.class, new JsonSerializer<Object>())));
+}
+
+@Bean
+public KafkaTemplate<String, Object> kafkaTemplate() {
+  return new KafkaTemplate<>(producerFactory());
+}
+----
+====
 When using an `ErrorHandlingDeserializer` with a batch listener, you must check for the deserialization exceptions in message headers.
 When used with a `RecoveringBatchErrorHandler`, you can use that header to determine which record the exception failed on and communicate to the error handler via a `BatchListenerFailedException`.
 

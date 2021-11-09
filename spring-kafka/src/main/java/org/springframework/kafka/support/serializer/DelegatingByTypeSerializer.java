@@ -30,7 +30,7 @@ import org.springframework.util.Assert;
  * Delegates to a serializer based on type.
  *
  * @author Gary Russell
- * @since 2.8
+ * @since 2.7.9
  *
  */
 public class DelegatingByTypeSerializer implements Serializer<Object> {
