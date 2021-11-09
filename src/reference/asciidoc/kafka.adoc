@@ -3156,6 +3156,10 @@ When a listener container is configured to use a `KafkaTransactionManager` or `C
 
 See <<ex-jdbc-sync>> for an example application that synchronizes JDBC and Kafka transactions.
 
+NOTE: Starting with versions 2.5.17, 2.6.12, 2.7.9 and 2.8.0, if the commit fails on the synchronized transaction (after the primary transaction has committed), the exception will be thrown to the caller.
+Previously, this was silently ignored (logged at debug).
+Applications should take remedial action, if necessary, to compensate for the committed primary transaction.
+
 [[chained-transaction-manager]]
 ===== Using `ChainedKafkaTransactionManager`
 
