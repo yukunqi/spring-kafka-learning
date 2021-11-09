@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2020 the original author or authors.
+ * Copyright 2017-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -92,7 +92,7 @@ import org.springframework.util.concurrent.SettableListenableFuture;
  */
 @EmbeddedKafka(topics = { KafkaTemplateTransactionTests.STRING_KEY_TOPIC,
 		KafkaTemplateTransactionTests.LOCAL_TX_IN_TOPIC }, brokerProperties = {
-				"transaction.state.log.replication.factor=1", "transaction.state.log.min.isr=1" })
+		"transaction.state.log.replication.factor=1", "transaction.state.log.min.isr=1" })
 public class KafkaTemplateTransactionTests {
 
 	public static final String STRING_KEY_TOPIC = "stringKeyTopic";
@@ -128,7 +128,7 @@ public class KafkaTemplateTransactionTests {
 					new OffsetAndMetadata(singleRecord.offset() + 1L)), "testLocalTx");
 			assertThat(KafkaTestUtils.getPropertyValue(
 					KafkaTestUtils.getPropertyValue(template, "producers", ThreadLocal.class).get(),
-						"delegate.transactionManager.transactionalId")).isEqualTo("my.transaction.0");
+					"delegate.transactionManager.transactionalId")).isEqualTo("my.transaction.0");
 			return null;
 		});
 		ConsumerRecords<String, String> records = KafkaTestUtils.getRecords(consumer);
@@ -300,14 +300,14 @@ public class KafkaTemplateTransactionTests {
 		ResourcelessTransactionManager tm = new ResourcelessTransactionManager();
 
 		assertThatExceptionOfType(ProducerFencedException.class).isThrownBy(() ->
-			new TransactionTemplate(tm)
-					.execute(s -> {
-						template.sendDefault("foo", "bar");
+				new TransactionTemplate(tm)
+						.execute(s -> {
+							template.sendDefault("foo", "bar");
 
-						// Mark the mock producer as fenced so it throws when committing the transaction
-						producer.fenceProducer();
-						return null;
-					}));
+							// Mark the mock producer as fenced so it throws when committing the transaction
+							producer.fenceProducer();
+							return null;
+						}));
 
 		assertThat(producer.transactionCommitted()).isFalse();
 		assertThat(producer.closed()).isTrue();
@@ -384,19 +384,19 @@ public class KafkaTemplateTransactionTests {
 		DefaultKafkaProducerFactory<String, String> pf =
 				new DefaultKafkaProducerFactory<String, String>(Collections.emptyMap()) {
 
-			@SuppressWarnings({ "rawtypes", "unchecked" })
-			@Override
-			public Producer<String, String> createProducer(String txIdPrefixArg) {
-				CloseSafeProducer<String, String> closeSafeProducer = new CloseSafeProducer<>(producer,
-						(prod, timeout) -> {
-							prod.closeDelegate(timeout, Collections.emptyList());
-							return true;
-						},
-						Duration.ofSeconds(1), "factory", 0);
-				return closeSafeProducer;
-			}
+					@SuppressWarnings({ "rawtypes", "unchecked" })
+					@Override
+					public Producer<String, String> createProducer(String txIdPrefixArg) {
+						CloseSafeProducer<String, String> closeSafeProducer = new CloseSafeProducer<>(producer,
+								(prod, timeout) -> {
+									prod.closeDelegate(timeout, Collections.emptyList());
+									return true;
+								},
+								Duration.ofSeconds(1), "factory", 0);
+						return closeSafeProducer;
+					}
 
-		};
+				};
 		pf.setTransactionIdPrefix("foo");
 
 		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf);
@@ -404,10 +404,10 @@ public class KafkaTemplateTransactionTests {
 
 		willThrow(new TimeoutException()).given(producer).commitTransaction();
 		assertThatExceptionOfType(TimeoutException.class)
-			.isThrownBy(() ->
-				template.executeInTransaction(t -> {
-					return null;
-				}));
+				.isThrownBy(() ->
+						template.executeInTransaction(t -> {
+							return null;
+						}));
 		verify(producer, never()).abortTransaction();
 		verify(producer).close(Duration.ofMillis(0));
 	}
@@ -420,24 +420,24 @@ public class KafkaTemplateTransactionTests {
 		DefaultKafkaProducerFactory<String, String> pf =
 				new DefaultKafkaProducerFactory<String, String>(Collections.emptyMap()) {
 
-			@SuppressWarnings("unchecked")
-			@Override
-			public Producer<String, String> createProducer(String txIdPrefixArg) {
-				BlockingQueue<CloseSafeProducer<String, String>> cache = new LinkedBlockingDeque<>(1);
-				try {
-					cache.put(new CloseSafeProducer<>(mock(Producer.class), this::removeProducer,
-							Duration.ofSeconds(1), "factory", 0));
-				}
-				catch (@SuppressWarnings("unused") InterruptedException e) {
-					Thread.currentThread().interrupt();
-				}
-				KafkaTestUtils.getPropertyValue(this, "cache", Map.class).put("foo", cache);
-				CloseSafeProducer<String, String> closeSafeProducer = new CloseSafeProducer<>(producer,
-						this::cacheReturner, "foo", Duration.ofSeconds(1), "factory", 0);
-				return closeSafeProducer;
-			}
+					@SuppressWarnings("unchecked")
+					@Override
+					public Producer<String, String> createProducer(String txIdPrefixArg) {
+						BlockingQueue<CloseSafeProducer<String, String>> cache = new LinkedBlockingDeque<>(1);
+						try {
+							cache.put(new CloseSafeProducer<>(mock(Producer.class), this::removeProducer,
+									Duration.ofSeconds(1), "factory", 0));
+						}
+						catch (@SuppressWarnings("unused") InterruptedException e) {
+							Thread.currentThread().interrupt();
+						}
+						KafkaTestUtils.getPropertyValue(this, "cache", Map.class).put("foo", cache);
+						CloseSafeProducer<String, String> closeSafeProducer = new CloseSafeProducer<>(producer,
+								this::cacheReturner, "foo", Duration.ofSeconds(1), "factory", 0);
+						return closeSafeProducer;
+					}
 
-		};
+				};
 		pf.setTransactionIdPrefix("foo");
 
 		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf);
@@ -575,28 +575,6 @@ public class KafkaTemplateTransactionTests {
 			return null;
 		});
 		pf.destroy();
-	}
-
-	@Test
-	void syncCommitFails() {
-		DummyTM tm = new DummyTM();
-		MockProducer<String, String> producer =
-				new MockProducer<>(true, new StringSerializer(), new StringSerializer());
-		producer.initTransactions();
-		producer.commitTransactionException = new IllegalStateException();
-
-		@SuppressWarnings("unchecked")
-		ProducerFactory<String, String> pf = mock(ProducerFactory.class);
-		given(pf.transactionCapable()).willReturn(true);
-		given(pf.createProducer(isNull())).willReturn(producer);
-
-		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf);
-		template.setDefaultTopic(STRING_KEY_TOPIC);
-
-		assertThatExceptionOfType(IllegalStateException.class).isThrownBy(() ->
-				new TransactionTemplate(tm).execute(status -> template.sendDefault("foo")));
-
-		assertThat(tm.committed).isTrue();
 	}
 
 	@Configuration
