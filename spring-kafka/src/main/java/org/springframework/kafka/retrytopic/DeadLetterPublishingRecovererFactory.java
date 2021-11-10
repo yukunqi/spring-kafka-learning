@@ -194,10 +194,10 @@ public class DeadLetterPublishingRecovererFactory {
 		Header header = consumerRecord.headers().lastHeader(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS);
 		if (header != null) {
 			byte[] value = header.value();
-			if (value.length == 1) { // backwards compatibility
+			if (value.length == Byte.BYTES) { // backwards compatibility
 				return value[0];
 			}
-			else if (value.length == 4) {
+			else if (value.length == Integer.BYTES) {
 				return ByteBuffer.wrap(value).getInt();
 			}
 			else {
@@ -213,7 +213,7 @@ public class DeadLetterPublishingRecovererFactory {
 		byte[] originalTimestampHeader = getOriginalTimestampHeaderBytes(consumerRecord);
 		headers.add(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP, originalTimestampHeader);
 		headers.add(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS,
-				ByteBuffer.wrap(new byte[4]).putInt(attempts + 1).array());
+				ByteBuffer.wrap(new byte[Integer.BYTES]).putInt(attempts + 1).array());
 		headers.add(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP,
 				BigInteger.valueOf(getNextExecutionTimestamp(consumerRecord, e, originalTimestampHeader))
 						.toByteArray());

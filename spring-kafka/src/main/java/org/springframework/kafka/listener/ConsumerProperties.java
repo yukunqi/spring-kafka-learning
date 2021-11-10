@@ -23,7 +23,6 @@ import java.util.regex.Pattern;
 
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
-import org.apache.kafka.common.errors.AuthenticationException;
 
 import org.springframework.kafka.support.LogIfLevelEnabled;
 import org.springframework.kafka.support.TopicPartitionOffset;
@@ -360,9 +359,11 @@ public class ConsumerProperties {
 	}
 
 	/**
-	 * Set the interval between retries after and {@link AuthenticationException} or
-	 * {@code AuthorizationException} is thrown by {@code KafkaConsumer}. By default the
-	 * field is null and retries are disabled. In such case the container will be stopped.
+	 * Set the interval between retries after and
+	 * {@link org.apache.kafka.common.errors.AuthenticationException} or
+	 * {@code org.apache.kafka.common.errors.AuthorizationException} is thrown by
+	 * {@code KafkaConsumer}. By default the field is null and retries are disabled. In
+	 * such case the container will be stopped.
 	 *
 	 * The interval must be less than {@code max.poll.interval.ms} consumer property.
 	 *
@@ -385,9 +386,11 @@ public class ConsumerProperties {
 	}
 
 	/**
-	 * Set the interval between retries after and {@link AuthenticationException} or
-	 * {@code AuthorizationException} is thrown by {@code KafkaConsumer}. By default the
-	 * field is null and retries are disabled. In such case the container will be stopped.
+	 * Set the interval between retries after and
+	 * {@link org.apache.kafka.common.errors.AuthenticationException} or
+	 * {@code org.apache.kafka.common.errors.AuthorizationException} is thrown by
+	 * {@code KafkaConsumer}. By default the field is null and retries are disabled. In
+	 * such case the container will be stopped.
 	 *
 	 * The interval must be less than {@code max.poll.interval.ms} consumer property.
 	 *

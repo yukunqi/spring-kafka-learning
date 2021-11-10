@@ -162,7 +162,7 @@ class DeadLetterPublishingRecovererFactoryTests {
 		ProducerRecord producerRecord = producerRecordCaptor.getValue();
 		Header attemptsHeader = producerRecord.headers().lastHeader(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS);
 		assertThat(attemptsHeader).isNotNull();
-		assertThat(attemptsHeader.value().length).isEqualTo(4); // handled a legacy one byte header ok
+		assertThat(attemptsHeader.value().length).isEqualTo(Integer.BYTES); // handled a legacy one byte header ok
 		assertThat(ByteBuffer.wrap(attemptsHeader.value()).getInt()).isEqualTo(128);
 	}
 
@@ -195,7 +195,7 @@ class DeadLetterPublishingRecovererFactoryTests {
 		ProducerRecord producerRecord = producerRecordCaptor.getValue();
 		Header attemptsHeader = producerRecord.headers().lastHeader(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS);
 		assertThat(attemptsHeader).isNotNull();
-		assertThat(attemptsHeader.value().length).isEqualTo(4);
+		assertThat(attemptsHeader.value().length).isEqualTo(Integer.BYTES);
 		assertThat(ByteBuffer.wrap(attemptsHeader.value()).getInt()).isEqualTo(128);
 	}
 
