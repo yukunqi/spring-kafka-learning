@@ -118,6 +118,7 @@ public final class JacksonUtils {
 
 	private static final class KotlinModuleProvider {
 
+		@SuppressWarnings("deprecation")
 		static final com.fasterxml.jackson.databind.Module MODULE =
 				new com.fasterxml.jackson.module.kotlin.KotlinModule();
 
