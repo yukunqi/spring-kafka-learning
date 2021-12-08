@@ -19,6 +19,7 @@ package org.springframework.kafka.listener;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.ObjectStreamClass;
 import java.util.Map;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -99,19 +100,51 @@ public final class ListenerUtils {
 
 		Header header = record.headers().lastHeader(headerName);
 		if (header != null) {
-			try {
-				DeserializationException ex = (DeserializationException) new ObjectInputStream(
-						new ByteArrayInputStream(header.value())).readObject();
+			byte[] value = header.value();
+			DeserializationException exception = byteArrayToDeserializationException(logger, value);
+			if (exception != null) {
 				Headers headers = new RecordHeaders(record.headers().toArray());
 				headers.remove(headerName);
-				ex.setHeaders(headers);
-				return ex;
+				exception.setHeaders(headers);
 			}
-			catch (IOException | ClassNotFoundException | ClassCastException e) {
-				logger.error(e, "Failed to deserialize a deserialization exception");
-			}
+			return exception;
 		}
 		return null;
+	}
+
+	/**
+	 * Convert a byte array containing a serialized {@link DeserializationException} to the
+	 * {@link DeserializationException}.
+	 * @param logger a log accessor to log errors.
+	 * @param value the bytes.
+	 * @return the exception or null if deserialization fails.
+	 * @since 2.8.1
+	 */
+	@Nullable
+	public static DeserializationException byteArrayToDeserializationException(LogAccessor logger, byte[] value) {
+		try {
+			ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(value)) {
+
+				boolean first = true;
+
+				@Override
+				protected Class<?> resolveClass(ObjectStreamClass desc) throws IOException, ClassNotFoundException {
+					if (this.first) {
+						this.first = false;
+						Assert.state(desc.getName().equals(DeserializationException.class.getName()),
+								"Header does not contain a DeserializationException");
+					}
+					return super.resolveClass(desc);
+				}
+
+
+			};
+			return (DeserializationException) ois.readObject();
+		}
+		catch (IOException | ClassNotFoundException | ClassCastException e) {
+			logger.error(e, "Failed to deserialize a deserialization exception");
+			return null;
+		}
 	}
 
 	/**
