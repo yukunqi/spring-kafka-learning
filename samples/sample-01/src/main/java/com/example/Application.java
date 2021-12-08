@@ -31,8 +31,8 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.SeekToCurrentErrorHandler;
+import org.springframework.kafka.support.converter.JsonMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
-import org.springframework.kafka.support.converter.StringJsonMessageConverter;
 import org.springframework.util.backoff.FixedBackOff;
 
 import com.common.Foo2;
@@ -66,7 +66,7 @@ public class Application {
 
 	@Bean
 	public RecordMessageConverter converter() {
-		return new StringJsonMessageConverter();
+		return new JsonMessageConverter();
 	}
 
 	@KafkaListener(id = "fooGroup", topics = "topic1")

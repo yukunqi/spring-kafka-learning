@@ -33,8 +33,8 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.converter.BatchMessagingMessageConverter;
+import org.springframework.kafka.support.converter.JsonMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
-import org.springframework.kafka.support.converter.StringJsonMessageConverter;
 
 import com.common.Foo2;
 
@@ -61,7 +61,7 @@ public class Application {
 
 	@Bean
 	public RecordMessageConverter converter() {
-		return new StringJsonMessageConverter();
+		return new JsonMessageConverter();
 	}
 
 	@Bean

@@ -4,6 +4,7 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       transaction-id-prefix: tx.
     consumer:
+      value-deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
       properties:
         isolation.level: read_committed
     listener:

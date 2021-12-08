@@ -1,6 +1,6 @@
 == Sample 4
 
-This sample demonstrates a simple producer and consumer; the producer sends Strings posted to the rest controller.
+This sample demonstrates non-blocking retry (`@RetryableTopic`) with a simple producer and consumer; the producer sends Strings posted to the rest controller.
 
 Strings starting with `fail` are rejected and retried.
 
