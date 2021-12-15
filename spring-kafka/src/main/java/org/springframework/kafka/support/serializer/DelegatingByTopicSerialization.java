@@ -156,7 +156,7 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 	protected void build(Map<String, ?> configs, boolean isKey, String configKey, Object delegate, Pattern pattern) {
 
 		if (isInstance(delegate)) {
-			if (pattern != null && !this.patterns.add(pattern.pattern())) {
+			if (!this.patterns.add(pattern.pattern())) {
 				LOGGER.debug(() -> "Delegate already configured for " + pattern.pattern());
 				return;
 			}
