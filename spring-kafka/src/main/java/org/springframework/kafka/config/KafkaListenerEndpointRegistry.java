@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2019 the original author or authors.
+ * Copyright 2014-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -227,14 +227,7 @@ public class KafkaListenerEndpointRegistry implements DisposableBean, SmartLifec
 	@Override
 	public void destroy() {
 		for (MessageListenerContainer listenerContainer : getListenerContainers()) {
-			if (listenerContainer instanceof DisposableBean) {
-				try {
-					((DisposableBean) listenerContainer).destroy();
-				}
-				catch (Exception ex) {
-					this.logger.warn(ex, "Failed to destroy message listener container");
-				}
-			}
+			listenerContainer.destroy();
 		}
 	}
 
