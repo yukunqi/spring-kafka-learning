@@ -78,3 +78,10 @@ See <<delegating-serialization>> for more information.
 The property `stripPreviousExceptionHeaders` is now `true` by default.
 
 See <<dlpr-headers>> for more information.
+
+[[x28-kafka-back-off-exception-log-level]]
+==== KafkaBackOffException Log Level Changes
+
+The KafkaBackOffException thrown when using the retryable topics feature is now logged at DEBUG level.
+
+See <<change-kboe-logging-level>> if you need to change the logging level back to WARN or set it to any other level.
