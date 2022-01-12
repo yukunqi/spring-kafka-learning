@@ -776,7 +776,6 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 			records = consumer.poll(Duration.ofMillis(100)); // force assignment NOSONAR magic #
 		}
 		if (assigned.get() != null) {
-			final ConsumerRecords<?, ?> theRecords = records;
 			logger.debug(() -> "Partitions assigned "
 					+ assigned.get()
 					+ "; re-seeking to "
