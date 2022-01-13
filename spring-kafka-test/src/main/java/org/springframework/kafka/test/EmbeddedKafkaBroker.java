@@ -50,7 +50,6 @@ import org.apache.kafka.clients.admin.CreateTopicsResult;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.common.utils.AppInfoParser;
@@ -770,10 +769,9 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 			}
 
 		});
-		ConsumerRecords<?, ?> records = null;
 		int n = 0;
 		while (assigned.get() == null && n++ < 600) { // NOSONAR magic #
-			records = consumer.poll(Duration.ofMillis(100)); // force assignment NOSONAR magic #
+			consumer.poll(Duration.ofMillis(100)); // force assignment NOSONAR magic #
 		}
 		if (assigned.get() != null) {
 			logger.debug(() -> "Partitions assigned "
