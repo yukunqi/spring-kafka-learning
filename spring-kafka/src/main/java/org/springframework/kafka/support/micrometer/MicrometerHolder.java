@@ -91,6 +91,7 @@ public final class MicrometerHolder {
 	 * @param sample the sample.
 	 * @see #start()
 	 */
+	@SuppressWarnings("deprecation")
 	public void success(Object sample) {
 		Timer timer = this.meters.get(NONE_EXCEPTION_METERS_KEY);
 		if (timer != null) {
@@ -104,6 +105,7 @@ public final class MicrometerHolder {
 	 * @param exception the exception name.
 	 * @see #start()
 	 */
+	@SuppressWarnings("deprecation")
 	public void failure(Object sample, String exception) {
 		Timer timer = this.meters.get(exception);
 		if (timer == null) {

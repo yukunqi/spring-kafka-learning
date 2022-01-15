@@ -42,7 +42,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
  */
 public class MicrometerHolderTests {
 
-	@SuppressWarnings({ "unchecked" })
+	@SuppressWarnings({ "unchecked", "deprecation" })
 	@Test
 	public void testMicrometerHolderRecordSuccessWorksGracefullyAfterDestroy() {
 		MeterRegistry meterRegistry = new SimpleMeterRegistry();
@@ -64,7 +64,7 @@ public class MicrometerHolderTests {
 		micrometerHolder.success(sample);
 
 		verify(ctx, times(1)).getBeansOfType(any(), anyBoolean(), anyBoolean());
-		verify(sample, times(1)).stop(any());
+		verify(sample, times(1)).stop(any(Timer.class));
 		verifyNoMoreInteractions(ctx, sample);
 	}
 
