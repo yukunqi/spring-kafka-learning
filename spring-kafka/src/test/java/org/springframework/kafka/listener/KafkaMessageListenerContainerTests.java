@@ -3409,6 +3409,10 @@ public class KafkaMessageListenerContainerTests {
 			return first.getAndSet(false) ? consumerRecords : emptyRecords;
 		});
 		CountDownLatch latch = new CountDownLatch(4);
+		CountDownLatch retriesExhausted = new CountDownLatch(1);
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[] {
+				new TopicPartitionOffset("foo", 0) };
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
 		if (sync) {
 			willAnswer(i -> {
 				latch.countDown();
@@ -3422,10 +3426,10 @@ public class KafkaMessageListenerContainerTests {
 				latch.countDown();
 				return null;
 			}).given(consumer).commitAsync(anyMap(), any());
+			containerProps.setCommitCallback((offsets, exception) -> {
+				retriesExhausted.countDown();
+			});
 		}
-		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[] {
-				new TopicPartitionOffset("foo", 0) };
-		ContainerProperties containerProps = new ContainerProperties(topicPartition);
 		containerProps.setSyncCommits(sync);
 		containerProps.setGroupId("grp");
 		containerProps.setClientId("clientId");
@@ -3443,6 +3447,7 @@ public class KafkaMessageListenerContainerTests {
 		}
 		else {
 			verify(consumer, times(4)).commitAsync(any(), any());
+			assertThat(retriesExhausted.await(10, TimeUnit.SECONDS)).isTrue();
 		}
 	}
 
