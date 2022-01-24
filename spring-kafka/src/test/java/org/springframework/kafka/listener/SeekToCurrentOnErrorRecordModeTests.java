@@ -124,6 +124,7 @@ public class SeekToCurrentOnErrorRecordModeTests {
 		assertThat(this.config.count).isEqualTo(8);
 		assertThat(this.config.contents).contains("foo", "bar", "baz", "qux", "qux", "qux", "fiz", "buz");
 		assertThat(this.config.deliveries).contains(1, 1, 1, 1, 2, 3, 1, 1);
+		assertThat(this.config.deliveryAttempt).isNotNull();
 	}
 
 	@Configuration
@@ -143,6 +144,8 @@ public class SeekToCurrentOnErrorRecordModeTests {
 		final CountDownLatch commitLatch = new CountDownLatch(6);
 
 		int count;
+
+		volatile org.apache.kafka.common.header.Header deliveryAttempt;
 
 		@KafkaListener(groupId = "grp",
 				topicPartitions = @org.springframework.kafka.annotation.TopicPartition(topic = "foo",
@@ -226,6 +229,10 @@ public class SeekToCurrentOnErrorRecordModeTests {
 			factory.setErrorHandler(new SeekToCurrentErrorHandler());
 			factory.getContainerProperties().setAckMode(AckMode.RECORD);
 			factory.getContainerProperties().setDeliveryAttemptHeader(true);
+			factory.setRecordInterceptor(record -> {
+				Config.this.deliveryAttempt = record.headers().lastHeader(KafkaHeaders.DELIVERY_ATTEMPT);
+				return record;
+			});
 			return factory;
 		}
 
