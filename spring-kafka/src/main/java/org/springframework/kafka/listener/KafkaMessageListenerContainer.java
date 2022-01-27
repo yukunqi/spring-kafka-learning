@@ -1368,7 +1368,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 								commitSync(toFix);
 							}
 							else {
-								commitAsync(toFix, 0);
+								commitAsync(toFix);
 							}
 						}
 						else {
@@ -1682,18 +1682,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				commitSync(commits);
 			}
 			else {
-				commitAsync(commits, 0);
+				commitAsync(commits);
 			}
 		}
 
-		private void commitAsync(Map<TopicPartition, OffsetAndMetadata> commits, int retries) {
+		private void commitAsync(Map<TopicPartition, OffsetAndMetadata> commits) {
 			this.consumer.commitAsync(commits, (offsetsAttempted, exception) -> {
-				if (exception instanceof RetriableCommitFailedException
-						&& retries < this.containerProperties.getCommitRetries()) {
-					commitAsync(commits, retries + 1);
-				}
-				else {
-					this.commitCallback.onComplete(offsetsAttempted, exception);
+				this.commitCallback.onComplete(offsetsAttempted, exception);
+				if (exception == null) {
 					if (this.fixTxOffsets) {
 						this.lastCommits.putAll(commits);
 					}
@@ -2451,7 +2447,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						commitSync(offsetsToCommit);
 					}
 					else {
-						commitAsync(offsetsToCommit, 0);
+						commitAsync(offsetsToCommit);
 					}
 				}
 				else {
@@ -2706,7 +2702,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						commitSync(commits);
 					}
 					else {
-						commitAsync(commits, 0);
+						commitAsync(commits);
 					}
 				}
 				catch (@SuppressWarnings(UNUSED) WakeupException e) {
@@ -3051,7 +3047,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						}
 					}
 					else {
-						commitAsync(offsetsToCommit, 0);
+						commitAsync(offsetsToCommit);
 					}
 				}
 			}

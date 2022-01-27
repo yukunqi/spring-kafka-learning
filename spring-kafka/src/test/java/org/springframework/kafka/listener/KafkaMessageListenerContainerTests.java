@@ -70,7 +70,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
-import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.clients.consumer.RetriableCommitFailedException;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
@@ -3124,17 +3123,8 @@ public class KafkaMessageListenerContainerTests {
 	}
 
 	@Test
-	void testCommitSyncRetries() throws Exception {
-		testCommitRetriesGuts(true);
-	}
-
-	@Test
-	void testCommitAsyncRetries() throws Exception {
-		testCommitRetriesGuts(false);
-	}
-
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	private void testCommitRetriesGuts(boolean sync) throws Exception {
+	void testCommitSyncRetries() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
 		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
@@ -3153,24 +3143,14 @@ public class KafkaMessageListenerContainerTests {
 			return first.getAndSet(false) ? consumerRecords : emptyRecords;
 		});
 		CountDownLatch latch = new CountDownLatch(4);
-		if (sync) {
-			willAnswer(i -> {
-				latch.countDown();
-				throw new RetriableCommitFailedException("");
-			}).given(consumer).commitSync(anyMap(), eq(Duration.ofSeconds(45)));
-		}
-		else {
-			willAnswer(i -> {
-				OffsetCommitCallback callback = i.getArgument(1);
-				callback.onComplete(i.getArgument(0), new RetriableCommitFailedException(""));
-				latch.countDown();
-				return null;
-			}).given(consumer).commitAsync(anyMap(), any());
-		}
 		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[] {
 				new TopicPartitionOffset("foo", 0) };
 		ContainerProperties containerProps = new ContainerProperties(topicPartition);
-		containerProps.setSyncCommits(sync);
+		willAnswer(i -> {
+			latch.countDown();
+			throw new RetriableCommitFailedException("");
+		}).given(consumer).commitSync(anyMap(), eq(Duration.ofSeconds(45)));
+		containerProps.setSyncCommits(true);
 		containerProps.setGroupId("grp");
 		containerProps.setClientId("clientId");
 		containerProps.setIdleEventInterval(100L);
@@ -3182,12 +3162,7 @@ public class KafkaMessageListenerContainerTests {
 		container.start();
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 		container.stop();
-		if (sync) {
-			verify(consumer, times(4)).commitSync(any(), any());
-		}
-		else {
-			verify(consumer, times(4)).commitAsync(any(), any());
-		}
+		verify(consumer, times(4)).commitSync(any(), any());
 	}
 
 	@Test
