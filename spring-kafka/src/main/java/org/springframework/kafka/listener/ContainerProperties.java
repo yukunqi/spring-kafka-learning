@@ -639,9 +639,9 @@ public class ContainerProperties extends ConsumerProperties {
 	}
 
 	/**
-	 * Set to false to allow the container to start even if any of the configured topics
+	 * Set to true to prevent the container from starting if any of the configured topics
 	 * are not present on the broker. Does not apply when topic patterns are configured.
-	 * Default true;
+	 * Default false;
 	 * @param missingTopicsFatal the missingTopicsFatal.
 	 * @since 2.2
 	 */
