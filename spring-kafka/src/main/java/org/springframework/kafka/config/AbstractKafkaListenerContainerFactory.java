@@ -35,12 +35,9 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.AfterRollbackProcessor;
-import org.springframework.kafka.listener.BatchErrorHandler;
 import org.springframework.kafka.listener.BatchInterceptor;
 import org.springframework.kafka.listener.CommonErrorHandler;
 import org.springframework.kafka.listener.ContainerProperties;
-import org.springframework.kafka.listener.ErrorHandler;
-import org.springframework.kafka.listener.GenericErrorHandler;
 import org.springframework.kafka.listener.RecordInterceptor;
 import org.springframework.kafka.listener.adapter.BatchToRecordAdapter;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
@@ -49,7 +46,6 @@ import org.springframework.kafka.requestreply.ReplyingKafkaOperations;
 import org.springframework.kafka.support.JavaUtils;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.converter.MessageConverter;
-import org.springframework.retry.RecoveryCallback;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
 
@@ -74,7 +70,8 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	private final ContainerProperties containerProperties = new ContainerProperties((Pattern) null); // NOSONAR
 
-	private GenericErrorHandler<?> errorHandler;
+	@SuppressWarnings("deprecation")
+	private org.springframework.kafka.listener.GenericErrorHandler<?> errorHandler;
 
 	private CommonErrorHandler commonErrorHandler;
 
@@ -89,10 +86,6 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	private RecordFilterStrategy<? super K, ? super V> recordFilterStrategy;
 
 	private Boolean ackDiscarded;
-
-	private RetryTemplate retryTemplate;
-
-	private RecoveryCallback<? extends Object> recoveryCallback;
 
 	private Boolean statefulRetry;
 
@@ -178,25 +171,6 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	}
 
 	/**
-	 * Set a retryTemplate.
-	 * @param retryTemplate the template.
-	 * @deprecated since 2.8 - use a suitably configured error handler instead.
-	 */
-	@Deprecated
-	public void setRetryTemplate(RetryTemplate retryTemplate) {
-		this.retryTemplate = retryTemplate;
-	}
-
-	/**
-	 * Set a callback to be used with the {@link #setRetryTemplate(RetryTemplate)
-	 * retryTemplate}.
-	 * @param recoveryCallback the callback.
-	 */
-	public void setRecoveryCallback(RecoveryCallback<? extends Object> recoveryCallback) {
-		this.recoveryCallback = recoveryCallback;
-	}
-
-	/**
 	 * When using a {@link RetryTemplate} Set to true to enable stateful retry. Use in
 	 * conjunction with a
 	 * {@link org.springframework.kafka.listener.SeekToCurrentErrorHandler} when retry can
@@ -257,7 +231,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	 * @see #setCommonErrorHandler(CommonErrorHandler)
 	 */
 	@Deprecated
-	public void setErrorHandler(ErrorHandler errorHandler) {
+	public void setErrorHandler(org.springframework.kafka.listener.ErrorHandler errorHandler) {
 		this.errorHandler = errorHandler;
 	}
 
@@ -269,13 +243,14 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	 * @see #setCommonErrorHandler(CommonErrorHandler)
 	 */
 	@Deprecated
-	public void setBatchErrorHandler(BatchErrorHandler errorHandler) {
+	public void setBatchErrorHandler(org.springframework.kafka.listener.BatchErrorHandler errorHandler) {
 		this.errorHandler = errorHandler;
 	}
 
 	/**
-	 * Set the {@link CommonErrorHandler} which can handle errors for both record
-	 * and batch listeners. Replaces the use of {@link GenericErrorHandler}s.
+	 * Set the {@link CommonErrorHandler} which can handle errors for both record and
+	 * batch listeners. Replaces the use of
+	 * {@link org.springframework.kafka.listener.GenericErrorHandler}s.
 	 * @param commonErrorHandler the handler.
 	 * @since 2.8
 	 */
@@ -361,16 +336,17 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		this.containerCustomizer = containerCustomizer;
 	}
 
+	@SuppressWarnings("deprecation")
 	@Override
 	public void afterPropertiesSet() {
 		if (this.commonErrorHandler == null && this.errorHandler != null) {
 			if (Boolean.TRUE.equals(this.batchListener)) {
-				Assert.state(this.errorHandler instanceof BatchErrorHandler,
+				Assert.state(this.errorHandler instanceof org.springframework.kafka.listener.BatchErrorHandler,
 						() -> "The error handler must be a BatchErrorHandler, not " +
 								this.errorHandler.getClass().getName());
 			}
 			else {
-				Assert.state(this.errorHandler instanceof ErrorHandler,
+				Assert.state(this.errorHandler instanceof org.springframework.kafka.listener.ErrorHandler,
 						() -> "The error handler must be an ErrorHandler, not " +
 								this.errorHandler.getClass().getName());
 			}
@@ -398,8 +374,6 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		JavaUtils.INSTANCE
 				.acceptIfNotNull(this.recordFilterStrategy, aklEndpoint::setRecordFilterStrategy)
 				.acceptIfNotNull(this.ackDiscarded, aklEndpoint::setAckDiscarded)
-				.acceptIfNotNull(this.retryTemplate, aklEndpoint::setRetryTemplate)
-				.acceptIfNotNull(this.recoveryCallback, aklEndpoint::setRecoveryCallback)
 				.acceptIfNotNull(this.statefulRetry, aklEndpoint::setStatefulRetry)
 				.acceptIfNotNull(this.replyTemplate, aklEndpoint::setReplyTemplate)
 				.acceptIfNotNull(this.replyHeadersConfigurer, aklEndpoint::setReplyHeadersConfigurer)

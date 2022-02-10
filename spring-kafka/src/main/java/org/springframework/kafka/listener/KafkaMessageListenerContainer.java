@@ -846,10 +846,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			return null;
 		}
 
+		@SuppressWarnings("deprecation")
 		@Nullable
 		private CommonErrorHandler determineCommonErrorHandler() {
 			CommonErrorHandler common = getCommonErrorHandler();
-			@SuppressWarnings("deprecation")
 			GenericErrorHandler<?> errHandler = getGenericErrorHandler();
 			if (common != null) {
 				if (errHandler != null) {
@@ -931,10 +931,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (subBatching != null) {
 				return subBatching;
 			}
-			if (this.transactionManager == null) {
-				return false;
-			}
-			return this.eosMode.getMode().equals(EOSMode.V1);
+			return false;
 		}
 
 		@Nullable
@@ -1202,6 +1199,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
+		@SuppressWarnings("deprecation")
 		private void validateErrorHandler(boolean batch, @Nullable GenericErrorHandler<?> errHandler) {
 			if (errHandler == null) {
 				return;
@@ -2722,12 +2720,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		@SuppressWarnings("deprecation")
 		private void doSendOffsets(Producer<?, ?> prod, Map<TopicPartition, OffsetAndMetadata> commits) {
-			if (this.eosMode.getMode().equals(EOSMode.V1)) {
-				prod.sendOffsetsToTransaction(commits, this.consumerGroupId);
-			}
-			else {
-				prod.sendOffsetsToTransaction(commits, this.consumer.groupMetadata());
-			}
+			prod.sendOffsetsToTransaction(commits, this.consumer.groupMetadata());
 			if (this.fixTxOffsets) {
 				this.lastCommits.putAll(commits);
 			}
