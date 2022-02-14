@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2020 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,8 +25,8 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.common.TopicPartition;
 
 /**
- * An event that is emitted when a consumer is not responding to
- * the poll; a possible indication that the broker is down.
+ * An event that is emitted when a consumer is not responding to the poll; with early
+ * versions of the kafka-clients, this was a possible indication that the broker is down.
  *
  * @author Gary Russell
  * @since 1.3.1
