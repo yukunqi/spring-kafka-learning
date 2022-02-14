@@ -2884,7 +2884,7 @@ Receiving such an event lets you stop the containers, thus waking the consumer s
 
 Starting with version 2.6.2, if a container has published a `ListenerContainerIdleEvent`, it will publish a `ListenerContainerNoLongerIdleEvent` when a record is subsequently received.
 
-====== Event Consumption
+===== Event Consumption
 
 You can capture these events by implementing `ApplicationListener` -- either a general listener or one narrowed to only receive this specific event.
 You can also use `@EventListener`, introduced in Spring Framework 4.2.
