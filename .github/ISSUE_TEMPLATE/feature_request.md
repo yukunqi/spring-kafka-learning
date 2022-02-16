@@ -17,7 +17,7 @@ assignees: ''
 
 **Context**
 
-<!--- 
+<!---
 How has this issue affected you?
 What are you trying to accomplish?
 What other alternatives have you considered?
