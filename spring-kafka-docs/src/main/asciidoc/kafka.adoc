@@ -4485,7 +4485,7 @@ public KafkaTemplate<String, Object> kafkaTemplate() {
 ----
 ====
 When using an `ErrorHandlingDeserializer` with a batch listener, you must check for the deserialization exceptions in message headers.
-When used with a `RecoveringBatchErrorHandler`, you can use that header to determine which record the exception failed on and communicate to the error handler via a `BatchListenerFailedException`.
+When used with a `DefaultBatchErrorHandler`, you can use that header to determine which record the exception failed on and communicate to the error handler via a `BatchListenerFailedException`.
 
 ====
 [source, java]
@@ -5223,24 +5223,24 @@ void listen(List<Thing> in, @Header(KafkaHeaders.CONVERSION_FAILURES) List<Conve
         process(foo);
     }
 }
----
+----
 ====
 
 [[retrying-batch-eh]]
-===== Retrying Batch Error Handler
+===== Retrying Complete Batches
 
-This legacy `BatchErrorHandler` is not deprecated at this time; it is used as the fallback when using the `DefaultErrorHandler` and some exception other than `BatchListenerFailedException` is thrown by the listener.
+This is now the fallback behavior of the `DefaultErrorHandler` for a batch listener where the listener throws an exception other than a `BatchListenerFailedException`.
 
 There is no guarantee that, when a batch is redelivered, the batch has the same number of records and/or the redelivered records are in the same order.
-It is impossible, therefore, to maintain retry state for a batch.
-The `RetryingBatchErrorHandler` takes a the following approach.
-If a batch listener throws an exception, and this error handler is configured (or used as the fallback described above), the retries are performed from the in-memory batch of records.
+It is impossible, therefore, to easily maintain retry state for a batch.
+The `FallbackBatchErrorHandler` takes a the following approach.
+If a batch listener throws an exception that is not a `BatchListenerFailedException`, the retries are performed from the in-memory batch of records.
 In order to avoid a rebalance during an extended retry sequence, the error handler pauses the consumer, polls it before sleeping for the back off, for each retry, and calls the listener again.
 If/when retries are exhausted, the `ConsumerRecordRecoverer` is called for each record in the batch.
-If the recoverer throws an exception, or the thread is interrupted during its sleep, a `SeekToCurrentErrorHandler` is invoked so that the batch of records will be redelivered on the next poll.
+If the recoverer throws an exception, or the thread is interrupted during its sleep, the batch of records will be redelivered on the next poll.
 Before exiting, regardless of the outcome, the consumer is resumed.
 
-IMPORTANT: This error handler cannot be used with transactions.
+IMPORTANT: This mechanism cannot be used with transactions.
 
 While waiting for a `BackOff` interval, the error handler will loop with a short sleep until the desired delay is reached, while checking to see if the container has been stopped, allowing the sleep to exit soon after the `stop()` rather than causing a delay.
 
