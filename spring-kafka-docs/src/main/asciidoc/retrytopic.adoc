@@ -668,8 +668,6 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<Integer, MyPojo> templ
 
 By default the RetryTopic configuration will use the provided factory from the `@KafkaListener` annotation, but you can specify a different one to be used to create the retry topic and dlt listener containers.
 
-IMPORTANT: The provided factory will be configured for the retry topic functionality, so you should not use the same factory for both retrying and non-retrying topics. You can however share the same factory between many retry topic configurations.
-
 For the `@RetryableTopic` annotation you can provide the factory's bean name, and using the `RetryTopicConfiguration` bean you can either provide the bean name or the instance itself.
 
 ====
@@ -702,6 +700,27 @@ public RetryTopicConfiguration myOtherRetryTopic(KafkaTemplate<Integer, MyPojo> 
 }
 ----
 ====
+
+
+IMPORTANT: Since 2.8.3 you can use the same factory for retryable and non-retryable topics.
+
+If you need to revert the factory configuration behavior to prior 2.8.3, you can replace the standard `RetryTopicConfigurer` bean and set `useLegacyFactoryConfigurer` to `true`, such as:
+
+====
+[source, java]
+----
+
+@Bean(name = RetryTopicInternalBeanNames.RETRY_TOPIC_CONFIGURER)
+public RetryTopicConfigurer retryTopicConfigurer(DestinationTopicProcessor destinationTopicProcessor,
+                                                ListenerContainerFactoryResolver containerFactoryResolver,
+                                                ListenerContainerFactoryConfigurer listenerContainerFactoryConfigurer,
+                                                BeanFactory beanFactory,
+                                                RetryTopicNamesProviderFactory retryTopicNamesProviderFactory) {
+    RetryTopicConfigurer retryTopicConfigurer = new RetryTopicConfigurer(destinationTopicProcessor, containerFactoryResolver, listenerContainerFactoryConfigurer, beanFactory, retryTopicNamesProviderFactory);
+    retryTopicConfigurer.useLegacyFactoryConfigurer(true);
+    return retryTopicConfigurer;
+}
+----
 
 [[change-kboe-logging-level]]
 ==== Changing KafkaBackOffException Logging Level
