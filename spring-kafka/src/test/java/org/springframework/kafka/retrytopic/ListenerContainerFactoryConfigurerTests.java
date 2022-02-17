@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
@@ -46,6 +47,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.ContainerCustomizer;
+import org.springframework.kafka.config.KafkaListenerContainerFactory;
+import org.springframework.kafka.config.KafkaListenerEndpoint;
 import org.springframework.kafka.listener.AcknowledgingConsumerAwareMessageListener;
 import org.springframework.kafka.listener.CommonErrorHandler;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
@@ -131,6 +134,9 @@ class ListenerContainerFactoryConfigurerTests {
 
 	@Mock
 	private RetryTopicConfiguration configuration;
+
+	@Mock
+	private KafkaListenerEndpoint endpoint;
 
 	private final long backOffValue = 2000L;
 
@@ -347,6 +353,44 @@ class ListenerContainerFactoryConfigurerTests {
 		ContainerCustomizer containerCustomizer = containerCustomizerCaptor.getValue();
 		containerCustomizer.configure(container);
 
+		then(container).should(times(1)).setupMessageListener(listenerAdapterCaptor.capture());
+		KafkaBackoffAwareMessageListenerAdapter<?, ?> listenerAdapter =
+				(KafkaBackoffAwareMessageListenerAdapter<?, ?>) listenerAdapterCaptor.getValue();
+		listenerAdapter.onMessage(data, ack, consumer);
+
+		then(this.kafkaConsumerBackoffManager).should(times(1))
+				.createContext(anyLong(), listenerIdCaptor.capture(), any(TopicPartition.class), eq(consumer));
+		assertThat(listenerIdCaptor.getValue()).isEqualTo(testListenerId);
+		then(listener).should(times(1)).onMessage(data, ack, consumer);
+
+		then(this.configurerContainerCustomizer).should(times(1)).accept(container);
+	}
+
+	@Test
+	void shouldDecorateFactory() {
+
+		// given
+		given(container.getContainerProperties()).willReturn(containerProperties);
+		given(deadLetterPublishingRecovererFactory.create()).willReturn(recoverer);
+		given(containerProperties.getMessageListener()).willReturn(listener);
+		RecordHeaders headers = new RecordHeaders();
+		headers.add(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP, originalTimestampBytes);
+		given(data.headers()).willReturn(headers);
+		String testListenerId = "testListenerId";
+		given(container.getListenerId()).willReturn(testListenerId);
+		given(configuration.forContainerFactoryConfigurer()).willReturn(lcfcConfiguration);
+		willReturn(container).given(containerFactory).createListenerContainer(endpoint);
+
+		// when
+		ListenerContainerFactoryConfigurer configurer =
+				new ListenerContainerFactoryConfigurer(kafkaConsumerBackoffManager,
+						deadLetterPublishingRecovererFactory, clock);
+		configurer.setContainerCustomizer(configurerContainerCustomizer);
+		KafkaListenerContainerFactory<?> factory = configurer
+				.decorateFactory(containerFactory, configuration.forContainerFactoryConfigurer());
+		factory.createListenerContainer(endpoint);
+
+		// then
 		then(container).should(times(1)).setupMessageListener(listenerAdapterCaptor.capture());
 		KafkaBackoffAwareMessageListenerAdapter<?, ?> listenerAdapter =
 				(KafkaBackoffAwareMessageListenerAdapter<?, ?>) listenerAdapterCaptor.getValue();
