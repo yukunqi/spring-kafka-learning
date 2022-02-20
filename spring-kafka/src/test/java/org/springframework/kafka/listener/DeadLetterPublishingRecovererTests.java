@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 the original author or authors.
+ * Copyright 2020-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -563,6 +563,27 @@ public class DeadLetterPublishingRecovererTests {
 		recoverer.setFailIfSendResultIsError(false);
 		recoverer.accept(record, new IllegalStateException());
 		verify(template).send(any(ProducerRecord.class));
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void doNotSkipCircularFatalIfSet() {
+		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
+		ListenableFuture<Object> future = mock(ListenableFuture.class);
+		given(template.send(any(ProducerRecord.class))).willReturn(future);
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "bar", null);
+		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template,
+				(cr, e) -> new TopicPartition("foo", 0));
+		recoverer.setSkipSameTopicFatalExceptions(false);
+		recoverer.accept(record, new ClassCastException());
+		verify(template).send(any(ProducerRecord.class));
+		recoverer.addNotRetryableExceptions(IllegalStateException.class);
+		recoverer.accept(record, new IllegalStateException());
+		verify(template, times(2)).send(any(ProducerRecord.class));
+		recoverer.removeNotRetryableException(IllegalStateException.class);
+		recoverer.setFailIfSendResultIsError(false);
+		recoverer.accept(record, new IllegalStateException());
+		verify(template, times(3)).send(any(ProducerRecord.class));
 	}
 
 }

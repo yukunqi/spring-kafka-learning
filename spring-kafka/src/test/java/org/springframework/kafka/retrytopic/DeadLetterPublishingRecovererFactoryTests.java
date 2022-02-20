@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -306,7 +306,7 @@ class DeadLetterPublishingRecovererFactoryTests {
 	}
 
 	@Test
-	void shouldNotSendMessageIfCircularFatal() {
+	void shouldSendMessageEvenIfCircularFatal() {
 		// setup
 		TimestampedException e = new TimestampedException(new IllegalStateException(), this.clock);
 		long failureTimestamp = e.getTimestamp();
@@ -314,6 +314,8 @@ class DeadLetterPublishingRecovererFactoryTests {
 				.willReturn(destinationTopic);
 		given(destinationTopic.isNoOpsTopic()).willReturn(false);
 		given(destinationTopic.getDestinationName()).willReturn(testTopic);
+		given(this.destinationTopicResolver.getDestinationTopicByName(testTopic)).willReturn(destinationTopic);
+		willReturn(kafkaOperations).given(destinationTopic).getKafkaOperations();
 		this.consumerRecord.headers().add(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP, originalTimestampBytes);
 
 		DeadLetterPublishingRecovererFactory factory = new DeadLetterPublishingRecovererFactory(
@@ -326,7 +328,7 @@ class DeadLetterPublishingRecovererFactoryTests {
 		deadLetterPublishingRecoverer.accept(this.consumerRecord, e);
 
 		// then
-		then(kafkaOperations).should(times(0)).send(any(ProducerRecord.class));
+		then(kafkaOperations).should(times(1)).send(any(ProducerRecord.class));
 	}
 
 }
