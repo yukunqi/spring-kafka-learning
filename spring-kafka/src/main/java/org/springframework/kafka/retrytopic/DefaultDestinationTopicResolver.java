@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import java.util.stream.IntStream;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.kafka.listener.ExceptionClassifier;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.listener.TimestampedException;
 
@@ -45,7 +46,8 @@ import org.springframework.kafka.listener.TimestampedException;
  * @since 2.7
  *
  */
-public class DefaultDestinationTopicResolver implements DestinationTopicResolver, ApplicationListener<ContextRefreshedEvent> {
+public class DefaultDestinationTopicResolver extends ExceptionClassifier
+		implements DestinationTopicResolver, ApplicationListener<ContextRefreshedEvent> {
 
 	private static final String NO_OPS_SUFFIX = "-noOps";
 
@@ -75,11 +77,16 @@ public class DefaultDestinationTopicResolver implements DestinationTopicResolver
 													long originalTimestamp) {
 		DestinationTopicHolder destinationTopicHolder = getDestinationHolderFor(topic);
 		return destinationTopicHolder.getSourceDestination().isDltTopic()
-				? handleDltProcessingFailure(destinationTopicHolder)
+				? handleDltProcessingFailure(destinationTopicHolder, e)
 				: destinationTopicHolder.getSourceDestination().shouldRetryOn(attempt, maybeUnwrapException(e))
+						&& isNotFatalException(e)
 						&& !isPastTimout(originalTimestamp, destinationTopicHolder)
 					? resolveRetryDestination(destinationTopicHolder)
 					: resolveDltOrNoOpsDestination(topic);
+	}
+
+	private Boolean isNotFatalException(Exception e) {
+		return getClassifier().classify(e);
 	}
 
 	private Throwable maybeUnwrapException(Throwable e) {
@@ -97,10 +104,11 @@ public class DefaultDestinationTopicResolver implements DestinationTopicResolver
 				Instant.now(this.clock).toEpochMilli() > originalTimestamp + timeout;
 	}
 
-	private DestinationTopic handleDltProcessingFailure(DestinationTopicHolder destinationTopicHolder) {
+	private DestinationTopic handleDltProcessingFailure(DestinationTopicHolder destinationTopicHolder, Exception e) {
 		return destinationTopicHolder.getSourceDestination().isAlwaysRetryOnDltFailure()
-				? destinationTopicHolder.getSourceDestination()
-				: destinationTopicHolder.getNextDestination();
+				&& isNotFatalException(e)
+					? destinationTopicHolder.getSourceDestination()
+					: destinationTopicHolder.getNextDestination();
 	}
 
 	private DestinationTopic resolveRetryDestination(DestinationTopicHolder destinationTopicHolder) {
