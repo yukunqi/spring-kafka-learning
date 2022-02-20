@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,7 +42,7 @@ public final class KafkaUtils {
 	 * True if micrometer is on the class path.
 	 */
 	public static final boolean MICROMETER_PRESENT = ClassUtils.isPresent(
-			"io.micrometer.core.instrument.MeterRegistry", KafkaUtils.class.getClassLoader());
+			"io.micrometer.api.instrument.MeterRegistry", KafkaUtils.class.getClassLoader());
 
 	private static final ThreadLocal<String> GROUP_IDS = new ThreadLocal<>();
 

@@ -143,6 +143,7 @@ class ListenerContainerFactoryConfigurerTests {
 	private final ListenerContainerFactoryConfigurer.Configuration lcfcConfiguration =
 			new ListenerContainerFactoryConfigurer.Configuration(Collections.singletonList(backOffValue));
 
+	@SuppressWarnings("deprecation")
 	@Test
 	void shouldSetupErrorHandling() {
 
@@ -176,6 +177,7 @@ class ListenerContainerFactoryConfigurerTests {
 
 	}
 
+	@SuppressWarnings("deprecation")
 	@Test
 	void shouldSetPartitionEventIntervalAndPollTimout() {
 
@@ -205,6 +207,7 @@ class ListenerContainerFactoryConfigurerTests {
 				.setPollTimeout(backOffValue / 4);
 	}
 
+	@SuppressWarnings("deprecation")
 	@Test
 	void shouldNotOverridePollTimeoutIfNotDefault() {
 
@@ -235,6 +238,7 @@ class ListenerContainerFactoryConfigurerTests {
 				.setPollTimeout(previousPollTimoutValue);
 	}
 
+	@SuppressWarnings("deprecation")
 	@Test
 	void shouldApplyMinimumPollTimeoutLimit() {
 
