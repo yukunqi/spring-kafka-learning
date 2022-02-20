@@ -382,7 +382,8 @@ public class RetryTopicConfigurer {
 				? this.listenerContainerFactoryConfigurer
 				.configureWithoutBackOffValues(resolvedFactory, configuration.forContainerFactoryConfigurer())
 				: this.listenerContainerFactoryConfigurer
-					.decorateFactoryWithoutBackOffValues(resolvedFactory, configuration.forContainerFactoryConfigurer());
+					.decorateFactoryWithoutSettingContainerProperties(resolvedFactory,
+							configuration.forContainerFactoryConfigurer());
 	}
 
 	private KafkaListenerContainerFactory<?> resolveAndConfigureFactoryForRetryEndpoint(

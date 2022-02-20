@@ -226,7 +226,7 @@ class RetryTopicConfigurerTests {
 				defaultFactoryBeanName, factoryResolverConfig);
 		willReturn(containerFactory).given(this.listenerContainerFactoryConfigurer).decorateFactory(containerFactory,
 				lcfcConfiguration);
-		willReturn(containerFactory).given(this.listenerContainerFactoryConfigurer).decorateFactoryWithoutBackOffValues(containerFactory,
+		willReturn(containerFactory).given(this.listenerContainerFactoryConfigurer).decorateFactoryWithoutSettingContainerProperties(containerFactory,
 				lcfcConfiguration);
 
 		RetryTopicConfigurer configurer = new RetryTopicConfigurer(destinationTopicProcessor, containerFactoryResolver,
