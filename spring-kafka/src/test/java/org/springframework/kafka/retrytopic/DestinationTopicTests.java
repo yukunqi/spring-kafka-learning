@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,15 +62,15 @@ public class DestinationTopicTests {
 
 	protected DestinationTopic.Properties mainTopicProps =
 			new DestinationTopic.Properties(0, "", DestinationTopic.Type.RETRY, 4, 1,
-					DltStrategy.FAIL_ON_ERROR, kafkaOperations1, getShouldRetryOn(), noTimeout);
+					DltStrategy.FAIL_ON_ERROR, kafkaOperations1, getShouldRetryOnDenyList(), noTimeout);
 
 	protected DestinationTopic.Properties firstRetryProps =
 			new DestinationTopic.Properties(1000, retrySuffix + "-1000", DestinationTopic.Type.RETRY, 4, 1,
-					DltStrategy.FAIL_ON_ERROR, kafkaOperations1, getShouldRetryOn(), noTimeout);
+					DltStrategy.FAIL_ON_ERROR, kafkaOperations1, getShouldRetryOnDenyList(), noTimeout);
 
 	protected DestinationTopic.Properties secondRetryProps =
 			new DestinationTopic.Properties(2000, retrySuffix + "-2000", DestinationTopic.Type.RETRY, 4, 1,
-					DltStrategy.FAIL_ON_ERROR, kafkaOperations1, getShouldRetryOn(), noTimeout);
+					DltStrategy.FAIL_ON_ERROR, kafkaOperations1, getShouldRetryOnDenyList(), noTimeout);
 
 	protected DestinationTopic.Properties dltTopicProps =
 			new DestinationTopic.Properties(0, dltSuffix, DestinationTopic.Type.DLT, 4, 1,
@@ -218,11 +218,18 @@ public class DestinationTopicTests {
 
 	// Classifiers
 
-	private final BinaryExceptionClassifier classifier = new BinaryExceptionClassifierBuilder()
+	private final BinaryExceptionClassifier allowListClassifier = new BinaryExceptionClassifierBuilder()
 			.retryOn(IllegalArgumentException.class).build();
 
+	private final BinaryExceptionClassifier denyListClassifier = new BinaryExceptionClassifierBuilder()
+			.notRetryOn(IllegalArgumentException.class).build();
+
 	private BiPredicate<Integer, Throwable> getShouldRetryOn() {
-		return (a, e) -> a < maxAttempts && classifier.classify(e);
+		return (a, e) -> a < maxAttempts && allowListClassifier.classify(e);
+	}
+
+	private BiPredicate<Integer, Throwable> getShouldRetryOnDenyList() {
+		return (a, e) -> a < maxAttempts && denyListClassifier.classify(e);
 	}
 
 	class PropsHolder {

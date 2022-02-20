@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,11 +20,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
-import java.math.BigInteger;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Collections;
-import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,6 +34,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.listener.TimestampedException;
+import org.springframework.kafka.support.converter.ConversionException;
 
 /**
  * @author Tomaz Fernandes
@@ -44,8 +43,6 @@ import org.springframework.kafka.listener.TimestampedException;
  */
 @ExtendWith(MockitoExtension.class)
 class DefaultDestinationTopicResolverTests extends DestinationTopicTests {
-
-	private Map<String, DefaultDestinationTopicResolver.DestinationTopicHolder> destinationTopicMap;
 
 	@Mock
 	private ApplicationContext applicationContext;
@@ -61,8 +58,6 @@ class DefaultDestinationTopicResolverTests extends DestinationTopicTests {
 
 	private final long failureTimestamp = Instant.now(this.clock).plusMillis(500).toEpochMilli();
 
-	private final byte[] originalTimestampBytes = BigInteger.valueOf(originalTimestamp).toByteArray();
-
 	@BeforeEach
 	public void setup() {
 
@@ -77,16 +72,16 @@ class DefaultDestinationTopicResolverTests extends DestinationTopicTests {
 	void shouldResolveRetryDestination() {
 		assertThat(defaultDestinationTopicContainer
 				.resolveDestinationTopic(mainDestinationTopic.getDestinationName(), 1,
-						new IllegalArgumentException(), this.originalTimestamp)).isEqualTo(firstRetryDestinationTopic);
+						new RuntimeException(), this.originalTimestamp)).isEqualTo(firstRetryDestinationTopic);
 		assertThat(defaultDestinationTopicContainer
 				.resolveDestinationTopic(firstRetryDestinationTopic.getDestinationName(), 1,
-						new IllegalArgumentException(), this.originalTimestamp)).isEqualTo(secondRetryDestinationTopic);
+						new RuntimeException(), this.originalTimestamp)).isEqualTo(secondRetryDestinationTopic);
 		assertThat(defaultDestinationTopicContainer
 				.resolveDestinationTopic(secondRetryDestinationTopic.getDestinationName(), 1,
-						new IllegalArgumentException(), this.originalTimestamp)).isEqualTo(dltDestinationTopic);
+						new RuntimeException(), this.originalTimestamp)).isEqualTo(dltDestinationTopic);
 		assertThat(defaultDestinationTopicContainer
 				.resolveDestinationTopic(dltDestinationTopic.getDestinationName(), 1,
-						new IllegalArgumentException(), this.originalTimestamp)).isEqualTo(noOpsDestinationTopic);
+						new RuntimeException(), this.originalTimestamp)).isEqualTo(noOpsDestinationTopic);
 
 		assertThat(defaultDestinationTopicContainer
 				.resolveDestinationTopic(mainDestinationTopic2.getDestinationName(), 1,
@@ -106,7 +101,23 @@ class DefaultDestinationTopicResolverTests extends DestinationTopicTests {
 	void shouldResolveDltDestinationForNonRetryableException() {
 		assertThat(defaultDestinationTopicContainer
 				.resolveDestinationTopic(mainDestinationTopic.getDestinationName(),
-						1, new RuntimeException(), originalTimestamp)).isEqualTo(dltDestinationTopic);
+						1, new IllegalArgumentException(), originalTimestamp)).isEqualTo(dltDestinationTopic);
+	}
+
+	@Test
+	void shouldResolveDltDestinationForFatalDefaultException() {
+		assertThat(defaultDestinationTopicContainer
+				.resolveDestinationTopic(mainDestinationTopic.getDestinationName(),
+						1, new ConversionException("Test exception", new RuntimeException()), originalTimestamp))
+				.isEqualTo(dltDestinationTopic);
+	}
+
+	@Test
+	void shouldResolveNoOpsForFatalDefaultExceptionInDlt() {
+		assertThat(defaultDestinationTopicContainer
+				.resolveDestinationTopic(dltDestinationTopic.getDestinationName(),
+						1, new ConversionException("Test exception", new RuntimeException()), originalTimestamp))
+				.isEqualTo(noOpsDestinationTopic);
 	}
 
 	@Test
@@ -114,14 +125,14 @@ class DefaultDestinationTopicResolverTests extends DestinationTopicTests {
 		assertThat(defaultDestinationTopicContainer
 				.resolveDestinationTopic(mainDestinationTopic.getDestinationName(),
 						1, new ListenerExecutionFailedException("Test exception!",
-								new IllegalArgumentException()), originalTimestamp)).isEqualTo(firstRetryDestinationTopic);
+								new RuntimeException()), originalTimestamp)).isEqualTo(firstRetryDestinationTopic);
 	}
 
 	@Test
 	void shouldResolveRetryDestinationForWrappedTimestampedException() {
 		assertThat(defaultDestinationTopicContainer
 				.resolveDestinationTopic(mainDestinationTopic.getDestinationName(),
-						1, new TimestampedException(new IllegalArgumentException()), originalTimestamp))
+						1, new TimestampedException(new RuntimeException()), originalTimestamp))
 				.isEqualTo(firstRetryDestinationTopic);
 	}
 

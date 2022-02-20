@@ -306,6 +306,28 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyOtherPojo> t
 
 NOTE: The default behavior is retrying on all exceptions and not traversing causes.
 
+Since 2.8.3 there's a global list of fatal exceptions which will cause the record to be sent to the DLT without any retries.
+See <<default-eh, DefaultErrorHandler>> for the default list of fatal exceptions.
+You can add or remove exceptions with:
+
+====
+[source, java]
+----
+@Bean(name = RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME)
+public DefaultDestinationTopicResolver topicResolver(ApplicationContext applicationContext,
+                                               @Qualifier(RetryTopicInternalBeanNames
+                                                       .INTERNAL_BACKOFF_CLOCK_BEAN_NAME) Clock clock) {
+    DefaultDestinationTopicResolver ddtr = new DefaultDestinationTopicResolver(clock, applicationContext);
+    ddtr.addNotRetryableExceptions(MyFatalException.class);
+    ddtr.removeNotRetryableException(ConversionException.class);
+    return ddtr;
+}
+----
+====
+
+NOTE: To disable fatal exceptions' classification, clear the default list using the `setClassifications` method in `DefaultDestinationTopicResolver`.
+
+
 ===== Include and Exclude Topics
 
 You can decide which topics will and will not be handled by a `RetryTopicConfiguration` bean via the .includeTopic(String topic), .includeTopics(Collection<String> topics) .excludeTopic(String topic) and .excludeTopics(Collection<String> topics) methods.
