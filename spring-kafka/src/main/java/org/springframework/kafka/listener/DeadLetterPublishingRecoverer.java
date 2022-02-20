@@ -103,6 +103,8 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 
 	private boolean stripPreviousExceptionHeaders = true;
 
+	private boolean skipSameTopicFatalExceptions = true;
+
 	/**
 	 * Create an instance with the provided template and a default destination resolving
 	 * function that returns a TopicPartition based on the original topic (appended with ".DLT")
@@ -327,6 +329,16 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 		this.stripPreviousExceptionHeaders = stripPreviousExceptionHeaders;
 	}
 
+	/**
+	 * Set to false if you want to forward the record to the same topic even though
+	 * the exception is fatal by this class' classification, e.g. to handle this scenario
+	 * in a different layer.
+	 * @param skipSameTopicFatalExceptions false to forward in this scenario.
+	 */
+	public void setSkipSameTopicFatalExceptions(boolean skipSameTopicFatalExceptions) {
+		this.skipSameTopicFatalExceptions = skipSameTopicFatalExceptions;
+	}
+
 	@SuppressWarnings("unchecked")
 	@Override
 	public void accept(ConsumerRecord<?, ?> record, @Nullable Consumer<?, ?> consumer, Exception exception) {
@@ -337,7 +349,9 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 					+ " skipped because destination resolver returned null");
 			return;
 		}
-		if (tp.topic().equals(record.topic()) && !getClassifier().classify(exception)) {
+		if (this.skipSameTopicFatalExceptions
+				&& tp.topic().equals(record.topic())
+				&& !getClassifier().classify(exception)) {
 			this.logger.error("Recovery of " + ListenerUtils.recordToString(record, true)
 					+ " skipped because not retryable exception " + exception.toString()
 					+ " and the destination resolver routed back to the same topic");
