@@ -79,9 +79,14 @@ The property `stripPreviousExceptionHeaders` is now `true` by default.
 
 See <<dlpr-headers>> for more information.
 
-[[x28-kafka-back-off-exception-log-level]]
-==== KafkaBackOffException Log Level Changes
+[[x28-retryable-topics-changes]]
+==== Retryable Topics Changes
+
+Now you can use the same factory for retryable and non-retryable topics.
+See <<retry-topic-lcf>> for more information.
+
+There's now a manageable global list of fatal exceptions that will make the failed record go straight to the DLT.
+Refer to <<retry-topic-ex-classifier>> to see how to manage it.
 
 The KafkaBackOffException thrown when using the retryable topics feature is now logged at DEBUG level.
-
 See <<change-kboe-logging-level>> if you need to change the logging level back to WARN or set it to any other level.
