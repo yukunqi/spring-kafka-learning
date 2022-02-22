@@ -156,9 +156,9 @@ import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.validation.Errors;
 import org.springframework.validation.Validator;
 
-import io.micrometer.api.instrument.ImmutableTag;
-import io.micrometer.api.instrument.MeterRegistry;
-import io.micrometer.api.instrument.simple.SimpleMeterRegistry;
+import io.micrometer.core.instrument.ImmutableTag;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 /**
  * @author Gary Russell
