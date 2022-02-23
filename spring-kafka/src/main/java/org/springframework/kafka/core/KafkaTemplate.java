@@ -612,7 +612,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	 */
 	protected ListenableFuture<SendResult<K, V>> doSend(final ProducerRecord<K, V> producerRecord) {
 		final Producer<K, V> producer = getTheProducer(producerRecord.topic());
-		this.logger.trace(() -> "Sending: " + producerRecord);
+		this.logger.trace(() -> "Sending: " + KafkaUtils.format(producerRecord));
 		final SettableListenableFuture<SendResult<K, V>> future = new SettableListenableFuture<>();
 		Object sample = null;
 		if (this.micrometerEnabled && this.micrometerHolder == null) {
@@ -639,7 +639,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		if (this.autoFlush) {
 			flush();
 		}
-		this.logger.trace(() -> "Sent: " + producerRecord);
+		this.logger.trace(() -> "Sent: " + KafkaUtils.format(producerRecord));
 		return future;
 	}
 
@@ -656,7 +656,8 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 					if (KafkaTemplate.this.producerListener != null) {
 						KafkaTemplate.this.producerListener.onSuccess(producerRecord, metadata);
 					}
-					KafkaTemplate.this.logger.trace(() -> "Sent ok: " + producerRecord + ", metadata: " + metadata);
+					KafkaTemplate.this.logger.trace(() -> "Sent ok: " + KafkaUtils.format(producerRecord)
+							+ ", metadata: " + metadata);
 				}
 				else {
 					if (sample != null) {
@@ -666,7 +667,8 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 					if (KafkaTemplate.this.producerListener != null) {
 						KafkaTemplate.this.producerListener.onError(producerRecord, metadata, exception);
 					}
-					KafkaTemplate.this.logger.debug(exception, () -> "Failed to send: " + producerRecord);
+					KafkaTemplate.this.logger.debug(exception, () -> "Failed to send: "
+							+ KafkaUtils.format(producerRecord));
 				}
 			}
 			finally {
