@@ -189,7 +189,7 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> templa
 ----
 ====
 
-You can also provide a custom implementation of Spring Retry's `SleepingBackOffPolicy`:
+You can also provide a custom implementation of Spring Retry's `SleepingBackOffPolicy` interface:
 
 ====
 [source, java]
@@ -205,9 +205,12 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> templa
 ----
 ====
 
-NOTE: The default backoff policy is FixedBackOffPolicy with a maximum of 3 attempts and 1000ms intervals.
+NOTE: The default backoff policy is `FixedBackOffPolicy` with a maximum of 3 attempts and 1000ms intervals.
 
-IMPORTANT: The first attempt counts against the maxAttempts, so if you provide a maxAttempts value of 4 there'll be the original attempt plus 3 retries.
+NOTE: There is a 30-second default maximum delay for the `ExponentialBackOffPolicy`.
+If your back off policy requires delays with values bigger than that, adjust the maxDelay property accordingly.
+
+IMPORTANT: The first attempt counts against `maxAttempts`, so if you provide a `maxAttempts` value of 4 there'll be the original attempt plus 3 retries.
 
 ===== Single Topic Fixed Delay Retries
 
