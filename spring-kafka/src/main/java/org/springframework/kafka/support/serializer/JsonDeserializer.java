@@ -531,8 +531,11 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 
 	private void addMappingsToTrusted(Map<String, Class<?>> mappings) {
 		mappings.values().forEach(clazz -> {
-			doAddTrustedPackages(clazz.getPackage().getName());
-			doAddTrustedPackages(clazz.getPackage().getName() + ".*");
+			String packageName = clazz.isArray()
+					? clazz.getComponentType().getPackage().getName()
+					: clazz.getPackage().getName();
+			doAddTrustedPackages(packageName);
+			doAddTrustedPackages(packageName + ".*");
 		});
 	}
 
