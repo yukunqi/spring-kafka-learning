@@ -5,7 +5,7 @@
 :numbered:
 :icons: font
 :hide-uri-scheme:
-Gary Russell; Artem Bilan; Biju Kunjummen; Jay Bryant; Soby Chacko
+Gary Russell; Artem Bilan; Biju Kunjummen; Jay Bryant; Soby Chacko; Tomaz Fernandes
 
 ifdef::backend-html5[]
 *{project-version}*
