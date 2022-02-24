@@ -430,6 +430,80 @@ DeadLetterPublishingRecovererFactory factory(DestinationTopicResolver resolver) 
 ----
 ====
 
+[[retry-topic-combine-blocking]]
+==== Combining blocking and non-blocking retries
+
+Starting in 2.8.4 you can configure the framework to use both blocking and non-blocking retries in conjunction.
+For example, you can have a set of exceptions that would likely trigger errors on the next records as well, such as `DatabaseAccessException`, so you can retry the same record a few times before sending it to the retry topic, or straight to the DLT.
+
+To configure blocking retries you just need to add the exceptions you want to retry through the `addRetryableExceptions` method in the `ListenerContainerFactoryConfigurer` bean as follows.
+The default policy is `FixedBackOff`, with nine retries and no delay between them.
+Optionally, you can provide your own back off policy.
+
+====
+[source, java]
+----
+@Bean(name = RetryTopicInternalBeanNames.LISTENER_CONTAINER_FACTORY_CONFIGURER_NAME)
+public ListenerContainerFactoryConfigurer lcfc(KafkaConsumerBackoffManager kafkaConsumerBackoffManager,
+                                               DeadLetterPublishingRecovererFactory deadLetterPublishingRecovererFactory,
+                                               @Qualifier(RetryTopicInternalBeanNames
+                                                       .INTERNAL_BACKOFF_CLOCK_BEAN_NAME) Clock clock) {
+    ListenerContainerFactoryConfigurer lcfc = new ListenerContainerFactoryConfigurer(kafkaConsumerBackoffManager, deadLetterPublishingRecovererFactory, clock);
+    lcfc.setBlockingRetryableExceptions(MyBlockingRetryException.class, MyOtherBlockingRetryException.class);
+    lcfc.setBlockingRetriesBackOff(new FixedBackOff(500, 5)); // Optional
+    return lcfc;
+}
+----
+====
+
+If you need to further tune the exception classification, you can set your own `Map` of classifications through the `ListenerContainerFactoryConfigurer.setErrorHandlerCustomizer()` method, such as:
+
+====
+[source, java]
+----
+lcfc.setErrorHandlerCustomizer(ceh -> ((DefaultErrorHandler) ceh).setClassifications(myClassificationsMap, myDefaultValue));
+----
+====
+
+NOTE: In combination with the global retryable topic's fatal exceptions classification, you can configure the framework for any behavior you'd like, such as having some exceptions trigger both blocking and non-blocking retries, trigger only one kind or the other, or go straight to the DLT without retries of any kind.
+
+Here's an example with both configurations working together:
+
+====
+[source, java]
+----
+@Bean(name = RetryTopicInternalBeanNames.LISTENER_CONTAINER_FACTORY_CONFIGURER_NAME)
+public ListenerContainerFactoryConfigurer lcfc(KafkaConsumerBackoffManager kafkaConsumerBackoffManager,
+                                            DeadLetterPublishingRecovererFactory deadLetterPublishingRecovererFactory,
+                                            @Qualifier(RetryTopicInternalBeanNames
+                                                    .INTERNAL_BACKOFF_CLOCK_BEAN_NAME) Clock clock) {
+    ListenerContainerFactoryConfigurer lcfc = new ListenerContainerFactoryConfigurer(kafkaConsumerBackoffManager, deadLetterPublishingRecovererFactory, clock);
+    lcfc.setBlockingRetryableExceptions(ShouldRetryOnlyBlockingException.class, ShouldRetryViaBothException.class);
+    return lcfc;
+}
+
+@Bean(name = RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME)
+public DefaultDestinationTopicResolver ddtr(ApplicationContext applicationContext,
+                                            @Qualifier(RetryTopicInternalBeanNames
+                                                    .INTERNAL_BACKOFF_CLOCK_BEAN_NAME) Clock clock) {
+    DefaultDestinationTopicResolver ddtr = new DefaultDestinationTopicResolver(clock, applicationContext);
+    ddtr.addNotRetryableExceptions(ShouldRetryOnlyBlockingException.class, ShouldSkipBothRetriesException.class);
+    return ddtr;
+}
+
+----
+====
+
+In this example:
+
+* `ShouldRetryOnlyBlockingException.class` would retry only via blocking and, if all retries fail, would go straight to the DLT.
+* `ShouldRetryViaBothException.class` would retry via blocking, and if all blocking retries fail would be forwarded to the  next retry topic for another set of attempts.
+* `ShouldSkipBothRetriesException.class` would never be retried in any way and would go straight to the DLT if the first processing attempt failed.
+
+IMPORTANT: Note that the blocking retries behavior is allowlist - you add the exceptions you do want to retry that way; while the non-blocking retries classification is geared towards FATAL exceptions and as such is denylist - you add the exceptions you don't want to do non-blocking retries, but to send directly to the DLT instead.
+
+IMPORTANT: The non-blocking exception classification behavior also depends on the specific topic's configuration.
+
 ==== Topic Naming
 
 Retry topics and DLT are named by suffixing the main topic with a provided or default value, appended by either the delay or index for that topic.
@@ -746,6 +820,7 @@ public RetryTopicConfigurer retryTopicConfigurer(DestinationTopicProcessor desti
     return retryTopicConfigurer;
 }
 ----
+====
 
 [[change-kboe-logging-level]]
 ==== Changing KafkaBackOffException Logging Level

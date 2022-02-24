@@ -17,6 +17,7 @@
 package org.springframework.kafka.retrytopic;
 
 import java.time.Clock;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -42,7 +43,7 @@ import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
 import org.springframework.kafka.listener.adapter.KafkaBackoffAwareMessageListenerAdapter;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.util.Assert;
-import org.springframework.util.backoff.FixedBackOff;
+import org.springframework.util.backoff.BackOff;
 
 /**
  *
@@ -80,6 +81,10 @@ public class ListenerContainerFactoryConfigurer {
 	private static final int POLL_TIMEOUT_DIVISOR = 4;
 
 	private static final long LOWEST_BACKOFF_THRESHOLD = 1500L;
+
+	private BackOff providedBlockingBackOff = null;
+
+	private Class<? extends Exception>[] blockingExceptionTypes = null;
 
 	private Consumer<ConcurrentMessageListenerContainer<?, ?>> containerCustomizer = container -> {
 	};
@@ -158,6 +163,42 @@ public class ListenerContainerFactoryConfigurer {
 		return new RetryTopicListenerContainerFactoryDecorator(factory, configuration, false);
 	}
 
+	/**
+	 * Set a {@link BackOff} to be used with blocking retries.
+	 * If the BackOff execution returns STOP, the record will be forwarded
+	 * to the next retry topic or to the DLT, depending on how the non-blocking retries
+	 * are configured.
+	 * @param blockingBackOff the BackOff policy to be used by blocking retries.
+	 * @since 2.8.4
+	 * @see DefaultErrorHandler
+	 */
+	public void setBlockingRetriesBackOff(BackOff blockingBackOff) {
+		Assert.notNull(blockingBackOff, "The provided BackOff cannot be null");
+		Assert.state(this.providedBlockingBackOff == null, () ->
+				"Blocking retries back off has already been set. Current: "
+						+ this.providedBlockingBackOff
+						+ " You provided: " + blockingBackOff);
+		this.providedBlockingBackOff = blockingBackOff;
+	}
+
+	/**
+	 * Specify the exceptions to be retried via blocking.
+	 * @param exceptionTypes the exceptions that should be retried.
+	 * @since 2.8.4
+	 * @see DefaultErrorHandler
+	 */
+	@SafeVarargs
+	@SuppressWarnings("varargs")
+	public final void setBlockingRetryableExceptions(Class<? extends Exception>... exceptionTypes) {
+		Assert.notNull(exceptionTypes, "The exception types cannot be null");
+		Assert.noNullElements(exceptionTypes, "The exception types cannot have null elements");
+		Assert.state(this.blockingExceptionTypes == null,
+				() -> "Blocking retryable exceptions have already been set."
+						+  "Current ones: " + Arrays.toString(this.blockingExceptionTypes)
+						+ " You provided: " + Arrays.toString(exceptionTypes));
+		this.blockingExceptionTypes = exceptionTypes;
+	}
+
 	private ConcurrentKafkaListenerContainerFactory<?, ?> doConfigure(
 			ConcurrentKafkaListenerContainerFactory<?, ?> containerFactory, Configuration configuration,
 			boolean isSetContainerProperties) {
@@ -193,12 +234,21 @@ public class ListenerContainerFactoryConfigurer {
 
 	protected CommonErrorHandler createErrorHandler(DeadLetterPublishingRecoverer deadLetterPublishingRecoverer,
 												Configuration configuration) {
-		DefaultErrorHandler errorHandler = new DefaultErrorHandler(deadLetterPublishingRecoverer,
-				new FixedBackOff(0, 0));
+		DefaultErrorHandler errorHandler = createDefaultErrorHandlerInstance(deadLetterPublishingRecoverer);
+		errorHandler.defaultFalse();
 		errorHandler.setCommitRecovered(true);
 		errorHandler.setLogLevel(KafkaException.Level.DEBUG);
+		if (this.blockingExceptionTypes != null) {
+			errorHandler.addRetryableExceptions(this.blockingExceptionTypes);
+		}
 		this.errorHandlerCustomizer.accept(errorHandler);
 		return errorHandler;
+	}
+
+	protected DefaultErrorHandler createDefaultErrorHandlerInstance(DeadLetterPublishingRecoverer deadLetterPublishingRecoverer) {
+		return this.providedBlockingBackOff != null
+				? new DefaultErrorHandler(deadLetterPublishingRecoverer, this.providedBlockingBackOff)
+				: new DefaultErrorHandler(deadLetterPublishingRecoverer);
 	}
 
 	protected void setupBackoffAwareMessageListenerAdapter(ConcurrentMessageListenerContainer<?, ?> container,
