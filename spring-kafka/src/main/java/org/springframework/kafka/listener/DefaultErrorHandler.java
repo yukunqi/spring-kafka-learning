@@ -131,7 +131,7 @@ public class DefaultErrorHandler extends FailedBatchProcessor implements CommonE
 			Consumer<?, ?> consumer, MessageListenerContainer container) {
 
 		SeekUtils.seekOrRecover(thrownException, records, consumer, container, isCommitRecovered(), // NOSONAR
-				getRecoveryStrategy(records, thrownException), this.logger, getLogLevel());
+				getRecoveryStrategy(records, consumer, thrownException), this.logger, getLogLevel());
 	}
 
 	@Override

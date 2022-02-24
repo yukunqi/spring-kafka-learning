@@ -22,6 +22,7 @@ import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 
 import org.apache.commons.logging.LogFactory;
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.core.log.LogAccessor;
@@ -156,12 +157,26 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 	 * @since 2.7
 	 */
 	protected RecoveryStrategy getRecoveryStrategy(List<ConsumerRecord<?, ?>> records, Exception thrownException) {
+		return getRecoveryStrategy(records, null, thrownException);
+	}
+
+	/**
+	 * Return a {@link RecoveryStrategy} to call to determine whether the first record in the
+	 * list should be skipped.
+	 * @param records the records.
+	 * @param recoveryConsumer the consumer.
+	 * @param thrownException the exception.
+	 * @return the {@link RecoveryStrategy}.
+	 * @since 2.8.4
+	 */
+	protected RecoveryStrategy getRecoveryStrategy(List<ConsumerRecord<?, ?>> records,
+												@Nullable Consumer<?, ?> recoveryConsumer, Exception thrownException) {
 		if (getClassifier().classify(thrownException)) {
 			return this.failureTracker::recovered;
 		}
 		else {
 			try {
-				this.failureTracker.getRecoverer().accept(records.get(0), thrownException);
+				this.failureTracker.getRecoverer().accept(records.get(0), recoveryConsumer, thrownException);
 				this.failureTracker.getRetryListeners().forEach(rl -> rl.recovered(records.get(0), thrownException));
 			}
 			catch (Exception ex) {
