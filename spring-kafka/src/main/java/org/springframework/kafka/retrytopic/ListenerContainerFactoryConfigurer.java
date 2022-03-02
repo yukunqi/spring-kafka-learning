@@ -196,7 +196,7 @@ public class ListenerContainerFactoryConfigurer {
 				() -> "Blocking retryable exceptions have already been set."
 						+  "Current ones: " + Arrays.toString(this.blockingExceptionTypes)
 						+ " You provided: " + Arrays.toString(exceptionTypes));
-		this.blockingExceptionTypes = exceptionTypes;
+		this.blockingExceptionTypes = Arrays.copyOf(exceptionTypes, exceptionTypes.length);
 	}
 
 	private ConcurrentKafkaListenerContainerFactory<?, ?> doConfigure(
