@@ -165,7 +165,7 @@ public abstract class ExceptionClassifier extends KafkaExceptionLogLevelAware {
 	 */
 	@Deprecated
 	public boolean removeNotRetryableException(Class<? extends Exception> exceptionType) {
-		return this.removeClassification(exceptionType);
+		return Boolean.TRUE.equals(removeClassification(exceptionType)) ? true : false;
 	}
 
 	/**
