@@ -217,6 +217,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 * @return {@link StreamsUncaughtExceptionHandler}
 	 * @since 2.8.4
 	 */
+	@Nullable
 	public StreamsUncaughtExceptionHandler getStreamsUncaughtExceptionHandler() {
 		return this.streamsUncaughtExceptionHandler;
 	}
@@ -241,6 +242,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 * @return {@link Topology} object
 	 * @since 2.4.4
 	 */
+	@Nullable
 	public Topology getTopology() {
 		return this.topology;
 	}
@@ -274,6 +276,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 * may be null if this {@link StreamsBuilderFactoryBean} hasn't been started.
 	 * @since 1.1.4
 	 */
+	@Nullable
 	public synchronized KafkaStreams getKafkaStreams() {
 		return this.kafkaStreams;
 	}
