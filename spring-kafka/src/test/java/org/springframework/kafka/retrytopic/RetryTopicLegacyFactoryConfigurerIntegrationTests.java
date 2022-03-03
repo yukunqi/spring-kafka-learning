@@ -180,6 +180,7 @@ public class RetryTopicLegacyFactoryConfigurerIntegrationTests {
 			return new KafkaTemplate<>(producerFactory());
 		}
 
+		@SuppressWarnings("deprecation")
 		@Bean(name = RetryTopicInternalBeanNames.RETRY_TOPIC_CONFIGURER)
 		public RetryTopicConfigurer retryTopicConfigurer(DestinationTopicProcessor destinationTopicProcessor,
 														ListenerContainerFactoryResolver containerFactoryResolver,
