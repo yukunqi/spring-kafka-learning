@@ -185,7 +185,7 @@ public final class KafkaUtils {
 	}
 
 	/**
-	 * Set a formatter for logging {@link ConsumererRecord}s.
+	 * Set a formatter for logging {@link ConsumerRecord}s.
 	 * @param formatter a function to format the record as a String
 	 * @since 2.7.11
 	 */
