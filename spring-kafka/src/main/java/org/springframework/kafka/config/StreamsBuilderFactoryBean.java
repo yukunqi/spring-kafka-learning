@@ -319,18 +319,17 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 		}
 	}
 
-	@SuppressWarnings("deprecation")
 	@Override
 	public synchronized void start() {
 		if (!this.running) {
 			try {
 				Assert.state(this.properties != null,
 						"streams configuration properties must not be null");
-				Topology topology = getObject().build(this.properties); // NOSONAR: getObject() cannot return null
-				this.infrastructureCustomizer.configureTopology(topology);
-				this.topology = topology;
-				LOGGER.debug(() -> topology.describe().toString());
-				this.kafkaStreams = new KafkaStreams(topology, this.properties, this.clientSupplier);
+				Topology topol = getObject().build(this.properties); // NOSONAR: getObject() cannot return null
+				this.infrastructureCustomizer.configureTopology(topol);
+				this.topology = topol;
+				LOGGER.debug(() -> topol.describe().toString());
+				this.kafkaStreams = new KafkaStreams(topol, this.properties, this.clientSupplier);
 				this.kafkaStreams.setStateListener(this.stateListener);
 				this.kafkaStreams.setGlobalStateRestoreListener(this.stateRestoreListener);
 				if (this.streamsUncaughtExceptionHandler != null) {
