@@ -1939,10 +1939,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void commitAsync(Map<TopicPartition, OffsetAndMetadata> commits) {
 			this.consumer.commitAsync(commits, (offsetsAttempted, exception) -> {
 				this.commitCallback.onComplete(offsetsAttempted, exception);
-				if (exception == null) {
-					if (this.fixTxOffsets) {
-						this.lastCommits.putAll(commits);
-					}
+				if (exception == null && this.fixTxOffsets) {
+					this.lastCommits.putAll(commits);
 				}
 			});
 		}

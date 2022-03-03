@@ -147,8 +147,10 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 				method = TestUtils.class.getDeclaredMethod("boundPort", KafkaBroker.class, SecurityProtocol.class);
 			}
 			catch (NoSuchMethodException | SecurityException e1) {
-				throw new IllegalStateException("Failed to determine TestUtils.boundPort() method; client version: "
+				IllegalStateException isx = new IllegalStateException("Failed to determine TestUtils.boundPort() method; client version: "
 						+ AppInfoParser.getVersion(), e);
+				isx.addSuppressed(e1);
+				throw isx;
 			}
 		}
 		BOUND_PORT_METHOD = method;
