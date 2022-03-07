@@ -134,7 +134,9 @@ public abstract class ExceptionClassifier extends KafkaExceptionLogLevelAware {
 		add(true, exceptionTypes);
 	}
 
-	private void add(boolean classified, Class<? extends Exception>... exceptionTypes) {
+	@SafeVarargs
+	@SuppressWarnings("varargs")
+	private final void add(boolean classified, Class<? extends Exception>... exceptionTypes) {
 		Assert.notNull(exceptionTypes, "'exceptionTypes' cannot be null");
 		Assert.noNullElements(exceptionTypes, "'exceptionTypes' cannot contain nulls");
 		for (Class<? extends Exception> exceptionType : exceptionTypes) {

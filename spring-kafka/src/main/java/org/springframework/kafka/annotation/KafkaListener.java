@@ -310,9 +310,11 @@ public @interface KafkaListener {
 
 	/**
 	 * Static information that will be added as a header with key
-	 * {@link org.springframework.kafka.support.KafkaHeaders#LISTENER_INFO}. This can be used, for example, in a
-	 * {@link org.springframework.kafka.listener.RecordInterceptor}, {@link RecordFiorg.springframework.kafka.listener.adapter.RecordFilterStrategylterStrategy} or the listener itself, for
-	 * any purposes.
+	 * {@link org.springframework.kafka.support.KafkaHeaders#LISTENER_INFO}. This can be
+	 * used, for example, in a
+	 * {@link org.springframework.kafka.listener.RecordInterceptor},
+	 * {@link org.springframework.kafka.listener.adapter.RecordFilterStrategy} or the
+	 * listener itself, for any purposes.
 	 * <p>
 	 * SpEL {@code #{...}} and property place holders {@code ${...}} are supported, but it
 	 * must resolve to a String or `byte[]`.
