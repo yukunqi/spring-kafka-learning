@@ -118,6 +118,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	private BatchToRecordAdapter<K, V> batchToRecordAdapter;
 
+	private byte[] listenerInfo;
+
 	@Override
 	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
 		this.beanFactory = beanFactory;
@@ -466,6 +468,21 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		this.splitIterables = splitIterables;
 	}
 
+	@Override
+	@Nullable
+	public byte[] getListenerInfo() {
+		return this.listenerInfo; // NOSONAR
+	}
+
+	/**
+	 * Set the listener info to insert in the record header.
+	 * @param listenerInfo the info.
+	 * @since 2.8.4
+	 */
+	public void setListenerInfo(@Nullable byte[] listenerInfo) {  // NOSONAR
+		this.listenerInfo = listenerInfo; // NOSONAR
+	}
+
 	@Nullable
 	protected BatchToRecordAdapter<K, V> getBatchToRecordAdapter() {
 		return this.batchToRecordAdapter;
@@ -479,6 +496,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	public void setBatchToRecordAdapter(BatchToRecordAdapter<K, V> batchToRecordAdapter) {
 		this.batchToRecordAdapter = batchToRecordAdapter;
 	}
+
 
 	@Override
 	public void afterPropertiesSet() {
