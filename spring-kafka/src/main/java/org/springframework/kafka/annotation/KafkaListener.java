@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 the original author or authors.
+ * Copyright 2016-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -296,5 +296,32 @@ public @interface KafkaListener {
 	 * @see Boolean#parseBoolean(String)
 	 */
 	String batch() default "";
+
+	/**
+	 * Set an {@link org.springframework.kafka.listener.adapter.RecordFilterStrategy} bean
+	 * name to override the strategy configured on the container factory. If a SpEL
+	 * expression is provided ({@code #{...}}), the expression can either evaluate to a
+	 * {@link org.springframework.kafka.listener.adapter.RecordFilterStrategy} instance or
+	 * a bean name.
+	 * @return the error handler.
+	 * @since 2.8.4
+	 */
+	String filter() default "";
+
+	/**
+	 * Static information that will be added as a header with key
+	 * {@link org.springframework.kafka.support.KafkaHeaders#LISTENER_INFO}. This can be used, for example, in a
+	 * {@link org.springframework.kafka.listener.RecordInterceptor}, {@link RecordFiorg.springframework.kafka.listener.adapter.RecordFilterStrategylterStrategy} or the listener itself, for
+	 * any purposes.
+	 * <p>
+	 * SpEL {@code #{...}} and property place holders {@code ${...}} are supported, but it
+	 * must resolve to a String or `byte[]`.
+	 * <p>
+	 * This header will be stripped out if an outbound record is created with the headers
+	 * from an input record.
+	 * @return the info.
+	 * @since 2.8.4
+	 */
+	String info() default "";
 
 }

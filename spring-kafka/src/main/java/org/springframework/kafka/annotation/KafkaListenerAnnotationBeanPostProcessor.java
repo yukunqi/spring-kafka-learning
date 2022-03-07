@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2021 the original author or authors.
+ * Copyright 2014-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -85,6 +85,7 @@ import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
 import org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint;
 import org.springframework.kafka.listener.ContainerGroupSequencer;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
+import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
 import org.springframework.kafka.retrytopic.RetryTopicBootstrapper;
 import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
 import org.springframework.kafka.retrytopic.RetryTopicConfigurer;
@@ -142,6 +143,12 @@ import org.springframework.validation.Validator;
  */
 public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		implements BeanPostProcessor, Ordered, ApplicationContextAware, InitializingBean, SmartInitializingSingleton {
+
+	private static final String THE_LEFT = "The [";
+
+	private static final String RESOLVED_TO_LEFT = "Resolved to [";
+
+	private static final String RIGHT_FOR_LEFT = "] for [";
 
 	private static final String GENERATED_ID_PREFIX = "org.springframework.kafka.KafkaListenerEndpointContainer#";
 
@@ -251,8 +258,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	}
 
 	/**
-	 * Set a charset to use when converting byte[] to String in method arguments.
-	 * Default UTF-8.
+	 * Set a charset to use when converting byte[] to String in method arguments and other
+	 * String/byte[] conversions. Default UTF-8.
 	 * @param charset the charset.
 	 * @since 2.2
 	 */
@@ -489,7 +496,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 
 		RetryTopicConfigurer.EndpointProcessor endpointProcessor = endpointToProcess ->
-				this.processKafkaListenerAnnotationForRetryTopic(endpointToProcess, kafkaListener, bean, topics, tps);
+				this.processKafkaListenerAnnotation(endpointToProcess, kafkaListener, bean, topics, tps);
 
 		KafkaListenerContainerFactory<?> factory =
 				resolveContainerFactory(kafkaListener, resolve(kafkaListener.containerFactory()), beanName);
@@ -560,24 +567,16 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	protected void processListener(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener,
 								Object bean, String beanName, String[] topics, TopicPartitionOffset[] tps) {
 
-		processKafkaListenerAnnotationBeforeRegistration(endpoint, kafkaListener, bean, topics, tps);
+		processKafkaListenerAnnotation(endpoint, kafkaListener, bean, topics, tps);
 
 		String containerFactory = resolve(kafkaListener.containerFactory());
-		KafkaListenerContainerFactory<?> listenerContainerFactory = resolveContainerFactory(kafkaListener, containerFactory, beanName);
+		KafkaListenerContainerFactory<?> listenerContainerFactory = resolveContainerFactory(kafkaListener,
+				containerFactory, beanName);
 
 		this.registrar.registerEndpoint(endpoint, listenerContainerFactory);
-
-		processKafkaListenerEndpointAfterRegistration(endpoint, kafkaListener);
 	}
 
-	private void processKafkaListenerAnnotationForRetryTopic(MethodKafkaListenerEndpoint<?, ?> endpoint,
-			KafkaListener kafkaListener, Object bean, String[] topics, TopicPartitionOffset[] tps) {
-
-		processKafkaListenerAnnotationBeforeRegistration(endpoint, kafkaListener, bean, topics, tps);
-		processKafkaListenerEndpointAfterRegistration(endpoint, kafkaListener);
-	}
-
-	private void processKafkaListenerAnnotationBeforeRegistration(MethodKafkaListenerEndpoint<?, ?> endpoint,
+	private void processKafkaListenerAnnotation(MethodKafkaListenerEndpoint<?, ?> endpoint,
 			KafkaListener kafkaListener, Object bean, String[] topics, TopicPartitionOffset[] tps) {
 
 		endpoint.setBean(bean);
@@ -588,6 +587,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		endpoint.setTopics(topics);
 		endpoint.setTopicPattern(resolvePattern(kafkaListener));
 		endpoint.setClientIdPrefix(resolveExpressionAsString(kafkaListener.clientIdPrefix(), "clientIdPrefix"));
+		endpoint.setListenerInfo(resolveExpressionAsBytes(kafkaListener.info(), "info"));
 		String group = kafkaListener.containerGroup();
 		if (StringUtils.hasText(group)) {
 			Object resolvedGroup = resolveExpression(group);
@@ -608,20 +608,10 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		if (StringUtils.hasText(kafkaListener.batch())) {
 			endpoint.setBatchListener(Boolean.parseBoolean(kafkaListener.batch()));
 		}
-	}
-
-	private void processKafkaListenerEndpointAfterRegistration(MethodKafkaListenerEndpoint<?, ?> endpoint,
-			KafkaListener kafkaListener) {
-
 		endpoint.setBeanFactory(this.beanFactory);
-		String errorHandlerBeanName = resolveExpressionAsString(kafkaListener.errorHandler(), "errorHandler");
-		if (StringUtils.hasText(errorHandlerBeanName)) {
-			resolveErrorHandler(endpoint, kafkaListener);
-		}
-		String converterBeanName = resolveExpressionAsString(kafkaListener.contentTypeConverter(), "contentTypeConverter");
-		if (StringUtils.hasText(converterBeanName)) {
-			resolveContentTypeConverter(endpoint, kafkaListener);
-		}
+		resolveErrorHandler(endpoint, kafkaListener);
+		resolveContentTypeConverter(endpoint, kafkaListener);
+		resolveFilter(endpoint, kafkaListener);
 	}
 
 	private void resolveErrorHandler(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener) {
@@ -653,9 +643,24 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 	}
 
+	private void resolveFilter(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener) {
+		Object filter = resolveExpression(kafkaListener.filter());
+		if (filter instanceof RecordFilterStrategy) {
+			endpoint.setRecordFilterStrategy((RecordFilterStrategy) filter);
+		}
+		else {
+			String filterBeanName = resolveExpressionAsString(kafkaListener.filter(), "filter");
+			if (StringUtils.hasText(filterBeanName)) {
+				endpoint.setRecordFilterStrategy(
+						this.beanFactory.getBean(filterBeanName, RecordFilterStrategy.class));
+			}
+		}
+	}
+
 	@Nullable
 	private KafkaListenerContainerFactory<?> resolveContainerFactory(KafkaListener kafkaListener,
 			Object factoryTarget, String beanName) {
+
 		String containerFactory = kafkaListener.containerFactory();
 		if (!StringUtils.hasText(containerFactory)) {
 			return null;
@@ -934,8 +939,26 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			return (String) resolved;
 		}
 		else if (resolved != null) {
-			throw new IllegalStateException("The [" + attribute + "] must resolve to a String. "
-					+ "Resolved to [" + resolved.getClass() + "] for [" + value + "]");
+			throw new IllegalStateException(THE_LEFT + attribute + "] must resolve to a String. "
+					+ RESOLVED_TO_LEFT + resolved.getClass() + RIGHT_FOR_LEFT + value + "]");
+		}
+		return null;
+	}
+
+	@Nullable
+	private byte[] resolveExpressionAsBytes(String value, String attribute) {
+		Object resolved = resolveExpression(value);
+		if (resolved instanceof String) {
+			if (StringUtils.hasText((CharSequence) resolved)) {
+				return ((String) resolved).getBytes(this.charset);
+			}
+		}
+		else if (resolved instanceof byte[]) {
+			return (byte[]) resolved;
+		}
+		else if (resolved != null) {
+			throw new IllegalStateException(THE_LEFT + attribute + "] must resolve to a String or byte[]. "
+					+ RESOLVED_TO_LEFT + resolved.getClass() + RIGHT_FOR_LEFT + value + "]");
 		}
 		return null;
 	}
@@ -951,8 +974,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 		else if (resolved != null) {
 			throw new IllegalStateException(
-					"The [" + attribute + "] must resolve to an Number or a String that can be parsed as an Integer. "
-							+ "Resolved to [" + resolved.getClass() + "] for [" + value + "]");
+					THE_LEFT + attribute + "] must resolve to an Number or a String that can be parsed as an Integer. "
+							+ RESOLVED_TO_LEFT + resolved.getClass() + RIGHT_FOR_LEFT + value + "]");
 		}
 		return result;
 	}
@@ -968,8 +991,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 		else if (resolved != null) {
 			throw new IllegalStateException(
-					"The [" + attribute + "] must resolve to a Boolean or a String that can be parsed as a Boolean. "
-							+ "Resolved to [" + resolved.getClass() + "] for [" + value + "]");
+					THE_LEFT + attribute + "] must resolve to a Boolean or a String that can be parsed as a Boolean. "
+							+ RESOLVED_TO_LEFT + resolved.getClass() + RIGHT_FOR_LEFT + value + "]");
 		}
 		return result;
 	}
