@@ -317,7 +317,7 @@ public @interface KafkaListener {
 	 * listener itself, for any purposes.
 	 * <p>
 	 * SpEL {@code #{...}} and property place holders {@code ${...}} are supported, but it
-	 * must resolve to a String or `byte[]`.
+	 * must resolve to a String or {@code byte[]}.
 	 * <p>
 	 * This header will be stripped out if an outbound record is created with the headers
 	 * from an input record.
