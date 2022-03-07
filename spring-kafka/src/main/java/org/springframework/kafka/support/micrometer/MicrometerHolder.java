@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 the original author or authors.
+ * Copyright 2020-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -91,7 +91,6 @@ public final class MicrometerHolder {
 	 * @param sample the sample.
 	 * @see #start()
 	 */
-	@SuppressWarnings("deprecation")
 	public void success(Object sample) {
 		Timer timer = this.meters.get(NONE_EXCEPTION_METERS_KEY);
 		if (timer != null) {
@@ -105,7 +104,6 @@ public final class MicrometerHolder {
 	 * @param exception the exception name.
 	 * @see #start()
 	 */
-	@SuppressWarnings("deprecation")
 	public void failure(Object sample, String exception) {
 		Timer timer = this.meters.get(exception);
 		if (timer == null) {
