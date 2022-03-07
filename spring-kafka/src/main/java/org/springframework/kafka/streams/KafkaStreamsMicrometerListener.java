@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 the original author or authors.
+ * Copyright 2020-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,10 +26,10 @@ import org.apache.kafka.streams.KafkaStreams;
 
 import org.springframework.kafka.config.StreamsBuilderFactoryBean;
 
+import io.micrometer.binder.kafka.KafkaStreamsMetrics;
 import io.micrometer.core.instrument.ImmutableTag;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
-import io.micrometer.core.instrument.binder.kafka.KafkaStreamsMetrics;
 
 /**
  * Creates a {@link KafkaStreamsMetrics} for the {@link KafkaStreams}.
