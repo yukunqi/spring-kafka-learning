@@ -1229,6 +1229,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			return true;
 		}
 
+		@SuppressWarnings("deprecation")
 		@Override // NOSONAR complexity
 		public void run() {
 			ListenerUtils.setLogOnlyMetadata(this.containerProperties.isOnlyLogRecordMetadata());
@@ -1811,6 +1812,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
+		@SuppressWarnings("deprecation")
 		private void traceAck(ConsumerRecord<K, V> record) {
 			this.logger.trace(() -> "Ack: " + ListenerUtils.recordToString(record, true));
 		}
@@ -1885,6 +1887,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
+		@SuppressWarnings("deprecation")
 		private synchronized void ackInOrder(ConsumerRecord<K, V> record) {
 			TopicPartition part = new TopicPartition(record.topic(), record.partition());
 			List<Long> offs = this.offsetsInThisBatch.get(part);
@@ -2303,7 +2306,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		 * Invoke the listener with each record in a separate transaction.
 		 * @param records the records.
 		 */
-		@SuppressWarnings(RAW_TYPES) // NOSONAR complexity
+		@SuppressWarnings("deprecation") // NOSONAR complexity
 		private void invokeRecordListenerInTx(final ConsumerRecords<K, V> records) {
 			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
 			while (iterator.hasNext()) {
@@ -2405,6 +2408,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
+		@SuppressWarnings("deprecation")
 		private void doInvokeWithRecords(final ConsumerRecords<K, V> records) {
 			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
 			while (iterator.hasNext()) {
@@ -2440,6 +2444,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			return next;
 		}
 
+		@SuppressWarnings("deprecation")
 		@Nullable
 		private ConsumerRecord<K, V> checkEarlyIntercept(ConsumerRecord<K, V> recordArg) {
 			internalHeaders(recordArg);
@@ -2600,14 +2605,15 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
+		@SuppressWarnings("deprecation")
 		private void doInvokeOnMessage(final ConsumerRecord<K, V> recordArg) {
 			ConsumerRecord<K, V> record = recordArg;
 			if (this.recordInterceptor != null) {
 				record = this.recordInterceptor.intercept(record, this.consumer);
 			}
 			if (record == null) {
-				this.logger.debug(() -> "RecordInterceptor returned null, skipping: "
-						+ ListenerUtils.recordToString(recordArg));
+				this.logger.debug(() -> ("RecordInterceptor returned null, skipping: "
+						+ ListenerUtils.recordToString(recordArg)));
 			}
 			else {
 				try {
@@ -3165,6 +3171,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 
 			@Override
+			@SuppressWarnings("deprecation")
 			public String toString() {
 				return "Acknowledgment for " + ListenerUtils.recordToString(this.record, true);
 			}
