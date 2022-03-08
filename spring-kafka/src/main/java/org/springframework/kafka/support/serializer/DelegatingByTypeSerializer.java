@@ -89,6 +89,9 @@ public class DelegatingByTypeSerializer implements Serializer<Object> {
 	@SuppressWarnings({ RAWTYPES, "unchecked" })
 	@Override
 	public byte[] serialize(String topic, Object data) {
+		if (data == null) {
+			return null;
+		}
 		Serializer delegate = findDelegate(data, this.delegates);
 		return delegate.serialize(topic, data);
 	}
@@ -96,6 +99,9 @@ public class DelegatingByTypeSerializer implements Serializer<Object> {
 	@SuppressWarnings({ "unchecked", RAWTYPES })
 	@Override
 	public byte[] serialize(String topic, Headers headers, Object data) {
+		if (data == null) {
+			return null;
+		}
 		Serializer delegate = findDelegate(data, this.delegates);
 		return delegate.serialize(topic, headers, data);
 	}
