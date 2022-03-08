@@ -22,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -68,6 +69,9 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 
 	private static final String DEPRECATION = "deprecation";
 
+	private static final BiFunction<ConsumerRecord<?, ?>, Exception, Headers> DEFAULT_HEADERS_FUNCTION =
+			(rec, ex) -> null;
+
 	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass())); // NOSONAR
 
 	private static final BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition>
@@ -85,9 +89,11 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 
 	private final Function<ProducerRecord<?, ?>, KafkaOperations<?, ?>> templateResolver;
 
+	private final EnumSet<HeaderNames.HeadersToAdd> whichHeaders = EnumSet.allOf(HeaderNames.HeadersToAdd.class);
+
 	private boolean retainExceptionHeader;
 
-	private BiFunction<ConsumerRecord<?, ?>, Exception, Headers> headersFunction = (rec, ex) -> null;
+	private BiFunction<ConsumerRecord<?, ?>, Exception, Headers> headersFunction = DEFAULT_HEADERS_FUNCTION;
 
 	private boolean verifyPartition = true;
 
@@ -106,6 +112,8 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	private boolean stripPreviousExceptionHeaders = true;
 
 	private boolean skipSameTopicFatalExceptions = true;
+
+	private ExceptionHeadersCreator exceptionHeadersCreator = this::addExceptionInfoHeaders;
 
 	/**
 	 * Create an instance with the provided template and a default destination resolving
@@ -221,9 +229,14 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	 * published record.
 	 * @param headersFunction the headers function.
 	 * @since 2.5.4
+	 * @see #addHeadersFunction(BiFunction)
 	 */
 	public void setHeadersFunction(BiFunction<ConsumerRecord<?, ?>, Exception, Headers> headersFunction) {
 		Assert.notNull(headersFunction, "'headersFunction' cannot be null");
+		if (!this.headersFunction.equals(DEFAULT_HEADERS_FUNCTION)) {
+			this.logger.warn(() -> "Replacing custom headers function: " + this.headersFunction
+					+ ", consider using addHeadersFunction() if you need multiple functions");
+		}
 		this.headersFunction = headersFunction;
 	}
 
@@ -341,6 +354,79 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 		this.skipSameTopicFatalExceptions = skipSameTopicFatalExceptions;
 	}
 
+	/**
+	 * Set a {@link ExceptionHeadersCreator} implementation to completely take over
+	 * setting the exception headers in the output record. Disables all headers that are
+	 * set by default.
+	 * @param headersCreator the creator.
+	 * @since 2.8.4
+	 */
+	public void setExceptionHeadersCreator(ExceptionHeadersCreator headersCreator) {
+		Assert.notNull(headersCreator, "'headersCreator' cannot be null");
+		this.exceptionHeadersCreator = headersCreator;
+	}
+
+	/**
+	 * Clear the header inclusion bit for the header name.
+	 * @param headers the headers to clear.
+	 * @since 2.8.4
+	 */
+	public void excludeHeader(HeaderNames.HeadersToAdd... headers) {
+		Assert.notNull(headers, "'headers' cannot be null");
+		Assert.noNullElements(headers, "'headers' cannot include null elements");
+		for (HeaderNames.HeadersToAdd header : headers) {
+			this.whichHeaders.remove(header);
+		}
+	}
+
+	/**
+	 * Set the header inclusion bit for the header name.
+	 * @param headers the headers to set.
+	 * @since 2.8.4
+	 */
+	public void includeHeader(HeaderNames.HeadersToAdd... headers) {
+		Assert.notNull(headers, "'headers' cannot be null");
+		Assert.noNullElements(headers, "'headers' cannot include null elements");
+		for (HeaderNames.HeadersToAdd header : headers) {
+			this.whichHeaders.add(header);
+		}
+	}
+
+	/**
+	 * Add a function which will be called to obtain additional headers to add to the
+	 * published record. Functions are called in the order that they are added, and after
+	 * any function passed into {@link #setHeadersFunction(BiFunction)}.
+	 * @param headersFunction the headers function.
+	 * @since 2.8.4
+	 * @see #setHeadersFunction(BiFunction)
+	 */
+	public void addHeadersFunction(BiFunction<ConsumerRecord<?, ?>, Exception, Headers> headersFunction) {
+		Assert.notNull(headersFunction, "'headersFunction' cannot be null");
+		if (this.headersFunction.equals(DEFAULT_HEADERS_FUNCTION)) {
+			this.headersFunction = headersFunction;
+		}
+		else {
+			BiFunction<ConsumerRecord<?, ?>, Exception, Headers> toCompose = this.headersFunction;
+			this.headersFunction = (rec, ex) -> {
+				Headers headers1 = toCompose.apply(rec, ex);
+				if (headers1 == null) {
+					headers1 = new RecordHeaders();
+				}
+				Headers headers2 = headersFunction.apply(rec, ex);
+				try {
+					if (headers2 != null) {
+						headers2.forEach(headers1::add);
+					}
+				}
+				catch (IllegalStateException isex) {
+					headers1 = new RecordHeaders(headers1);
+					headers2.forEach(headers1::add); // NOSONAR, never null here
+				}
+				return headers1;
+			};
+		}
+	}
+
 	@SuppressWarnings({ "unchecked", DEPRECATION })
 	@Override
 	public void accept(ConsumerRecord<?, ?> record, @Nullable Consumer<?, ?> consumer, Exception exception) {
@@ -382,16 +468,16 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 			if (!this.retainExceptionHeader) {
 				headers.remove(SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER);
 			}
-			addExceptionInfoHeaders(headers, kDeserEx, true);
+			this.exceptionHeadersCreator.create(headers, kDeserEx, true, this.headerNames);
 		}
 		if (vDeserEx != null) {
 			if (!this.retainExceptionHeader) {
 				headers.remove(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER);
 			}
-			addExceptionInfoHeaders(headers, vDeserEx, false);
+			this.exceptionHeadersCreator.create(headers, vDeserEx, false, this.headerNames);
 		}
 		if (kDeserEx == null && vDeserEx == null) {
-			addExceptionInfoHeaders(headers, exception, false);
+			this.exceptionHeadersCreator.create(headers, exception, false, this.headerNames);
 		}
 		enhanceHeaders(headers, record, exception); // NOSONAR headers are never null
 	}
@@ -591,56 +677,64 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 
 	private void maybeAddOriginalHeaders(Headers kafkaHeaders, ConsumerRecord<?, ?> record, Exception ex) {
 		maybeAddHeader(kafkaHeaders, this.headerNames.original.topicHeader,
-				record.topic().getBytes(StandardCharsets.UTF_8));
+				record.topic().getBytes(StandardCharsets.UTF_8), HeaderNames.HeadersToAdd.TOPIC);
 		maybeAddHeader(kafkaHeaders, this.headerNames.original.partitionHeader,
-				ByteBuffer.allocate(Integer.BYTES).putInt(record.partition()).array());
+				ByteBuffer.allocate(Integer.BYTES).putInt(record.partition()).array(),
+				HeaderNames.HeadersToAdd.PARTITION);
 		maybeAddHeader(kafkaHeaders, this.headerNames.original.offsetHeader,
-				ByteBuffer.allocate(Long.BYTES).putLong(record.offset()).array());
+				ByteBuffer.allocate(Long.BYTES).putLong(record.offset()).array(), HeaderNames.HeadersToAdd.OFFSET);
 		maybeAddHeader(kafkaHeaders, this.headerNames.original.timestampHeader,
-				ByteBuffer.allocate(Long.BYTES).putLong(record.timestamp()).array());
+				ByteBuffer.allocate(Long.BYTES).putLong(record.timestamp()).array(), HeaderNames.HeadersToAdd.TS);
 		maybeAddHeader(kafkaHeaders, this.headerNames.original.timestampTypeHeader,
-				record.timestampType().toString().getBytes(StandardCharsets.UTF_8));
+				record.timestampType().toString().getBytes(StandardCharsets.UTF_8), HeaderNames.HeadersToAdd.TS_TYPE);
 		if (ex instanceof ListenerExecutionFailedException) {
 			String consumerGroup = ((ListenerExecutionFailedException) ex).getGroupId();
 			if (consumerGroup != null) {
 				maybeAddHeader(kafkaHeaders, this.headerNames.original.consumerGroup,
-						consumerGroup.getBytes(StandardCharsets.UTF_8));
+						consumerGroup.getBytes(StandardCharsets.UTF_8), HeaderNames.HeadersToAdd.GROUP);
 			}
 		}
 	}
 
-	private void maybeAddHeader(Headers kafkaHeaders, String header, byte[] value) {
-		if (this.appendOriginalHeaders || kafkaHeaders.lastHeader(header) == null) {
+	private void maybeAddHeader(Headers kafkaHeaders, String header, byte[] value, HeaderNames.HeadersToAdd hta) {
+		if (this.whichHeaders.contains(hta)
+				&& (this.appendOriginalHeaders || kafkaHeaders.lastHeader(header) == null)) {
 			kafkaHeaders.add(header, value);
 		}
 	}
 
-	void addExceptionInfoHeaders(Headers kafkaHeaders, Exception exception, boolean isKey) {
-		appendOrReplace(kafkaHeaders, new RecordHeader(isKey ? this.headerNames.exceptionInfo.keyExceptionFqcn
-				: this.headerNames.exceptionInfo.exceptionFqcn,
-				exception.getClass().getName().getBytes(StandardCharsets.UTF_8)));
-		if (!isKey && exception.getCause() != null) {
-			appendOrReplace(kafkaHeaders, new RecordHeader(this.headerNames.exceptionInfo.exceptionCauseFqcn,
-					exception.getCause().getClass().getName().getBytes(StandardCharsets.UTF_8)));
+	private void addExceptionInfoHeaders(Headers kafkaHeaders, Exception exception, boolean isKey,
+			HeaderNames names) {
+
+		appendOrReplace(kafkaHeaders, new RecordHeader(isKey ? names.exceptionInfo.keyExceptionFqcn
+				: names.exceptionInfo.exceptionFqcn,
+				exception.getClass().getName().getBytes(StandardCharsets.UTF_8)), HeaderNames.HeadersToAdd.EXCEPTION);
+		if (exception.getCause() != null) {
+			appendOrReplace(kafkaHeaders, new RecordHeader(names.exceptionInfo.exceptionCauseFqcn,
+					exception.getCause().getClass().getName().getBytes(StandardCharsets.UTF_8)),
+					HeaderNames.HeadersToAdd.EX_CAUSE);
 		}
 		String message = exception.getMessage();
 		if (message != null) {
 			appendOrReplace(kafkaHeaders, new RecordHeader(isKey
-					? this.headerNames.exceptionInfo.keyExceptionMessage
-					: this.headerNames.exceptionInfo.exceptionMessage,
-					exception.getMessage().getBytes(StandardCharsets.UTF_8)));
+					? names.exceptionInfo.keyExceptionMessage
+					: names.exceptionInfo.exceptionMessage,
+					exception.getMessage().getBytes(StandardCharsets.UTF_8)), HeaderNames.HeadersToAdd.EX_MSG);
 		}
 		appendOrReplace(kafkaHeaders, new RecordHeader(isKey
-				? this.headerNames.exceptionInfo.keyExceptionStacktrace
-				: this.headerNames.exceptionInfo.exceptionStacktrace,
-				getStackTraceAsString(exception).getBytes(StandardCharsets.UTF_8)));
+				? names.exceptionInfo.keyExceptionStacktrace
+				: names.exceptionInfo.exceptionStacktrace,
+				getStackTraceAsString(exception).getBytes(StandardCharsets.UTF_8)),
+				HeaderNames.HeadersToAdd.EX_STACKTRACE);
 	}
 
-	private void appendOrReplace(Headers headers, RecordHeader header) {
-		if (this.stripPreviousExceptionHeaders) {
-			headers.remove(header.key());
+	private void appendOrReplace(Headers headers, RecordHeader header, HeaderNames.HeadersToAdd hta) {
+		if (this.whichHeaders.contains(hta)) {
+			if (this.stripPreviousExceptionHeaders) {
+				headers.remove(header.key());
+			}
+			headers.add(header);
 		}
-		headers.add(header);
 	}
 
 	private String getStackTraceAsString(Throwable cause) {
@@ -683,7 +777,66 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	 */
 	public static class HeaderNames {
 
+		/**
+		 * Bits representing which headers to add.
+		 * @since 2.8.4
+		 */
+		public enum HeadersToAdd {
+
+			/**
+			 * The offset of the failed record.
+			 */
+			OFFSET,
+
+			/**
+			 * The timestamp of the failed record.
+			 */
+			TS,
+
+			/**
+			 * The timestamp type of the failed record.
+			 */
+			TS_TYPE,
+
+			/**
+			 * The original topic of the failed record.
+			 */
+			TOPIC,
+
+			/**
+			 * The partition from which the failed record was received.
+			 */
+			PARTITION,
+
+			/**
+			 * The consumer group that received the failed record.
+			 */
+			GROUP,
+
+			/**
+			 * The exception class name.
+			 */
+			EXCEPTION,
+
+			/**
+			 * The exception cause class name.
+			 */
+			EX_CAUSE,
+
+			/**
+			 * The exception message.
+			 */
+			EX_MSG,
+
+			/**
+			 * The exception stack trace.
+			 */
+			EX_STACKTRACE;
+
+		}
+
 		private final HeaderNames.Original original;
+
 		private final ExceptionInfo exceptionInfo;
 
 		HeaderNames(HeaderNames.Original original, ExceptionInfo exceptionInfo) {
@@ -691,7 +844,30 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 			this.exceptionInfo = exceptionInfo;
 		}
 
-		static class Original {
+		/**
+		 * The header names for the original record headers.
+		 * @return the original.
+		 * @since 2.8.4
+		 */
+		public HeaderNames.Original getOriginal() {
+			return this.original;
+		}
+
+		/**
+		 * The header names for the exception headers.
+		 * @return the exceptionInfo
+		 * @since 2.8.4
+		 */
+		public ExceptionInfo getExceptionInfo() {
+			return this.exceptionInfo;
+		}
+
+		/**
+		 * Header names for original record property headers.
+		 *
+		 * @since 2.8.4
+		 */
+		public static class Original {
 
 			final String offsetHeader; // NOSONAR
 
@@ -718,9 +894,63 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 				this.partitionHeader = partitionHeader;
 				this.consumerGroup = consumerGroup;
 			}
+
+			/**
+			 * The header name for the offset.
+			 * @return the offsetHeader.
+			 */
+			public String getOffsetHeader() {
+				return this.offsetHeader;
+			}
+
+			/**
+			 * The header name for the timestamp.
+			 * @return the timestampHeader.
+			 */
+			public String getTimestampHeader() {
+				return this.timestampHeader;
+			}
+
+			/**
+			 * The header name for the timestamp type.
+			 * @return the timestampTypeHeader.
+			 */
+			public String getTimestampTypeHeader() {
+				return this.timestampTypeHeader;
+			}
+
+			/**
+			 * The header name for the topic.
+			 * @return the topicHeader.
+			 */
+			public String getTopicHeader() {
+				return this.topicHeader;
+			}
+
+			/**
+			 * The header name for the partition.
+			 * @return the partitionHeader
+			 */
+			public String getPartitionHeader() {
+				return this.partitionHeader;
+			}
+
+			/**
+			 * The header name for the consumer group.
+			 * @return the consumerGroup
+			 */
+			public String getConsumerGroup() {
+				return this.consumerGroup;
+			}
+
 		}
 
-		static class ExceptionInfo {
+		/**
+		 * Header names for exception headers.
+		 *
+		 * @since 2.8.4
+		 */
+		public static class ExceptionInfo {
 
 			final String keyExceptionFqcn; // NOSONAR
 
@@ -751,6 +981,63 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 				this.keyExceptionStacktrace = keyExceptionStacktrace;
 				this.exceptionStacktrace = exceptionStacktrace;
 			}
+
+			/**
+			 * The header name for the key exception class.
+			 * @return the keyExceptionFqcn.
+			 */
+			public String getKeyExceptionFqcn() {
+				return this.keyExceptionFqcn;
+			}
+
+			/**
+			 * The header name for the value exception class.
+			 * @return the exceptionFqcn.
+			 */
+			public String getExceptionFqcn() {
+				return this.exceptionFqcn;
+			}
+
+			/**
+			 * The header name for the exception cause.
+			 * @return the exceptionCauseFqcn.
+			 */
+			public String getExceptionCauseFqcn() {
+				return this.exceptionCauseFqcn;
+			}
+
+			/**
+			 * The header name for the key exception message.
+			 * @return the keyExceptionMessage.
+			 */
+			public String getKeyExceptionMessage() {
+				return this.keyExceptionMessage;
+			}
+
+			/**
+			 * The header name for the exception message.
+			 * @return the exceptionMessage.
+			 */
+			public String getExceptionMessage() {
+				return this.exceptionMessage;
+			}
+
+			/**
+			 * The header name for the key exception stack trace.
+			 * @return the keyExceptionStacktrace
+			 */
+			public String getKeyExceptionStacktrace() {
+				return this.keyExceptionStacktrace;
+			}
+
+			/**
+			 * The header name for the exception stack trace.
+			 * @return the exceptionStacktrace
+			 */
+			public String getExceptionStacktrace() {
+				return this.exceptionStacktrace;
+			}
+
 		}
 
 		/**
@@ -1022,5 +1309,26 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 				}
 			}
 		}
+
 	}
+
+	/**
+	 * Use this to provide a custom implementation to take complete control over exception
+	 * header creation for the output record.
+	 *
+	 * @since 2.8.4
+	 */
+	public interface ExceptionHeadersCreator {
+
+		/**
+		 * Create exception headers.
+		 * @param kafkaHeaders the {@link Headers} to add the header(s) to.
+		 * @param exception The exception.
+		 * @param isKey whether the exception is for a key or value.
+		 * @param headerNames the heaader names to use.
+		 */
+		void create(Headers kafkaHeaders, Exception exception, boolean isKey, HeaderNames headerNames);
+
+	}
+
 }
