@@ -327,9 +327,10 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	/**
 	 * Set an interceptor to be called before calling the listener.
-	 * Does not apply to batch listeners.
+	 * Only used with record listeners.
 	 * @param recordInterceptor the interceptor.
 	 * @since 2.2.7
+	 * @see #setBatchInterceptor(BatchInterceptor)
 	 */
 	public void setRecordInterceptor(RecordInterceptor<K, V> recordInterceptor) {
 		this.recordInterceptor = recordInterceptor;
@@ -337,9 +338,10 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	/**
 	 * Set a batch interceptor to be called before and after calling the listener.
-	 * Does not apply to batch listeners.
+	 * Only used with batch listeners.
 	 * @param batchInterceptor the interceptor.
 	 * @since 2.7
+	 * @see #setRecordInterceptor(RecordInterceptor)
 	 */
 	public void setBatchInterceptor(BatchInterceptor<K, V> batchInterceptor) {
 		this.batchInterceptor = batchInterceptor;
