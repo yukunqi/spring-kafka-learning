@@ -66,6 +66,8 @@ import org.springframework.util.concurrent.ListenableFuture;
  */
 public class DeadLetterPublishingRecoverer extends ExceptionClassifier implements ConsumerAwareRecordRecoverer {
 
+	private static final String DEPRECATION = "deprecation";
+
 	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass())); // NOSONAR
 
 	private static final BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition>
@@ -339,7 +341,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 		this.skipSameTopicFatalExceptions = skipSameTopicFatalExceptions;
 	}
 
-	@SuppressWarnings({ "unchecked", "deprecation" })
+	@SuppressWarnings({ "unchecked", DEPRECATION })
 	@Override
 	public void accept(ConsumerRecord<?, ?> record, @Nullable Consumer<?, ?> consumer, Exception exception) {
 		TopicPartition tp = this.destinationResolver.apply(record, exception);
@@ -406,7 +408,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	}
 
 	private void maybeThrow(ConsumerRecord<?, ?> record, Exception exception) {
-		@SuppressWarnings("deprecation")
+		@SuppressWarnings(DEPRECATION)
 		String message = String.format("No destination returned for record %s and exception %s. " +
 				"failIfNoDestinationReturned: %s", ListenerUtils.recordToString(record), exception,
 				this.throwIfNoDestinationReturned);
@@ -519,7 +521,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	 * @param inRecord the consumer record.
 	 * @since 2.2.5
 	 */
-	@SuppressWarnings("deprecation")
+	@SuppressWarnings(DEPRECATION)
 	protected void publish(ProducerRecord<Object, Object> outRecord, KafkaOperations<Object, Object> kafkaTemplate,
 			ConsumerRecord<?, ?> inRecord) {
 
@@ -561,7 +563,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 		}
 	}
 
-	@SuppressWarnings("deprecation")
+	@SuppressWarnings(DEPRECATION)
 	private String pubFailMessage(ProducerRecord<Object, Object> outRecord, ConsumerRecord<?, ?> inRecord) {
 		return "Dead-letter publication to "
 				+ outRecord.topic() + "failed for: " + ListenerUtils.recordToString(inRecord, true);

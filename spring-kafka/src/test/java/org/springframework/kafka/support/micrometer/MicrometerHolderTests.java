@@ -90,6 +90,7 @@ public class MicrometerHolderTests {
 		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext(Config3.class);
 		MicrometerHolder micrometerHolder = new MicrometerHolder(ctx, "holderName",
 				"timerName", "timerDesc", Collections.emptyMap());
+		@SuppressWarnings("unchecked")
 		Map<String, Timer> meters = (Map<String, Timer>) ReflectionTestUtils.getField(micrometerHolder, "meters");
 		assertThat(meters).hasSize(1);
 	}

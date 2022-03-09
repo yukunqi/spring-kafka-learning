@@ -152,6 +152,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 	private static final String UNUSED = "unused";
 
+	private static final String DEPRECATION = "deprecation";
+
+	private static final String UNCHECKED = "unchecked";
+
+	private static final String RAWTYPES = "rawtypes";
+
 	private static final int DEFAULT_ACK_TIME = 5000;
 
 	private static final Map<String, Object> CONSUMER_CONFIG_DEFAULTS = ConsumerConfig.configDef().defaultValues();
@@ -547,12 +553,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private static final String ERROR_HANDLER_THREW_AN_EXCEPTION = "Error handler threw an exception";
 
-		private static final String UNCHECKED = "unchecked";
-
-		private static final String RAWTYPES = "rawtypes";
-
-		private static final String RAW_TYPES = RAWTYPES;
-
 		private final LogAccessor logger = KafkaMessageListenerContainer.this.logger; // NOSONAR hide
 
 		private final ContainerProperties containerProperties = getContainerProperties();
@@ -611,7 +611,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final PlatformTransactionManager transactionManager = this.containerProperties.getTransactionManager();
 
-		@SuppressWarnings(RAW_TYPES)
+		@SuppressWarnings(RAWTYPES)
 		private final KafkaAwareTransactionManager kafkaTxManager =
 				this.transactionManager instanceof KafkaAwareTransactionManager
 						? ((KafkaAwareTransactionManager) this.transactionManager) : null;
@@ -858,7 +858,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		@Nullable
 		private CommonErrorHandler determineCommonErrorHandler() {
 			CommonErrorHandler common = getCommonErrorHandler();
-			@SuppressWarnings("deprecation")
+			@SuppressWarnings(DEPRECATION)
 			GenericErrorHandler<?> errHandler = getGenericErrorHandler();
 			if (common != null) {
 				if (errHandler != null) {
@@ -935,7 +935,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		@SuppressWarnings("deprecation")
+		@SuppressWarnings(DEPRECATION)
 		private boolean setupSubBatchPerPartition() {
 			Boolean subBatching = this.containerProperties.getSubBatchPerPartition();
 			if (subBatching != null) {
@@ -1229,7 +1229,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			return true;
 		}
 
-		@SuppressWarnings("deprecation")
+		@SuppressWarnings(DEPRECATION)
 		@Override // NOSONAR complexity
 		public void run() {
 			ListenerUtils.setLogOnlyMetadata(this.containerProperties.isOnlyLogRecordMetadata());
@@ -1671,16 +1671,20 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void resumePartitionsIfNecessary() {
-			List<TopicPartition> partitionsToResume = getAssignedPartitions()
-					.stream()
-					.filter(tp -> !isPartitionPauseRequested(tp)
-							&& this.pausedPartitions.contains(tp))
-					.collect(Collectors.toList());
-			if (partitionsToResume.size() > 0) {
-				this.consumer.resume(partitionsToResume);
-				this.pausedPartitions.removeAll(partitionsToResume);
-				this.logger.debug(() -> "Resumed consumption from " + partitionsToResume);
-				partitionsToResume.forEach(KafkaMessageListenerContainer.this::publishConsumerPartitionResumedEvent);
+			Collection<TopicPartition> assigned = getAssignedPartitions();
+			if (assigned != null) {
+				List<TopicPartition> partitionsToResume = assigned
+						.stream()
+						.filter(tp -> !isPartitionPauseRequested(tp)
+								&& this.pausedPartitions.contains(tp))
+						.collect(Collectors.toList());
+				if (partitionsToResume.size() > 0) {
+					this.consumer.resume(partitionsToResume);
+					this.pausedPartitions.removeAll(partitionsToResume);
+					this.logger.debug(() -> "Resumed consumption from " + partitionsToResume);
+					partitionsToResume
+							.forEach(KafkaMessageListenerContainer.this::publishConsumerPartitionResumedEvent);
+				}
 			}
 		}
 
@@ -1812,7 +1816,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		@SuppressWarnings("deprecation")
+		@SuppressWarnings(DEPRECATION)
 		private void traceAck(ConsumerRecord<K, V> record) {
 			this.logger.trace(() -> "Ack: " + ListenerUtils.recordToString(record, true));
 		}
@@ -1887,7 +1891,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		@SuppressWarnings("deprecation")
+		@SuppressWarnings(DEPRECATION)
 		private synchronized void ackInOrder(ConsumerRecord<K, V> record) {
 			TopicPartition part = new TopicPartition(record.topic(), record.partition());
 			List<Long> offs = this.offsetsInThisBatch.get(part);
@@ -1995,7 +1999,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		@SuppressWarnings(RAW_TYPES)
+		@SuppressWarnings(RAWTYPES)
 		private void invokeBatchListenerInTx(final ConsumerRecords<K, V> records,
 				@Nullable final List<ConsumerRecord<K, V>> recordList) {
 
@@ -2306,7 +2310,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		 * Invoke the listener with each record in a separate transaction.
 		 * @param records the records.
 		 */
-		@SuppressWarnings("deprecation") // NOSONAR complexity
+		@SuppressWarnings(DEPRECATION) // NOSONAR complexity
 		private void invokeRecordListenerInTx(final ConsumerRecords<K, V> records) {
 			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
 			while (iterator.hasNext()) {
@@ -2408,7 +2412,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		@SuppressWarnings("deprecation")
+		@SuppressWarnings(DEPRECATION)
 		private void doInvokeWithRecords(final ConsumerRecords<K, V> records) {
 			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
 			while (iterator.hasNext()) {
@@ -2444,7 +2448,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			return next;
 		}
 
-		@SuppressWarnings("deprecation")
+		@SuppressWarnings(DEPRECATION)
 		@Nullable
 		private ConsumerRecord<K, V> checkEarlyIntercept(ConsumerRecord<K, V> recordArg) {
 			internalHeaders(recordArg);
@@ -2494,7 +2498,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.nackWake = System.currentTimeMillis() + this.nackSleep;
 				this.nackSleep = -1;
 				Set<TopicPartition> alreadyPaused = this.consumer.paused();
-				this.pausedForNack.addAll(getAssignedPartitions());
+				Collection<TopicPartition> assigned = getAssignedPartitions();
+				if (assigned != null) {
+					this.pausedForNack.addAll(assigned);
+				}
 				this.pausedForNack.removeAll(alreadyPaused);
 				this.logger.debug(() -> "Pausing for nack sleep: " + ListenerConsumer.this.pausedForNack);
 				try {
@@ -2605,7 +2612,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		@SuppressWarnings("deprecation")
+		@SuppressWarnings(DEPRECATION)
 		private void doInvokeOnMessage(final ConsumerRecord<K, V> recordArg) {
 			ConsumerRecord<K, V> record = recordArg;
 			if (this.recordInterceptor != null) {
@@ -2759,7 +2766,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			doSendOffsets(this.producer, commits);
 		}
 
-		@SuppressWarnings("deprecation")
+		@SuppressWarnings(DEPRECATION)
 		private void doSendOffsets(Producer<?, ?> prod, Map<TopicPartition, OffsetAndMetadata> commits) {
 			if (this.eosMode.getMode().equals(EOSMode.V1)) {
 				prod.sendOffsetsToTransaction(commits, this.consumerGroupId);
@@ -3171,7 +3178,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 
 			@Override
-			@SuppressWarnings("deprecation")
+			@SuppressWarnings(DEPRECATION)
 			public String toString() {
 				return "Acknowledgment for " + ListenerUtils.recordToString(this.record, true);
 			}

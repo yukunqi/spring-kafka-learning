@@ -150,7 +150,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 				IllegalStateException isx = new IllegalStateException("Failed to determine TestUtils.boundPort() method; client version: "
 						+ AppInfoParser.getVersion(), e);
 				isx.addSuppressed(e1);
-				throw isx;
+				throw isx; // NOSONAR
 			}
 		}
 		BOUND_PORT_METHOD = method;

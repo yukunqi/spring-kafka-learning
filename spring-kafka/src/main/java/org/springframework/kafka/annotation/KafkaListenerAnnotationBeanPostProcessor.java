@@ -144,6 +144,8 @@ import org.springframework.validation.Validator;
 public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		implements BeanPostProcessor, Ordered, ApplicationContextAware, InitializingBean, SmartInitializingSingleton {
 
+	private static final String UNCHECKED = "unchecked";
+
 	private static final String THE_LEFT = "The [";
 
 	private static final String RESOLVED_TO_LEFT = "Resolved to [";
@@ -643,7 +645,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 	}
 
-	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@SuppressWarnings({ "rawtypes", UNCHECKED })
 	private void resolveFilter(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener) {
 		Object filter = resolveExpression(kafkaListener.filter());
 		if (filter instanceof RecordFilterStrategy) {
@@ -701,7 +703,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 				+ requestedBeanName + "' was found in the application context";
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings(UNCHECKED)
 	private void resolveKafkaProperties(MethodKafkaListenerEndpoint<?, ?> endpoint, String[] propertyStrings) {
 		if (propertyStrings.length > 0) {
 			Properties properties = new Properties();
@@ -870,7 +872,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		return relativeToCurrent;
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings(UNCHECKED)
 	private void resolveAsString(Object resolvedValue, List<String> result) {
 		if (resolvedValue instanceof String[]) {
 			for (Object object : (String[]) resolvedValue) {
@@ -891,7 +893,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings(UNCHECKED)
 	private void resolvePartitionAsInteger(String topic, Object resolvedValue,
 			List<TopicPartitionOffset> result, @Nullable Long offset, boolean isRelative, boolean checkDups) {
 
