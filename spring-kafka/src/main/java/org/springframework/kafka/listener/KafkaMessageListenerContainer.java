@@ -152,6 +152,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 	private static final String UNUSED = "unused";
 
+	private static final String UNCHECKED = "unchecked";
+
+	private static final String RAWTYPES = "rawtypes";
+
 	private static final int DEFAULT_ACK_TIME = 5000;
 
 	private static final Map<String, Object> CONSUMER_CONFIG_DEFAULTS = ConsumerConfig.configDef().defaultValues();
@@ -547,12 +551,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private static final String ERROR_HANDLER_THREW_AN_EXCEPTION = "Error handler threw an exception";
 
-		private static final String UNCHECKED = "unchecked";
-
-		private static final String RAWTYPES = "rawtypes";
-
-		private static final String RAW_TYPES = RAWTYPES;
-
 		private final LogAccessor logger = KafkaMessageListenerContainer.this.logger; // NOSONAR hide
 
 		private final ContainerProperties containerProperties = getContainerProperties();
@@ -611,7 +609,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final PlatformTransactionManager transactionManager = this.containerProperties.getTransactionManager();
 
-		@SuppressWarnings(RAW_TYPES)
+		@SuppressWarnings(RAWTYPES)
 		private final KafkaAwareTransactionManager kafkaTxManager =
 				this.transactionManager instanceof KafkaAwareTransactionManager
 						? ((KafkaAwareTransactionManager) this.transactionManager) : null;
@@ -708,9 +706,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final Map<TopicPartition, Boolean> wasIdlePartition;
 
-		private final byte[] listenerinfo = getListenerInfo();
-
 		private final Header infoHeader = new RecordHeader(KafkaHeaders.LISTENER_INFO, this.listenerinfo);
+
+		private final byte[] listenerinfo = getListenerInfo();
 
 		private final Set<TopicPartition> pausedForNack = new HashSet<>();
 
@@ -1666,16 +1664,20 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void resumePartitionsIfNecessary() {
-			List<TopicPartition> partitionsToResume = getAssignedPartitions()
-					.stream()
-					.filter(tp -> !isPartitionPauseRequested(tp)
-							&& this.pausedPartitions.contains(tp))
-					.collect(Collectors.toList());
-			if (partitionsToResume.size() > 0) {
-				this.consumer.resume(partitionsToResume);
-				this.pausedPartitions.removeAll(partitionsToResume);
-				this.logger.debug(() -> "Resumed consumption from " + partitionsToResume);
-				partitionsToResume.forEach(KafkaMessageListenerContainer.this::publishConsumerPartitionResumedEvent);
+			Collection<TopicPartition> assigned = getAssignedPartitions();
+			if (assigned != null) {
+				List<TopicPartition> partitionsToResume = assigned
+						.stream()
+						.filter(tp -> !isPartitionPauseRequested(tp)
+								&& this.pausedPartitions.contains(tp))
+						.collect(Collectors.toList());
+				if (partitionsToResume.size() > 0) {
+					this.consumer.resume(partitionsToResume);
+					this.pausedPartitions.removeAll(partitionsToResume);
+					this.logger.debug(() -> "Resumed consumption from " + partitionsToResume);
+					partitionsToResume
+							.forEach(KafkaMessageListenerContainer.this::publishConsumerPartitionResumedEvent);
+				}
 			}
 		}
 
@@ -1988,7 +1990,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		@SuppressWarnings(RAW_TYPES)
+		@SuppressWarnings(RAWTYPES)
 		private void invokeBatchListenerInTx(final ConsumerRecords<K, V> records,
 				@Nullable final List<ConsumerRecord<K, V>> recordList) {
 
@@ -2299,7 +2301,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		 * Invoke the listener with each record in a separate transaction.
 		 * @param records the records.
 		 */
-		@SuppressWarnings(RAW_TYPES) // NOSONAR complexity
+		@SuppressWarnings(RAWTYPES) // NOSONAR complexity
 		private void invokeRecordListenerInTx(final ConsumerRecords<K, V> records) {
 			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
 			while (iterator.hasNext()) {
@@ -2485,7 +2487,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.nackWake = System.currentTimeMillis() + this.nackSleep;
 				this.nackSleep = -1;
 				Set<TopicPartition> alreadyPaused = this.consumer.paused();
-				this.pausedForNack.addAll(getAssignedPartitions());
+				Collection<TopicPartition> assigned = getAssignedPartitions();
+				if (assigned != null) {
+					this.pausedForNack.addAll(assigned);
+				}
 				this.pausedForNack.removeAll(alreadyPaused);
 				this.logger.debug(() -> "Pausing for nack sleep: " + ListenerConsumer.this.pausedForNack);
 				try {
