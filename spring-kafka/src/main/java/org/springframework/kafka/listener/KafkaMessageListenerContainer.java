@@ -706,9 +706,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final Map<TopicPartition, Boolean> wasIdlePartition;
 
-		private final Header infoHeader = new RecordHeader(KafkaHeaders.LISTENER_INFO, this.listenerinfo);
-
 		private final byte[] listenerinfo = getListenerInfo();
+
+		private final Header infoHeader = new RecordHeader(KafkaHeaders.LISTENER_INFO, this.listenerinfo);
 
 		private final Set<TopicPartition> pausedForNack = new HashSet<>();
 
