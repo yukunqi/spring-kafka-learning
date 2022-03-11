@@ -32,15 +32,15 @@ import org.springframework.messaging.MessageHeaders;
 public interface KafkaHeaderMapper {
 
 	/**
-	 * Map from the given {@link MessageHeaders} to the specified target message.
+	 * Map from the given {@link MessageHeaders} to the specified target headers.
 	 * @param headers the abstracted MessageHeaders.
-	 * @param target the native target message.
+	 * @param target the native target headers.
 	 */
 	void fromHeaders(MessageHeaders headers, Headers target);
 
 	/**
-	 * Map from the given target message to abstracted {@link MessageHeaders}.
-	 * @param source the native target message.
+	 * Map from the given target headers to abstracted {@link MessageHeaders}.
+	 * @param source the native target headers.
 	 * @param target the target headers.
 	 */
 	void toHeaders(Headers source, Map<String, Object> target);
