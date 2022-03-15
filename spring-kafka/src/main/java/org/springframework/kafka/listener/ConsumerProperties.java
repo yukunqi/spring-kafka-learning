@@ -97,8 +97,6 @@ public class ConsumerProperties {
 
 	private LogIfLevelEnabled.Level commitLogLevel = LogIfLevelEnabled.Level.DEBUG;
 
-	private boolean onlyLogRecordMetadata = true;
-
 	private Properties kafkaConsumerProperties = new Properties();
 
 	private Duration authExceptionRetryInterval;
@@ -400,20 +398,6 @@ public class ConsumerProperties {
 	 */
 	public void setCommitRetries(int commitRetries) {
 		this.commitRetries = commitRetries;
-	}
-
-	public boolean isOnlyLogRecordMetadata() {
-		return this.onlyLogRecordMetadata;
-	}
-
-	/**
-	 * Set to false to log {@code record.toString()} in log messages instead
-	 * of {@code topic-partition@offset}.
-	 * @param onlyLogRecordMetadata false to log the entire record.
-	 * @since 2.2.14
-	 */
-	public void setOnlyLogRecordMetadata(boolean onlyLogRecordMetadata) {
-		this.onlyLogRecordMetadata = onlyLogRecordMetadata;
 	}
 
 	/**
