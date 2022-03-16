@@ -206,7 +206,9 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	 * alive.
 	 * @param statefulRetry true to enable stateful retry.
 	 * @since 2.1.3
+	 * @deprecated since 2.8 - use a suitably configured error handler instead.
 	 */
+	@Deprecated
 	public void setStatefulRetry(boolean statefulRetry) {
 		this.statefulRetry = statefulRetry;
 	}

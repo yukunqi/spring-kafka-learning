@@ -344,6 +344,11 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		this.retryTemplate = retryTemplate;
 	}
 
+	/**
+	 * Get the recovery callback.
+	 * @deprecated since 2.8 - use a suitably configured error handler instead.
+	 * @return the recovery callback.
+	 */
 	@Deprecated
 	@Nullable
 	protected RecoveryCallback<?> getRecoveryCallback() {
@@ -360,6 +365,11 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		this.recoveryCallback = recoveryCallback;
 	}
 
+	/**
+	 * @deprecated since 2.8 - use a suitably configured error handler instead.
+	 * @return
+	 */
+	@Deprecated
 	protected boolean isStatefulRetry() {
 		return this.statefulRetry;
 	}
@@ -372,7 +382,9 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * alive.
 	 * @param statefulRetry true to enable stateful retry.
 	 * @since 2.1.3
+	 * @deprecated since 2.8 - use a suitably configured error handler instead.
 	 */
+	@Deprecated
 	public void setStatefulRetry(boolean statefulRetry) {
 		this.statefulRetry = statefulRetry;
 	}
