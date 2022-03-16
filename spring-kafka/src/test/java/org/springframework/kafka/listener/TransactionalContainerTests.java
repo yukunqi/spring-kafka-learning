@@ -505,7 +505,7 @@ public class TransactionalContainerTests {
 		verify(pf).createProducer(isNull());
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked", "deprecation" })
 	@Test
 	public void testRollbackRecord() throws Exception {
 		logger.info("Start testRollbackRecord");
@@ -599,8 +599,7 @@ public class TransactionalContainerTests {
 		assertThat(subsLatch.await(1, TimeUnit.MILLISECONDS)).isTrue();
 		assertThat(records.count()).isEqualTo(0);
 		assertThat(consumer.position(partition0)).isEqualTo(2L);
-		assertThat(transactionalId.get()).startsWith("rr.group.txTopic");
-		assertThat(KafkaTestUtils.getPropertyValue(pf, "consumerProducers", Map.class)).isEmpty();
+		assertThat(transactionalId.get()).startsWith("rr.");
 		logger.info("Stop testRollbackRecord");
 		pf.destroy();
 		consumer.close();
