@@ -188,7 +188,9 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	 * Set a callback to be used with the {@link #setRetryTemplate(RetryTemplate)
 	 * retryTemplate}.
 	 * @param recoveryCallback the callback.
+	 * @deprecated since 2.8 - use a suitably configured error handler instead.
 	 */
+	@Deprecated
 	public void setRecoveryCallback(RecoveryCallback<? extends Object> recoveryCallback) {
 		this.recoveryCallback = recoveryCallback;
 	}
@@ -201,7 +203,9 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	 * alive.
 	 * @param statefulRetry true to enable stateful retry.
 	 * @since 2.1.3
+	 * @deprecated since 2.8 - use a suitably configured error handler instead.
 	 */
+	@Deprecated
 	public void setStatefulRetry(boolean statefulRetry) {
 		this.statefulRetry = statefulRetry;
 	}
