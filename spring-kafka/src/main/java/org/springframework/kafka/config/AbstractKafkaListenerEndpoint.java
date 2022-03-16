@@ -346,8 +346,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	/**
 	 * Get the recovery callback.
-	 * @deprecated since 2.8 - use a suitably configured error handler instead.
 	 * @return the recovery callback.
+	 * @deprecated since 2.8 - use a suitably configured error handler instead.
 	 */
 	@Deprecated
 	@Nullable
@@ -366,8 +366,9 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	}
 
 	/**
+	 * Return the stateful retry.
+	 * @return the stateful retry.
 	 * @deprecated since 2.8 - use a suitably configured error handler instead.
-	 * @return
 	 */
 	@Deprecated
 	protected boolean isStatefulRetry() {
