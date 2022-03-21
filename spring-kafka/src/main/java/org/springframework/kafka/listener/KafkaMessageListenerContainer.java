@@ -2668,7 +2668,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 			if (this.consumerSeekAwareListener != null) {
-				this.consumerSeekAwareListener.onPartitionsAssigned(partitions.keySet().stream()
+				this.consumerSeekAwareListener.onPartitionsAssigned(this.definedPartitions.keySet().stream()
 							.map(tp -> new SimpleEntry<>(tp, this.consumer.position(tp)))
 							.collect(Collectors.toMap(entry -> entry.getKey(), entry -> entry.getValue())),
 						this.seekCallback);
