@@ -436,7 +436,7 @@ DeadLetterPublishingRecovererFactory factory(DestinationTopicResolver resolver) 
 Starting with version 2.8.4, if you wish to add custom headers (in addition to the retry information headers added by the factory, you can add a `headersFunction` to the factory - `factory.setHeadersFunction((rec, ex) -> { ... })`
 
 [[retry-topic-combine-blocking]]
-==== Combining blocking and non-blocking retries
+==== Combining Blocking and Non-Blocking Retries
 
 Starting in 2.8.4 you can configure the framework to use both blocking and non-blocking retries in conjunction.
 For example, you can have a set of exceptions that would likely trigger errors on the next records as well, such as `DatabaseAccessException`, so you can retry the same record a few times before sending it to the retry topic, or straight to the DLT.
