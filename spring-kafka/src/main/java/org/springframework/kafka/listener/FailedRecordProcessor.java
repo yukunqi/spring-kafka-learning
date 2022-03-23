@@ -152,8 +152,14 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 			}
 			catch (Exception ex) {
 				if (records.size() > 0) {
-					this.logger.error(ex, () -> "Recovery of record ("
-							+ KafkaUtils.format(records.get(0)) + ") failed");
+					if (SeekUtils.isBackoffException(ex)) {
+						this.logger.debug("Recovery of record ("
+								+ KafkaUtils.format(records.get(0)) + ") backed off: " + ex.getMessage());
+					}
+					else {
+						this.logger.error(ex, () -> "Recovery of record ("
+								+ KafkaUtils.format(records.get(0)) + ") failed");
+					}
 					this.failureTracker.getRetryListeners().forEach(rl ->
 							rl.recoveryFailed(records.get(0), thrownException, ex));
 				}
