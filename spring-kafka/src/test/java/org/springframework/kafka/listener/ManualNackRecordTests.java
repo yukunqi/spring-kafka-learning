@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -58,7 +59,6 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
-import org.springframework.lang.Nullable;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
@@ -74,6 +74,7 @@ public class ManualNackRecordTests {
 	@SuppressWarnings("rawtypes")
 	@Autowired
 	private Consumer consumer;
+
 	@Autowired
 	private Config config;
 
@@ -146,7 +147,7 @@ public class ManualNackRecordTests {
 			ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
 			final Consumer consumer = consumer();
 			given(consumerFactory.createConsumer("grp", "", "-0", KafkaTestUtils.defaultPropertyOverrides()))
-				.willReturn(consumer);
+					.willReturn(consumer);
 			return consumerFactory;
 		}
 
@@ -213,17 +214,11 @@ public class ManualNackRecordTests {
 			factory.setErrorHandler(new SeekToCurrentErrorHandler());
 			factory.getContainerProperties().setAckMode(AckMode.MANUAL);
 			factory.getContainerProperties().setMissingTopicsFatal(false);
-			factory.setRecordInterceptor(new RecordInterceptor() {
-
-				@Override
-				@Nullable
-				public ConsumerRecord intercept(ConsumerRecord record) {
-					return new ConsumerRecord(record.topic(), record.partition(), record.offset(), 0L,
+			factory.setRecordInterceptor(record ->
+					new ConsumerRecord(record.topic(), record.partition(), record.offset(), 0L,
 							TimestampType.NO_TIMESTAMP_TYPE, 0, 0, record.key(), record.value(), record.headers(),
-							Optional.empty());
-				}
-
-			});
+							Optional.empty())
+			);
 			return factory;
 		}
 
