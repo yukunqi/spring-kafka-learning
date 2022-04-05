@@ -1031,6 +1031,8 @@ This might be used, for example, to access the consumer metrics in the intercept
 
 IMPORTANT: You should not execute any methods that affect the consumer's positions and or committed offsets in these interceptors; the container needs to manage such information.
 
+IMPORTANT: If the interceptor mutates the record (by creating a new one), the `topic`, `partition`, and `offset` must remain the same to avoid unexpected side effects such as record loss.
+
 The `CompositeRecordInterceptor` and `CompositeBatchInterceptor` can be used to invoke multiple interceptors.
 
 By default, when using transactions, the interceptor is invoked after the transaction has started.
