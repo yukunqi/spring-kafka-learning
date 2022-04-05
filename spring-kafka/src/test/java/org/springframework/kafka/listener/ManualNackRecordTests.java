@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -216,7 +216,8 @@ public class ManualNackRecordTests {
 			factory.getContainerProperties().setMissingTopicsFatal(false);
 			factory.setRecordInterceptor(record ->
 					new ConsumerRecord(record.topic(), record.partition(), record.offset(), 0L,
-							TimestampType.NO_TIMESTAMP_TYPE, 0, 0, record.key(), record.value(), record.headers(),
+							TimestampType.NO_TIMESTAMP_TYPE, 0L, record.serializedKeySize(),
+							record.serializedValueSize(), record.key(), record.value(), record.headers(),
 							Optional.empty())
 			);
 			return factory;
