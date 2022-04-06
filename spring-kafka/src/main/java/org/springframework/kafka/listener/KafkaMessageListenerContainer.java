@@ -2505,7 +2505,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void pauseForNackSleep() {
 			if (this.nackSleep > 0) {
 				this.nackWake = System.currentTimeMillis() + this.nackSleep;
-				this.nackSleep = -1;
 				Set<TopicPartition> alreadyPaused = this.consumer.paused();
 				Collection<TopicPartition> assigned = getAssignedPartitions();
 				if (assigned != null) {
@@ -2525,6 +2524,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					this.consumer.resume(nowPaused);
 				}
 			}
+			this.nackSleep = -1;
 		}
 
 		/**
