@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,6 +32,7 @@ import org.springframework.kafka.listener.KafkaBackOffManagerFactory;
 import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
 import org.springframework.kafka.listener.KafkaConsumerTimingAdjuster;
 import org.springframework.kafka.listener.PartitionPausingBackOffManagerFactory;
+import org.springframework.kafka.listener.PartitionPausingBackoffManager;
 import org.springframework.retry.backoff.ThreadWaitSleeper;
 
 /**
@@ -44,8 +45,10 @@ import org.springframework.retry.backoff.ThreadWaitSleeper;
  *
  * @author Tomaz Fernandes
  * @since 2.7
+ * @deprecated in favor of {@link org.springframework.kafka.config.RetryTopicConfigurationSupport}
  *
  */
+@Deprecated
 public class RetryTopicBootstrapper {
 
 	private final ApplicationContext applicationContext;
@@ -108,9 +111,11 @@ public class RetryTopicBootstrapper {
 	}
 
 	private void addApplicationListeners() {
-		((ConfigurableApplicationContext) this.applicationContext)
-				.addApplicationListener(this.applicationContext.getBean(
-						RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME, DefaultDestinationTopicResolver.class));
+		ConfigurableApplicationContext context = (ConfigurableApplicationContext) this.applicationContext;
+		context.addApplicationListener(this.applicationContext.getBean(
+				RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME, DefaultDestinationTopicResolver.class));
+		context.addApplicationListener(this.applicationContext.getBean(
+				RetryTopicInternalBeanNames.KAFKA_CONSUMER_BACKOFF_MANAGER, PartitionPausingBackoffManager.class));
 	}
 
 	private KafkaConsumerBackoffManager createKafkaConsumerBackoffManager() {

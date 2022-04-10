@@ -25,8 +25,10 @@ package org.springframework.kafka.retrytopic;
  *
  * @author Tomaz Fernandes
  * @since 2.7
+ * @deprecated in favor of {@link RetryTopicBeanNames}
  *
  */
+@Deprecated
 public abstract class RetryTopicInternalBeanNames {
 
 	/**
