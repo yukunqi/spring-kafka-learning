@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,26 +54,33 @@ public class WakingKafkaConsumerTimingAdjuster implements KafkaConsumerTimingAdj
 
 	private int pollTimeoutsForAdjustmentWindow = DEFAULT_POLL_TIMEOUTS_FOR_ADJUSTMENT_WINDOW;
 
-	private final TaskExecutor timingAdjustmentTaskExecutor;
+	private final TaskExecutor taskExecutor;
 
 	private final Sleeper sleeper;
 
-	public WakingKafkaConsumerTimingAdjuster(TaskExecutor timingAdjustmentTaskExecutor, Sleeper sleeper) {
-		Assert.notNull(timingAdjustmentTaskExecutor, "Task executor cannot be null.");
+	/**
+	 * Create an instance with the provided TaskExecutor and Sleeper.
+	 * @param taskExecutor the task executor.
+	 * @param sleeper the sleeper.
+	 */
+	public WakingKafkaConsumerTimingAdjuster(TaskExecutor taskExecutor, Sleeper sleeper) {
+		Assert.notNull(taskExecutor, "Task executor cannot be null.");
 		Assert.notNull(sleeper, "Sleeper cannot be null.");
-		this.timingAdjustmentTaskExecutor = timingAdjustmentTaskExecutor;
+		this.taskExecutor = taskExecutor;
 		this.sleeper = sleeper;
 	}
 
-	public WakingKafkaConsumerTimingAdjuster(TaskExecutor timingAdjustmentTaskExecutor) {
-		Assert.notNull(timingAdjustmentTaskExecutor, "Task executor cannot be null.");
-		this.timingAdjustmentTaskExecutor = timingAdjustmentTaskExecutor;
-		this.sleeper = Thread::sleep;
+	/**
+	 * Create an instance with the provided {@link TaskExecutor} and a thread sleeper.
+	 * @param taskExecutor the task executor.
+	 */
+	public WakingKafkaConsumerTimingAdjuster(TaskExecutor taskExecutor) {
+		this(taskExecutor, Thread::sleep);
 	}
 
 	/**
 	 *
-	 * Sets how many pollTimeouts prior to the dueTimeout the adjustment will take place.
+	 * Set how many pollTimeouts prior to the dueTimeout the adjustment will take place.
 	 * Default is 2.
 	 *
 	 * @param pollTimeoutsForAdjustmentWindow the amount of pollTimeouts in the adjustment window.
@@ -84,7 +91,7 @@ public class WakingKafkaConsumerTimingAdjuster implements KafkaConsumerTimingAdj
 
 	/**
 	 *
-	 * Sets the threshold for the timing adjustment to take place. If the time difference between
+	 * Set the threshold for the timing adjustment to take place. If the time difference between
 	 * the probable instant the message will be consumed and the instant it should is lower than
 	 * this value, no adjustment will be applied.
 	 * Default is 100ms.
@@ -96,7 +103,7 @@ public class WakingKafkaConsumerTimingAdjuster implements KafkaConsumerTimingAdj
 	}
 
 	/**
-	 * Adjusts the timing with the provided parameters.
+	 * Adjust the timing with the provided parameters.
 	 *
 	 * @param consumerToAdjust the {@link Consumer} that will be adjusted
 	 * @param topicPartition the {@link TopicPartition} that will be adjusted
@@ -112,7 +119,7 @@ public class WakingKafkaConsumerTimingAdjuster implements KafkaConsumerTimingAdj
 
 		long adjustmentAmount = timeUntilDue % pollTimeout;
 		if (isInAdjustmentWindow && adjustmentAmount > this.timingAdjustmentThreshold.toMillis()) {
-			this.timingAdjustmentTaskExecutor.execute(() ->
+			this.taskExecutor.execute(() ->
 					doApplyTimingAdjustment(consumerToAdjust, topicPartition, adjustmentAmount));
 			return adjustmentAmount;
 		}
@@ -138,4 +145,5 @@ public class WakingKafkaConsumerTimingAdjuster implements KafkaConsumerTimingAdj
 					"for TopicPartition " + topicPartition);
 		}
 	}
+
 }

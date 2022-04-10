@@ -24,7 +24,9 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
+import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.core.log.LogAccessor;
@@ -152,7 +154,7 @@ import org.springframework.lang.Nullable;
  * <p>DLT Handling:
  *
  * <p>The DLT handler method can be provided through the
- * {@link RetryTopicConfigurationBuilder#dltHandlerMethod(Class, String)} method,
+ * {@link RetryTopicConfigurationBuilder#dltHandlerMethod(String, String)} method,
  * providing the class and method name that should handle the DLT topic. If a bean
  * instance of this type is found in the {@link BeanFactory} it is the instance used.
  * If not an instance is created. The class can use dependency injection as a normal bean.
@@ -200,7 +202,7 @@ import org.springframework.lang.Nullable;
  * @see org.springframework.kafka.listener.DeadLetterPublishingRecoverer
  *
  */
-public class RetryTopicConfigurer {
+public class RetryTopicConfigurer implements BeanFactoryAware {
 
 	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(RetryTopicConfigurer.class));
 
@@ -216,7 +218,7 @@ public class RetryTopicConfigurer {
 
 	private final ListenerContainerFactoryConfigurer listenerContainerFactoryConfigurer;
 
-	private final BeanFactory beanFactory;
+	private BeanFactory beanFactory;
 
 	private final RetryTopicNamesProviderFactory retryTopicNamesProviderFactory;
 
@@ -239,17 +241,34 @@ public class RetryTopicConfigurer {
 	 * @param beanFactory the bean factory.
 	 * @param retryTopicNamesProviderFactory the retry topic names factory.
 	 */
-	@Autowired
+	@Deprecated
 	public RetryTopicConfigurer(DestinationTopicProcessor destinationTopicProcessor,
 								ListenerContainerFactoryResolver containerFactoryResolver,
 								ListenerContainerFactoryConfigurer listenerContainerFactoryConfigurer,
 								BeanFactory beanFactory,
 								RetryTopicNamesProviderFactory retryTopicNamesProviderFactory) {
 
+		this(destinationTopicProcessor, containerFactoryResolver,
+				listenerContainerFactoryConfigurer, retryTopicNamesProviderFactory);
+		this.beanFactory = beanFactory;
+	}
+
+	/**
+	 * Create an instance with the provided properties.
+	 * @param destinationTopicProcessor the destination topic processor.
+	 * @param containerFactoryResolver the container factory resolver.
+	 * @param listenerContainerFactoryConfigurer the container factory configurer.
+	 * @param retryTopicNamesProviderFactory the retry topic names factory.
+	 */
+	@Autowired
+	public RetryTopicConfigurer(DestinationTopicProcessor destinationTopicProcessor,
+								ListenerContainerFactoryResolver containerFactoryResolver,
+								ListenerContainerFactoryConfigurer listenerContainerFactoryConfigurer,
+								RetryTopicNamesProviderFactory retryTopicNamesProviderFactory) {
+
 		this.destinationTopicProcessor = destinationTopicProcessor;
 		this.containerFactoryResolver = containerFactoryResolver;
 		this.listenerContainerFactoryConfigurer = listenerContainerFactoryConfigurer;
-		this.beanFactory = beanFactory;
 		this.retryTopicNamesProviderFactory = retryTopicNamesProviderFactory;
 	}
 
@@ -429,6 +448,11 @@ public class RetryTopicConfigurer {
 	@Deprecated
 	public void useLegacyFactoryConfigurer(boolean useLegacyFactoryConfigurer) {
 		this.useLegacyFactoryConfigurer = useLegacyFactoryConfigurer;
+	}
+
+	@Override
+	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
+		this.beanFactory = beanFactory;
 	}
 
 	public interface EndpointProcessor extends Consumer<MethodKafkaListenerEndpoint<?, ?>> {

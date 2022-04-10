@@ -75,10 +75,7 @@ public class PartitionPausingBackoffManager implements KafkaConsumerBackoffManag
 	public PartitionPausingBackoffManager(ListenerContainerRegistry listenerContainerRegistry,
 										KafkaConsumerTimingAdjuster kafkaConsumerTimingAdjuster) {
 
-		this.listenerContainerRegistry = listenerContainerRegistry;
-		this.kafkaConsumerTimingAdjuster = kafkaConsumerTimingAdjuster;
-		this.clock = Clock.systemUTC();
-		this.backOffContexts = new HashMap<>();
+		this(listenerContainerRegistry, kafkaConsumerTimingAdjuster, Clock.systemUTC());
 	}
 
 	/**
@@ -91,11 +88,7 @@ public class PartitionPausingBackoffManager implements KafkaConsumerBackoffManag
 	 * @param listenerContainerRegistry the listenerContainerRegistry to use.
 	 */
 	public PartitionPausingBackoffManager(ListenerContainerRegistry listenerContainerRegistry) {
-
-		this.listenerContainerRegistry = listenerContainerRegistry;
-		this.kafkaConsumerTimingAdjuster = null;
-		this.clock = Clock.systemUTC();
-		this.backOffContexts = new HashMap<>();
+		this(listenerContainerRegistry, null, Clock.systemUTC());
 	}
 
 	/**
@@ -107,7 +100,7 @@ public class PartitionPausingBackoffManager implements KafkaConsumerBackoffManag
 	 * @param clock the clock to use.
 	 */
 	public PartitionPausingBackoffManager(ListenerContainerRegistry listenerContainerRegistry,
-										KafkaConsumerTimingAdjuster kafkaConsumerTimingAdjuster,
+										@Nullable KafkaConsumerTimingAdjuster kafkaConsumerTimingAdjuster,
 										Clock clock) {
 
 		this.listenerContainerRegistry = listenerContainerRegistry;
@@ -124,11 +117,7 @@ public class PartitionPausingBackoffManager implements KafkaConsumerBackoffManag
 	 * @param clock the clock to use.
 	 */
 	public PartitionPausingBackoffManager(ListenerContainerRegistry listenerContainerRegistry, Clock clock) {
-
-		this.listenerContainerRegistry = listenerContainerRegistry;
-		this.clock = clock;
-		this.kafkaConsumerTimingAdjuster = null;
-		this.backOffContexts = new HashMap<>();
+		this(listenerContainerRegistry, null, clock);
 	}
 
 	/**

@@ -26,7 +26,9 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.kafka.listener.ExceptionClassifier;
@@ -47,7 +49,7 @@ import org.springframework.kafka.listener.TimestampedException;
  *
  */
 public class DefaultDestinationTopicResolver extends ExceptionClassifier
-		implements DestinationTopicResolver, ApplicationListener<ContextRefreshedEvent> {
+		implements DestinationTopicResolver, ApplicationListener<ContextRefreshedEvent>, ApplicationContextAware {
 
 	private static final String NO_OPS_SUFFIX = "-noOps";
 
@@ -60,16 +62,35 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 
 	private final Clock clock;
 
-	private final ApplicationContext applicationContext;
+	private ApplicationContext applicationContext;
 
 	private boolean contextRefreshed;
 
+	@Deprecated
 	public DefaultDestinationTopicResolver(Clock clock, ApplicationContext applicationContext) {
+		this(clock);
 		this.applicationContext = applicationContext;
+	}
+
+	/**
+	 * Constructs an instance with the given clock.
+	 * @param clock the clock to be used for time-based operations
+	 * such as verifying timeouts.
+	 * @since 2.9
+	 */
+	public DefaultDestinationTopicResolver(Clock clock) {
 		this.clock = clock;
 		this.sourceDestinationsHolderMap = new HashMap<>();
 		this.destinationsTopicMap = new HashMap<>();
 		this.contextRefreshed = false;
+	}
+
+	/**
+	 * Constructs an instance with a default clock.
+	 * @since 2.9
+	 */
+	public DefaultDestinationTopicResolver() {
+		this(Clock.systemUTC());
 	}
 
 	@Override
@@ -195,6 +216,11 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 	 */
 	public boolean isContextRefreshed() {
 		return this.contextRefreshed;
+	}
+
+	@Override
+	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+		this.applicationContext = applicationContext;
 	}
 
 	public static class DestinationTopicHolder {

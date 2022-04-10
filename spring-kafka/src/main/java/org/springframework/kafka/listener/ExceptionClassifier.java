@@ -16,8 +16,11 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.classify.BinaryExceptionClassifier;
 import org.springframework.kafka.support.converter.ConversionException;
@@ -45,15 +48,25 @@ public abstract class ExceptionClassifier extends KafkaExceptionLogLevelAware {
 		this.classifier = configureDefaultClassifier();
 	}
 
+	/**
+	 * Return a list of the framework default fatal exceptions.
+	 * This method produces a new list for each call, so changing the list's
+	 * contents has no effect on the framework itself.
+	 * Thus, it should be used only as a reference.
+	 * @return the default fatal exceptions list.
+	 */
+	public static List<Class<? extends Throwable>> defaultFatalExceptionsList() {
+		return Arrays.asList(DeserializationException.class,
+							MessageConversionException.class,
+							ConversionException.class,
+							MethodArgumentResolutionException.class,
+							NoSuchMethodException.class,
+							ClassCastException.class);
+	}
+
 	private static ExtendedBinaryExceptionClassifier configureDefaultClassifier() {
-		Map<Class<? extends Throwable>, Boolean> classified = new HashMap<>();
-		classified.put(DeserializationException.class, false);
-		classified.put(MessageConversionException.class, false);
-		classified.put(ConversionException.class, false);
-		classified.put(MethodArgumentResolutionException.class, false);
-		classified.put(NoSuchMethodException.class, false);
-		classified.put(ClassCastException.class, false);
-		return new ExtendedBinaryExceptionClassifier(classified, true);
+		return new ExtendedBinaryExceptionClassifier(defaultFatalExceptionsList().stream()
+				.collect(Collectors.toMap(ex -> ex, ex -> false)), true);
 	}
 
 	/**

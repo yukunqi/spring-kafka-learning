@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,6 +32,7 @@ import org.springframework.context.expression.StandardBeanExpressionResolver;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.kafka.core.KafkaOperations;
+import org.springframework.kafka.retrytopic.RetryTopicBeanNames;
 import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
 import org.springframework.kafka.retrytopic.RetryTopicConfigurationBuilder;
 import org.springframework.kafka.retrytopic.RetryTopicConfigurer;
@@ -200,6 +201,7 @@ public class RetryableTopicAnnotationProcessor {
 				.orElse(RetryTopicConfigurer.DEFAULT_DLT_HANDLER);
 	}
 
+	@SuppressWarnings("deprecation")
 	private KafkaOperations<?, ?> getKafkaTemplate(String kafkaTemplateName, String[] topics) {
 		if (StringUtils.hasText(kafkaTemplateName)) {
 			Assert.state(this.beanFactory != null, "BeanFactory must be set to obtain kafka template by bean name");
@@ -218,12 +220,19 @@ public class RetryableTopicAnnotationProcessor {
 		}
 		catch (NoSuchBeanDefinitionException ex) {
 			try {
-				return this.beanFactory.getBean(DEFAULT_SPRING_BOOT_KAFKA_TEMPLATE_NAME, KafkaOperations.class);
+				return this.beanFactory.getBean(RetryTopicBeanNames.DEFAULT_KAFKA_TEMPLATE_BEAN_NAME,
+						KafkaOperations.class);
 			}
-			catch (NoSuchBeanDefinitionException exc) {
-				exc.addSuppressed(ex);
-				throw new BeanInitializationException("Could not find a KafkaTemplate to configure the retry topics.", // NOSONAR (lost stack trace)
-						exc);
+			catch (NoSuchBeanDefinitionException ex2) {
+				try {
+					return this.beanFactory.getBean(DEFAULT_SPRING_BOOT_KAFKA_TEMPLATE_NAME, KafkaOperations.class);
+				}
+				catch (NoSuchBeanDefinitionException exc) {
+					exc.addSuppressed(ex);
+					exc.addSuppressed(ex2);
+					throw new BeanInitializationException("Could not find a KafkaTemplate to configure the retry topics.", // NOSONAR (lost stack trace)
+							exc);
+				}
 			}
 		}
 	}

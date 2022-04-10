@@ -48,6 +48,13 @@ NOTE: You can have separate `ListenerContainerFactory` instances for the main an
 
 ==== Configuration
 
+Starting with version 2.9, the `@EnableKafkaRetryTopic` annotation should be used in a `@Configuration` annotated class.
+This enables the feature to bootstrap properly and gives access to injecting some of the feature's components to be looked up at runtime.
+Also, to configure the feature's components and global features, the `RetryTopicConfigurationSupport` class should be extended in a `@Configuration` class, and the appropriate methods overridden.
+For more details refer to <<retry-topic-global-settings>>.
+
+NOTE: It is not necessary to also add `@EnableKafka`, if you add this annotation, because `@EnableKafkaRetryTopic` is meta-annotated with `@EnableKafka`.
+
 ===== Using the `@RetryableTopic` annotation
 
 To configure the retry topic and dlt for a `@KafkaListener` annotated method, you just have to add the `@RetryableTopic` annotation to it and Spring for Apache Kafka will bootstrap all the necessary topics and consumers with the default configurations.
@@ -76,7 +83,7 @@ public void processMessage(MyPojo message) {
 ----
 ====
 
-NOTE: If you don't specify a kafkaTemplate name a bean with name `retryTopicDefaultKafkaTemplate` will be looked up.
+NOTE: If you don't specify a kafkaTemplate name a bean with name `defaultRetryTopicKafkaTemplate` will be looked up.
 If no bean is found an exception is thrown.
 
 ===== Using `RetryTopicConfiguration` beans
@@ -150,6 +157,40 @@ public KafkaTemplate<String, Object> kafkaTemplate() {
 
 IMPORTANT: Multiple `@KafkaListener` annotations can be used for the same topic with or without manual partition assignment along with non-blocking retries, but only one configuration will be used for a given topic.
 It's best to use a single `RetryTopicConfiguration` bean for configuration of such topics; if multiple `@RetryableTopic` annotations are being used for the same topic, all of them should have the same values, otherwise one of them will be applied to all of that topic's listeners and the other annotations' values will be ignored.
+
+[[retry-topic-global-settings]]
+===== Configuring Global Settings and Features
+
+Since 2.9, the previous bean overriding approach for configuring components has been deprecated.
+This does not change the `RetryTopicConfiguration` beans approach - only components' configurations.
+Now the `RetryTopicConfigurationSupport` class should be extended in a `@Configuration` class, and the proper methods overridden.
+An example follows:
+
+====
+[source, java]
+----
+
+@EnableKafka
+@Configuration
+public class MyRetryTopicConfiguration extends RetryTopicConfigurationSupport {
+
+    @Override
+    protected void configureBlockingRetries(BlockingRetriesConfigurer blockingRetries) {
+        blockingRetries
+                .retryOn(MyBlockingRetriesException.class, MyOtherBlockingRetriesException.class)
+                .backOff(new FixedBackOff(3000, 3));
+    }
+
+    @Override
+    protected void manageNonBlockingFatalExceptions(List<Class<? extends Throwable>> nonBlockingFatalExceptions) {
+        nonBlockingFatalExceptions.add(MyNonBlockingException.class);
+    }
+}
+----
+====
+
+IMPORTANT: When using this configuration approach, the `@EnableKafkaRetryTopic` annotation should not be used to prevent context failing to start due to duplicated beans.
+Use the simple `@EnableKafka` annotation instead.
 
 ==== Features
 
@@ -315,24 +356,22 @@ NOTE: The default behavior is retrying on all exceptions and not traversing caus
 
 Since 2.8.3 there's a global list of fatal exceptions which will cause the record to be sent to the DLT without any retries.
 See <<default-eh>> for the default list of fatal exceptions.
-You can add or remove exceptions to and from this list with:
+You can add or remove exceptions to and from this list by overriding the `configureNonBlockingRetries` method in a `@Configuration` class that extends `RetryTopicConfigurationSupport`.
+See <<retry-topic-global-settings>> for more information.
 
 ====
 [source, java]
 ----
-@Bean(name = RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME)
-public DefaultDestinationTopicResolver topicResolver(ApplicationContext applicationContext,
-                                               @Qualifier(RetryTopicInternalBeanNames
-                                                       .INTERNAL_BACKOFF_CLOCK_BEAN_NAME) Clock clock) {
-    DefaultDestinationTopicResolver ddtr = new DefaultDestinationTopicResolver(clock, applicationContext);
-    ddtr.addNotRetryableExceptions(MyFatalException.class);
-    ddtr.removeNotRetryableException(ConversionException.class);
-    return ddtr;
+
+@Override
+protected void manageNonBlockingRetriesFatalExceptions(List<Class<? extends Throwable>> nonBlockingFatalExceptions) {
+    nonBlockingFatalExceptions.add(MyNonBlockingException.class);
 }
+
 ----
 ====
 
-NOTE: To disable fatal exceptions' classification, clear the default list using the `setClassifications` method in `DefaultDestinationTopicResolver`.
+NOTE: To disable fatal exceptions' classification, just clear the provided list.
 
 
 ===== Include and Exclude Topics
@@ -419,19 +458,18 @@ This is to avoid creation of excessively large messages (due to the stack trace 
 
 See <<dlpr-headers>> for more information.
 
-To reconfigure the framework to use different settings for these properties, replace the standard `DeadLetterPublishingRecovererFactory` bean by adding a `recovererCustomizer`:
+To reconfigure the framework to use different settings for these properties, configure a `DeadLetterPublishingRecoverer` customizer by overriding the `configureCustomizers` method in a `@Configuration` class that extends `RetryTopicConfigurationSupport`.
+See <<retry-topic-global-settings>> for more details.
 
 ====
 [source, java]
 ----
-@Bean(RetryTopicInternalBeanNames.DEAD_LETTER_PUBLISHING_RECOVERER_FACTORY_BEAN_NAME)
-DeadLetterPublishingRecovererFactory factory(DestinationTopicResolver resolver) {
-    DeadLetterPublishingRecovererFactory factory = new DeadLetterPublishingRecovererFactory(resolver);
-    factory.setDeadLetterPublishingRecovererCustomizer(dlpr -> {
-        dlpr.appendOriginalHeaders(true);
+@Override
+protected void configureCustomizers(CustomizersConfigurer customizersConfigurer) {
+    customizersConfigurer.customizeDeadLetterPublishingRecoverer(dlpr -> {
+        dlpr.setAppendOriginalHeaders(true);
         dlpr.setStripPreviousExceptionHeaders(false);
     });
-    return factory;
 }
 ----
 ====
@@ -444,32 +482,21 @@ Starting with version 2.8.4, if you wish to add custom headers (in addition to t
 Starting in 2.8.4 you can configure the framework to use both blocking and non-blocking retries in conjunction.
 For example, you can have a set of exceptions that would likely trigger errors on the next records as well, such as `DatabaseAccessException`, so you can retry the same record a few times before sending it to the retry topic, or straight to the DLT.
 
-To configure blocking retries you just need to add the exceptions you want to retry through the `addRetryableExceptions` method in the `ListenerContainerFactoryConfigurer` bean as follows.
-The default policy is `FixedBackOff`, with nine retries and no delay between them.
-Optionally, you can provide your own back off policy.
+To configure blocking retries, override the `configureBlockingRetries` method in a `@Configuration` class that extends `RetryTopicConfigurationSupport` and add the exceptions you want to retry, along with the `BackOff` to be used.
+The default `BackOff` is a `FixedBackOff` with no delay and 9 attempts.
+See <<retry-topic-global-settings>> for more information.
 
 ====
 [source, java]
 ----
-@Bean(name = RetryTopicInternalBeanNames.LISTENER_CONTAINER_FACTORY_CONFIGURER_NAME)
-public ListenerContainerFactoryConfigurer lcfc(KafkaConsumerBackoffManager kafkaConsumerBackoffManager,
-                                               DeadLetterPublishingRecovererFactory deadLetterPublishingRecovererFactory,
-                                               @Qualifier(RetryTopicInternalBeanNames
-                                                       .INTERNAL_BACKOFF_CLOCK_BEAN_NAME) Clock clock) {
-    ListenerContainerFactoryConfigurer lcfc = new ListenerContainerFactoryConfigurer(kafkaConsumerBackoffManager, deadLetterPublishingRecovererFactory, clock);
-    lcfc.setBlockingRetryableExceptions(MyBlockingRetryException.class, MyOtherBlockingRetryException.class);
-    lcfc.setBlockingRetriesBackOff(new FixedBackOff(500, 5)); // Optional
-    return lcfc;
+
+@Override
+protected void configureBlockingRetries(BlockingRetriesConfigurer blockingRetries) {
+    blockingRetries
+            .retryOn(MyBlockingRetryException.class, MyOtherBlockingRetryException.class)
+            .backOff(new FixedBackOff(3000, 5));
 }
-----
-====
 
-If you need to further tune the exception classification, you can set your own `Map` of classifications through the `ListenerContainerFactoryConfigurer.setErrorHandlerCustomizer()` method, such as:
-
-====
-[source, java]
-----
-lcfc.setErrorHandlerCustomizer(ceh -> ((DefaultErrorHandler) ceh).setClassifications(myClassificationsMap, myDefaultValue));
 ----
 ====
 
@@ -480,23 +507,16 @@ Here's an example with both configurations working together:
 ====
 [source, java]
 ----
-@Bean(name = RetryTopicInternalBeanNames.LISTENER_CONTAINER_FACTORY_CONFIGURER_NAME)
-public ListenerContainerFactoryConfigurer lcfc(KafkaConsumerBackoffManager kafkaConsumerBackoffManager,
-                                            DeadLetterPublishingRecovererFactory deadLetterPublishingRecovererFactory,
-                                            @Qualifier(RetryTopicInternalBeanNames
-                                                    .INTERNAL_BACKOFF_CLOCK_BEAN_NAME) Clock clock) {
-    ListenerContainerFactoryConfigurer lcfc = new ListenerContainerFactoryConfigurer(kafkaConsumerBackoffManager, deadLetterPublishingRecovererFactory, clock);
-    lcfc.setBlockingRetryableExceptions(ShouldRetryOnlyBlockingException.class, ShouldRetryViaBothException.class);
-    return lcfc;
+@Override
+protected void configureBlockingRetries(BlockingRetriesConfigurer blockingRetries) {
+    blockingRetries
+            .retryOn(ShouldRetryOnlyBlockingException.class, ShouldRetryViaBothException.class)
+            .backOff(new FixedBackOff(50, 3));
 }
 
-@Bean(name = RetryTopicInternalBeanNames.DESTINATION_TOPIC_CONTAINER_NAME)
-public DefaultDestinationTopicResolver ddtr(ApplicationContext applicationContext,
-                                            @Qualifier(RetryTopicInternalBeanNames
-                                                    .INTERNAL_BACKOFF_CLOCK_BEAN_NAME) Clock clock) {
-    DefaultDestinationTopicResolver ddtr = new DefaultDestinationTopicResolver(clock, applicationContext);
-    ddtr.addNotRetryableExceptions(ShouldRetryOnlyBlockingException.class, ShouldSkipBothRetriesException.class);
-    return ddtr;
+@Override
+protected void manageNonBlockingFatalExceptions(List<Class<? extends Throwable>> nonBlockingFatalExceptions) {
+    nonBlockingFatalExceptions.add(ShouldSkipBothRetriesException.class);
 }
 
 ----
@@ -590,9 +610,14 @@ More complex naming strategies can be accomplished by registering a bean that im
 ====
 [source, java]
 ----
-@Bean
-public RetryTopicNamesProviderFactory myRetryNamingProviderFactory() {
-    return new CustomRetryTopicNamesProviderFactory();
+@Override
+protected RetryTopicComponentFactory createComponentFactory() {
+    return new RetryTopicComponentFactory() {
+        @Override
+        public RetryTopicNamesProviderFactory retryTopicNamesProviderFactory() {
+            return new CustomRetryTopicNamesProviderFactory();
+        }
+    };
 }
 ----
 ====
@@ -811,21 +836,14 @@ public RetryTopicConfiguration myOtherRetryTopic(KafkaTemplate<Integer, MyPojo> 
 
 IMPORTANT: Since 2.8.3 you can use the same factory for retryable and non-retryable topics.
 
-If you need to revert the factory configuration behavior to prior 2.8.3, you can replace the standard `RetryTopicConfigurer` bean and set `useLegacyFactoryConfigurer` to `true`, such as:
+If you need to revert the factory configuration behavior to prior 2.8.3, you can override the `configureRetryTopicConfigurer` method of a `@Configuration` class that extends `RetryTopicConfigurationSupport` as explained in <<retry-topic-global-settings>> and set `useLegacyFactoryConfigurer` to `true`, such as:
 
 ====
 [source, java]
 ----
-
-@Bean(name = RetryTopicInternalBeanNames.RETRY_TOPIC_CONFIGURER)
-public RetryTopicConfigurer retryTopicConfigurer(DestinationTopicProcessor destinationTopicProcessor,
-                                                ListenerContainerFactoryResolver containerFactoryResolver,
-                                                ListenerContainerFactoryConfigurer listenerContainerFactoryConfigurer,
-                                                BeanFactory beanFactory,
-                                                RetryTopicNamesProviderFactory retryTopicNamesProviderFactory) {
-    RetryTopicConfigurer retryTopicConfigurer = new RetryTopicConfigurer(destinationTopicProcessor, containerFactoryResolver, listenerContainerFactoryConfigurer, beanFactory, retryTopicNamesProviderFactory);
-    retryTopicConfigurer.useLegacyFactoryConfigurer(true);
-    return retryTopicConfigurer;
+@Override
+protected Consumer<RetryTopicConfigurer> configureRetryTopicConfigurer() {
+    return rtc -> rtc.useLegacyFactoryConfigurer(true);
 }
 ----
 ====
@@ -840,14 +858,10 @@ For example, to change the logging level to WARN you might add:
 ====
 [source, java]
 ----
-@Bean(name = RetryTopicInternalBeanNames.LISTENER_CONTAINER_FACTORY_CONFIGURER_NAME)
-public ListenerContainerFactoryConfigurer listenerContainer(KafkaConsumerBackoffManager kafkaConsumerBackoffManager,
-                                                            DeadLetterPublishingRecovererFactory deadLetterPublishingRecovererFactory,
-                                                            @Qualifier(RetryTopicInternalBeanNames
-                                                                    .INTERNAL_BACKOFF_CLOCK_BEAN_NAME) Clock clock) {
-    ListenerContainerFactoryConfigurer configurer = new ListenerContainerFactoryConfigurer(kafkaConsumerBackoffManager, deadLetterPublishingRecovererFactory, clock);
-    configurer.setErrorHandlerCustomizer(commonErrorHandler -> ((DefaultErrorHandler) commonErrorHandler).setLogLevel(KafkaException.Level.WARN));
-    return configurer;
+@Override
+protected void configureCustomizers(CustomizersConfigurer customizersConfigurer) {
+    customizersConfigurer.customizeErrorHandler(commonErrorHandler ->
+            ((DefaultErrorHandler) commonErrorHandler).setLogLevel(KafkaException.Level.WARN))
 }
 ----
 ====
