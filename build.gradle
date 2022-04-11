@@ -50,7 +50,7 @@ ext {
 			files(grgit.status().unstaged.modified).filter{ f -> f.name.endsWith('.java') || f.name.endsWith('.kt') }
 	}
 
-	assertjVersion = '3.19.0'
+	assertjVersion = '3.21.0'
 	awaitilityVersion = '4.0.3'
 	googleJsr305Version = '3.0.2'
 	hamcrestVersion = '2.2'
