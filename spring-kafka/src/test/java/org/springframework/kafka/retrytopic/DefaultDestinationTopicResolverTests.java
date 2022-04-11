@@ -114,14 +114,16 @@ class DefaultDestinationTopicResolverTests extends DestinationTopicTests {
 		assertThat(defaultDestinationTopicContainer
 				.resolveDestinationTopic(mainDestinationTopic.getDestinationName(),
 						1, new ListenerExecutionFailedException("Test exception!",
-								new IllegalArgumentException()), originalTimestamp)).isEqualTo(firstRetryDestinationTopic);
+								new IllegalArgumentException()), originalTimestamp))
+				.isEqualTo(firstRetryDestinationTopic);
 	}
 
 	@Test
 	void shouldResolveRetryDestinationForWrappedTimestampedException() {
 		assertThat(defaultDestinationTopicContainer
 				.resolveDestinationTopic(mainDestinationTopic.getDestinationName(),
-						1, new TimestampedException(new IllegalArgumentException()), originalTimestamp))
+						1, new TimestampedException(new IllegalArgumentException(), Instant.now(this.clock)),
+								originalTimestamp))
 				.isEqualTo(firstRetryDestinationTopic);
 	}
 

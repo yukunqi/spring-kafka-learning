@@ -19,9 +19,15 @@ package org.springframework.kafka.retrytopic;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
 import java.math.BigInteger;
@@ -36,12 +42,14 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.record.TimestampType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import org.springframework.core.NestedRuntimeException;
@@ -49,6 +57,8 @@ import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.KafkaBackoffException;
 import org.springframework.kafka.listener.TimestampedException;
+import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.kafka.test.condition.LogLevels;
 import org.springframework.util.concurrent.ListenableFuture;
 
 /**
@@ -98,7 +108,7 @@ class DeadLetterPublishingRecovererFactoryTests {
 	@Test
 	void shouldSendMessage() {
 		// setup
-		TimestampedException e = new TimestampedException(new RuntimeException(), this.clock);
+		TimestampedException e = new TimestampedException(new RuntimeException(), Instant.now(this.clock));
 		long failureTimestamp = e.getTimestamp();
 		given(destinationTopicResolver.resolveDestinationTopic(testTopic, 1, e, failureTimestamp)).willReturn(destinationTopic);
 		given(destinationTopic.isNoOpsTopic()).willReturn(false);
@@ -302,4 +312,179 @@ class DeadLetterPublishingRecovererFactoryTests {
 		// then
 		then(dlprCustomizer).should(times(1)).accept(deadLetterPublishingRecoverer);
 	}
+	@LogLevels(classes = DeadLetterPublishingRecovererFactory.class, level = "info")
+	@Test
+	void shouldNeverLogIfSet() {
+
+		// setup
+		RuntimeException retryException = new RuntimeException("Test exception");
+		DestinationTopicResolver resolver = mock(DestinationTopicResolver.class);
+		setupTopic(false, false, resolver, retryException);
+
+		RuntimeException dltException = new RuntimeException("Test exception");
+		setupTopic(false, true, resolver, dltException);
+
+		RuntimeException noOpsException = new RuntimeException("Test exception");
+		setupTopic(true, false, resolver, noOpsException);
+
+		ConsumerRecord recordMock = mock(ConsumerRecord.class);
+		Headers headersMock = mock(Headers.class);
+		given(recordMock.topic()).willReturn("testTopic");
+		given(recordMock.headers()).willReturn(headersMock);
+
+		DeadLetterPublishingRecovererFactory factory = new DeadLetterPublishingRecovererFactory(resolver) {
+			@Override
+			protected TopicPartition resolveTopicPartition(ConsumerRecord<?, ?> cr, DestinationTopic nextDestination) {
+				return null;
+			}
+		};
+		factory.neverLogListenerException();
+
+		// when
+		DeadLetterPublishingRecoverer deadLetterPublishingRecoverer = factory.create();
+		deadLetterPublishingRecoverer.accept(recordMock, retryException);
+		then(headersMock).should(never()).lastHeader(KafkaHeaders.ORIGINAL_TOPIC);
+		Mockito.reset(headersMock);
+
+		deadLetterPublishingRecoverer.accept(recordMock, dltException);
+		then(headersMock).should(never()).lastHeader(KafkaHeaders.ORIGINAL_TOPIC);
+		Mockito.reset(headersMock);
+
+		deadLetterPublishingRecoverer.accept(recordMock, noOpsException);
+		then(headersMock).should(never()).lastHeader(KafkaHeaders.ORIGINAL_TOPIC);
+	}
+
+	@LogLevels(classes = DeadLetterPublishingRecovererFactory.class, level = "info")
+	@Test
+	void shouldAlwaysLogIfSet() {
+
+		// setup
+		RuntimeException retryException = new RuntimeException("Test exception");
+		DestinationTopicResolver resolver = mock(DestinationTopicResolver.class);
+		setupTopic(false, false, resolver, retryException);
+
+		RuntimeException dltException = new RuntimeException("Test exception");
+		setupTopic(false, true, resolver, dltException);
+
+		RuntimeException noOpsException = new RuntimeException("Test exception");
+		setupTopic(true, false, resolver, noOpsException);
+
+		ConsumerRecord recordMock = mock(ConsumerRecord.class);
+		Headers headersMock = mock(Headers.class);
+		given(recordMock.topic()).willReturn("testTopic");
+		given(recordMock.headers()).willReturn(headersMock);
+
+		DeadLetterPublishingRecovererFactory factory = new DeadLetterPublishingRecovererFactory(resolver) {
+			@Override
+			protected TopicPartition resolveTopicPartition(ConsumerRecord<?, ?> cr, DestinationTopic nextDestination) {
+				return null;
+			}
+		};
+		factory.alwaysLogListenerException();
+
+		// when
+		DeadLetterPublishingRecoverer deadLetterPublishingRecoverer = factory.create();
+		deadLetterPublishingRecoverer.accept(recordMock, retryException);
+		then(headersMock).should().lastHeader(KafkaHeaders.ORIGINAL_TOPIC);
+		Mockito.reset(headersMock);
+
+		deadLetterPublishingRecoverer.accept(recordMock, dltException);
+		then(headersMock).should().lastHeader(KafkaHeaders.ORIGINAL_TOPIC);
+		Mockito.reset(headersMock);
+
+		deadLetterPublishingRecoverer.accept(recordMock, noOpsException);
+		then(headersMock).should().lastHeader(KafkaHeaders.ORIGINAL_TOPIC);
+	}
+
+	@LogLevels(classes = DeadLetterPublishingRecovererFactory.class, level = "info")
+	@Test
+	void shouldLogAfterExhaustedByDefault() {
+
+		// setup
+		RuntimeException retryException = new RuntimeException("Test exception");
+		DestinationTopicResolver resolver = mock(DestinationTopicResolver.class);
+		setupTopic(false, false, resolver, retryException);
+
+		RuntimeException dltException = new RuntimeException("Test exception");
+		setupTopic(false, true, resolver, dltException);
+
+		RuntimeException noOpsException = new RuntimeException("Test exception");
+		setupTopic(true, false, resolver, noOpsException);
+
+		ConsumerRecord recordMock = mock(ConsumerRecord.class);
+		Headers headersMock = mock(Headers.class);
+		given(recordMock.topic()).willReturn("testTopic");
+		given(recordMock.headers()).willReturn(headersMock);
+
+		DeadLetterPublishingRecovererFactory factory = new DeadLetterPublishingRecovererFactory(resolver) {
+			@Override
+			protected TopicPartition resolveTopicPartition(ConsumerRecord<?, ?> cr, DestinationTopic nextDestination) {
+				return null;
+			}
+		};
+
+		// when
+		DeadLetterPublishingRecoverer deadLetterPublishingRecoverer = factory.create();
+		deadLetterPublishingRecoverer.accept(recordMock, retryException);
+		then(headersMock).should(never()).lastHeader(KafkaHeaders.ORIGINAL_TOPIC);
+		Mockito.reset(headersMock);
+
+		deadLetterPublishingRecoverer.accept(recordMock, dltException);
+		then(headersMock).should().lastHeader(KafkaHeaders.ORIGINAL_TOPIC);
+		Mockito.reset(headersMock);
+
+		deadLetterPublishingRecoverer.accept(recordMock, noOpsException);
+		then(headersMock).should().lastHeader(KafkaHeaders.ORIGINAL_TOPIC);
+	}
+
+	@LogLevels(classes = DeadLetterPublishingRecovererFactory.class, level = "debug")
+	@Test
+	public void shouldAlwaysLogAtDebugLevel() {
+
+		// setup
+		RuntimeException retryException = new RuntimeException("Test exception");
+		DestinationTopicResolver resolver = mock(DestinationTopicResolver.class);
+		setupTopic(false, false, resolver, retryException);
+
+		RuntimeException dltException = new RuntimeException("Test exception");
+		setupTopic(false, true, resolver, dltException);
+
+		RuntimeException noOpsException = new RuntimeException("Test exception");
+		setupTopic(true, false, resolver, noOpsException);
+
+		ConsumerRecord recordMock = mock(ConsumerRecord.class);
+		Headers headersMock = mock(Headers.class);
+		given(recordMock.topic()).willReturn("testTopic");
+		given(recordMock.headers()).willReturn(headersMock);
+
+		DeadLetterPublishingRecovererFactory factory = new DeadLetterPublishingRecovererFactory(resolver) {
+			@Override
+			protected TopicPartition resolveTopicPartition(ConsumerRecord<?, ?> cr, DestinationTopic nextDestination) {
+				return null;
+			}
+		};
+		factory.neverLogListenerException();
+
+		// when
+		DeadLetterPublishingRecoverer deadLetterPublishingRecoverer = factory.create();
+		deadLetterPublishingRecoverer.accept(recordMock, retryException);
+		then(headersMock).should().lastHeader(KafkaHeaders.ORIGINAL_TOPIC);
+		Mockito.reset(headersMock);
+
+		deadLetterPublishingRecoverer.accept(recordMock, dltException);
+		then(headersMock).should().lastHeader(KafkaHeaders.ORIGINAL_TOPIC);
+		Mockito.reset(headersMock);
+
+		deadLetterPublishingRecoverer.accept(recordMock, noOpsException);
+		then(headersMock).should().lastHeader(KafkaHeaders.ORIGINAL_TOPIC);
+	}
+
+	private void setupTopic(boolean noOps, boolean dlt, DestinationTopicResolver resolver, RuntimeException noOpsException) {
+		DestinationTopic noOpsDestination = mock(DestinationTopic.class);
+		given(noOpsDestination.isNoOpsTopic()).willReturn(noOps);
+		given(noOpsDestination.isDltTopic()).willReturn(dlt);
+		given(resolver.resolveDestinationTopic(anyString(), anyInt(), eq(noOpsException),
+				anyLong())).willReturn(noOpsDestination);
+	}
+
 }
