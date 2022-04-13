@@ -568,7 +568,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final Consumer<K, V> consumer;
 
-		private final Map<String, Map<Integer, Long>> offsets = new HashMap<>();
+		private final Map<String, Map<Integer, Long>> offsets = new LinkedHashMap<>();
 
 		private final Collection<TopicPartition> assignedPartitions = new LinkedHashSet<>();
 
@@ -756,6 +756,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private boolean pausedForAsyncAcks;
 
 		private boolean receivedSome;
+
+		private ConsumerRecords<K, V> pendingRecordsAfterError;
 
 		private volatile boolean consumerPaused;
 
@@ -1348,12 +1350,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				return;
 			}
 			debugRecords(records);
-			resumeConsumerIfNeccessary();
-			if (!this.consumerPaused) {
-				resumePartitionsIfNecessary();
-			}
 
 			invokeIfHaveRecords(records);
+			if (this.pendingRecordsAfterError == null) {
+				resumeConsumerIfNeccessary();
+				if (!this.consumerPaused) {
+					resumePartitionsIfNecessary();
+				}
+			}
 		}
 
 		private void invokeIfHaveRecords(@Nullable ConsumerRecords<K, V> records) {
@@ -1509,6 +1513,16 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			else {
 				records = pollConsumer();
+				if (this.pendingRecordsAfterError != null) {
+					int howManyRecords = records.count();
+					if (howManyRecords > 0) {
+						this.logger.error(() -> String.format("Poll returned %d record(s) while consumer was paused "
+								+ "after an error; emergency stop invoked to avoid message loss", howManyRecords));
+						KafkaMessageListenerContainer.this.emergencyStop.run();
+					}
+					records = this.pendingRecordsAfterError;
+					this.pendingRecordsAfterError = null;
+				}
 				captureOffsets(records);
 				checkRebalanceCommits();
 			}
@@ -1611,7 +1625,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.pausedForAsyncAcks = true;
 				this.logger.debug(() -> "Pausing for incomplete async acks: " + this.offsetsInThisBatch);
 			}
-			if (!this.consumerPaused && (isPaused() || this.pausedForAsyncAcks)) {
+			if (!this.consumerPaused && (isPaused() || this.pausedForAsyncAcks)
+					|| this.pendingRecordsAfterError != null) {
+
 				this.consumer.pause(this.consumer.assignment());
 				this.consumerPaused = true;
 				this.logger.debug(() -> "Paused consumption from: " + this.consumer.paused());
@@ -2157,7 +2173,22 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void commitOffsetsIfNeeded(final ConsumerRecords<K, V> records) {
 			if ((!this.autoCommit && this.commonErrorHandler.isAckAfterHandle())
 					|| this.producer != null) {
-				this.acks.addAll(getHighestOffsetRecords(records));
+				if (this.pendingRecordsAfterError != null) {
+					ConsumerRecord<K, V> firstUncommitted = this.pendingRecordsAfterError.iterator().next();
+					Iterator<ConsumerRecord<K, V>> it = records.iterator();
+					while (it.hasNext()) {
+						ConsumerRecord<K, V> next = it.next();
+						if (!next.equals(firstUncommitted)) {
+							this.acks.add(next);
+						}
+						else {
+							break;
+						}
+					}
+				}
+				else {
+					this.acks.addAll(getHighestOffsetRecords(records));
+				}
 				if (this.producer != null) {
 					sendOffsetsToTransaction();
 				}
@@ -2294,9 +2325,19 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void invokeBatchErrorHandler(final ConsumerRecords<K, V> records,
 				@Nullable List<ConsumerRecord<K, V>> list, RuntimeException rte) {
 
-			this.commonErrorHandler.handleBatch(rte, records, this.consumer,
-					KafkaMessageListenerContainer.this.thisOrParentContainer,
-					() -> invokeBatchOnMessageWithRecordsOrList(records, list));
+			if (this.commonErrorHandler.seeksAfterHandling() || this.transactionManager != null) {
+				this.commonErrorHandler.handleBatch(rte, records, this.consumer,
+						KafkaMessageListenerContainer.this.thisOrParentContainer,
+						() -> invokeBatchOnMessageWithRecordsOrList(records, list));
+			}
+			else {
+				ConsumerRecords<K, V> afterHandling = this.commonErrorHandler.handleBatchAndReturnRemaining(rte,
+						records, this.consumer, KafkaMessageListenerContainer.this.thisOrParentContainer,
+						() -> invokeBatchOnMessageWithRecordsOrList(records, list));
+				if (!afterHandling.isEmpty()) {
+					this.pendingRecordsAfterError = afterHandling;
+				}
+			}
 		}
 
 		private void invokeRecordListener(final ConsumerRecords<K, V> records) {
@@ -2577,7 +2618,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				if (this.isManualAck) {
 					this.commitRecovered = true;
 				}
-				ackCurrent(record);
+				if (this.pendingRecordsAfterError == null
+						|| !record.equals(this.pendingRecordsAfterError.iterator().next())) {
+					ackCurrent(record);
+				}
 				if (this.isManualAck) {
 					this.commitRecovered = false;
 				}
@@ -2662,7 +2706,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void invokeErrorHandler(final ConsumerRecord<K, V> record,
 				Iterator<ConsumerRecord<K, V>> iterator, RuntimeException rte) {
 
-			if (this.commonErrorHandler.remainingRecords()) {
+			if (this.commonErrorHandler.seeksAfterHandling()) {
 				if (this.producer == null) {
 					processCommits();
 				}
@@ -2675,8 +2719,20 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						KafkaMessageListenerContainer.this.thisOrParentContainer);
 			}
 			else {
-				this.commonErrorHandler.handleRecord(rte, record, this.consumer,
+				boolean handled = this.commonErrorHandler.handleOne(rte, record, this.consumer,
 						KafkaMessageListenerContainer.this.thisOrParentContainer);
+				Map<TopicPartition, List<ConsumerRecord<K, V>>> records = new HashMap<>();
+				if (!handled) {
+					records.computeIfAbsent(new TopicPartition(record.topic(), record.partition()),
+							tp -> new ArrayList<ConsumerRecord<K, V>>()).add(record);
+				}
+				while (iterator.hasNext()) {
+					records.computeIfAbsent(new TopicPartition(record.topic(), record.partition()),
+							tp -> new ArrayList<ConsumerRecord<K, V>>()).add(iterator.next());
+				}
+				if (records.size() > 0) {
+					this.pendingRecordsAfterError = new ConsumerRecords<>(records);
+				}
 			}
 		}
 
@@ -3047,7 +3103,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private Map<TopicPartition, OffsetAndMetadata> buildCommits() {
-			Map<TopicPartition, OffsetAndMetadata> commits = new HashMap<>();
+			Map<TopicPartition, OffsetAndMetadata> commits = new LinkedHashMap<>();
 			for (Entry<String, Map<Integer, Long>> entry : this.offsets.entrySet()) {
 				for (Entry<Integer, Long> offset : entry.getValue().entrySet()) {
 					commits.put(new TopicPartition(entry.getKey(), offset.getKey()),

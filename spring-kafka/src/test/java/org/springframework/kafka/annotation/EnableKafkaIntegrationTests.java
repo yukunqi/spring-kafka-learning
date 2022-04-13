@@ -98,6 +98,7 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.event.ListenerContainerNoLongerIdleEvent;
 import org.springframework.kafka.listener.AbstractConsumerSeekAware;
+import org.springframework.kafka.listener.CommonErrorHandler;
 import org.springframework.kafka.listener.CommonLoggingErrorHandler;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.ConsumerAwareErrorHandler;
@@ -1289,7 +1290,7 @@ public class EnableKafkaIntegrationTests {
 			factory.setConsumerFactory(configuredConsumerFactory("clientIdViaProps4"));
 			ContainerProperties props = factory.getContainerProperties();
 			props.setAckMode(AckMode.RECORD);
-			factory.setErrorHandler(listen16ErrorHandler());
+			factory.setCommonErrorHandler(listen16ErrorHandler());
 			return factory;
 		}
 
@@ -1596,11 +1597,19 @@ public class EnableKafkaIntegrationTests {
 		private final CountDownLatch listen16ErrorLatch = new CountDownLatch(1);
 
 		@Bean
-		public ConsumerAwareErrorHandler listen16ErrorHandler() {
-			return (e, r, c) -> {
-				listen16Exception = e;
-				listen16Message = r.value();
-				listen16ErrorLatch.countDown();
+		public CommonErrorHandler listen16ErrorHandler() {
+			return new CommonErrorHandler() {
+
+				@Override
+				public boolean handleOne(Exception thrownException, ConsumerRecord<?, ?> record,
+						Consumer<?, ?> consumer, MessageListenerContainer container) {
+
+					listen16Exception = thrownException;
+					listen16Message = record.value();
+					listen16ErrorLatch.countDown();
+					return true;
+				}
+
 			};
 		}
 
