@@ -350,10 +350,14 @@ public class RetryTopicConfigurer {
 	}
 
 	protected void createNewTopicBeans(Collection<String> topics, RetryTopicConfiguration.TopicCreation config) {
-		topics.forEach(topic ->
-				((DefaultListableBeanFactory) this.beanFactory)
-						.registerSingleton(topic + "-topicRegistrationBean",
-								new NewTopic(topic, config.getNumPartitions(), config.getReplicationFactor()))
+		topics.forEach(topic -> {
+				DefaultListableBeanFactory bf = ((DefaultListableBeanFactory) this.beanFactory);
+				String beanName = topic + "-topicRegistrationBean";
+				if (!bf.containsBean(beanName)) {
+					bf.registerSingleton(beanName,
+							new NewTopic(topic, config.getNumPartitions(), config.getReplicationFactor()));
+				}
+			}
 		);
 	}
 

@@ -148,6 +148,9 @@ public KafkaTemplate<String, Object> kafkaTemplate() {
 ----
 ====
 
+IMPORTANT: Multiple `@KafkaListener` annotations can be used for the same topic with or without manual partition assignment along with non-blocking retries, but only one configuration will be used for a given topic.
+It's best to use a single `RetryTopicConfiguration` bean for configuration of such topics; if multiple `@RetryableTopic` annotations are being used for the same topic, all of them should have the same values, otherwise one of them will be applied to all of that topic's listeners and the other annotations' values will be ignored.
+
 ==== Features
 
 Most of the features are available both for the `@RetryableTopic` annotation and the `RetryTopicConfiguration` beans.
