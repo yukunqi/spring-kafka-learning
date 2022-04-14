@@ -3979,7 +3979,7 @@ Starting with version 2.3, all the JSON-aware components are configured by defau
 Also such an instance is supplied with well-known modules for custom data types, such a Java time and Kotlin support.
 See `JacksonUtils.enhancedObjectMapper()` JavaDocs for more information.
 This method also registers a `org.springframework.kafka.support.JacksonMimeTypeModule` for `org.springframework.util.MimeType` objects serialization into the plain string for inter-platform compatibility over the network.
-A `JacksonMimeTypeModule` can be registered as a bean in the application context and it will be auto-configured into https://docs.spring.io/spring-boot/docs/current/reference/html/howto-spring-mvc.html#howto-customize-the-jackson-objectmapper[Spring Boot `ObjectMapper` instance].
+A `JacksonMimeTypeModule` can be registered as a bean in the application context and it will be auto-configured into the https://docs.spring.io/spring-boot/docs/current/reference/html/howto.html#howto.spring-mvc.customize-jackson-objectmapper[Spring Boot `ObjectMapper` instance].
 
 Also starting with version 2.3, the `JsonDeserializer` provides `TypeReference`-based constructors for better handling of target generic container types.
 
@@ -4034,7 +4034,7 @@ consumerProps.put(JsonDeSerializer.TYPE_MAPPINGS, "cat:com.yourcat.Cat, hat:com.
 
 IMPORTANT: The corresponding objects must be compatible.
 
-If you use https://docs.spring.io/spring-boot/docs/current/reference/html/boot-features-messaging.html#boot-features-kafka[Spring Boot], you can provide these properties in the `application.properties` (or yaml) file.
+If you use https://docs.spring.io/spring-boot/docs/current/reference/html/messaging.html#messaging.kafka[Spring Boot], you can provide these properties in the `application.properties` (or yaml) file.
 The following example shows how to do so:
 
 ====
