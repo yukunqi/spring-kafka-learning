@@ -56,7 +56,7 @@ import org.springframework.lang.Nullable;
  * <p>How it works:
  *
  * <p>If a message processing throws an exception, the configured
- * {@link org.springframework.kafka.listener.SeekToCurrentErrorHandler}
+ * {@link org.springframework.kafka.listener.DefaultErrorHandler}
  * and {@link org.springframework.kafka.listener.DeadLetterPublishingRecoverer} forwards the message to the next topic, using a
  * {@link org.springframework.kafka.retrytopic.DestinationTopicResolver}
  * to know the next topic and the delay for it.
@@ -196,7 +196,7 @@ import org.springframework.lang.Nullable;
  * @see org.springframework.kafka.annotation.RetryableTopic
  * @see org.springframework.kafka.annotation.KafkaListener
  * @see org.springframework.retry.annotation.Backoff
- * @see org.springframework.kafka.listener.SeekToCurrentErrorHandler
+ * @see org.springframework.kafka.listener.DefaultErrorHandler
  * @see org.springframework.kafka.listener.DeadLetterPublishingRecoverer
  *
  */

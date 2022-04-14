@@ -29,8 +29,8 @@ import org.springframework.util.Assert;
 
 /**
  * A {@link CommonErrorHandler} that stops the container when an error occurs. Replaces
- * the legacy {@link ContainerStoppingErrorHandler} and
- * {@link ContainerStoppingBatchErrorHandler}.
+ * the legacy {@code ContainerStoppingErrorHandler} and
+ * {@code ContainerStoppingBatchErrorHandler}.
  *
  * @author Gary Russell
  * @since 2.8

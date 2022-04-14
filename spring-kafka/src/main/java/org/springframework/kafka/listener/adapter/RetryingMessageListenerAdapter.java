@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 the original author or authors.
+ * Copyright 2016-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -90,7 +90,7 @@ public class RetryingMessageListenerAdapter<K, V>
 	 * Construct an instance with the provided template, callback and delegate. When using
 	 * stateful retry, the retry context key is a concatenated String
 	 * {@code topic-partition-offset}. A
-	 * {@link org.springframework.kafka.listener.SeekToCurrentErrorHandler} is required in
+	 * {@link org.springframework.kafka.listener.DefaultErrorHandler} is required in
 	 * the listener container because stateful retry will throw the exception to the
 	 * container for each delivery attempt.
 	 * @param messageListener the delegate listener.
