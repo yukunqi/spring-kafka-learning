@@ -49,7 +49,6 @@ import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.lang.Nullable;
 import org.springframework.retry.RecoveryCallback;
-import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
 import org.springframework.util.ObjectUtils;
 
@@ -93,8 +92,6 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	private RecordFilterStrategy<K, V> recordFilterStrategy;
 
 	private boolean ackDiscarded;
-
-	private RetryTemplate retryTemplate;
 
 	private RecoveryCallback<? extends Object> recoveryCallback;
 
@@ -329,67 +326,6 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	}
 
 	@Nullable
-	protected RetryTemplate getRetryTemplate() {
-		return this.retryTemplate;
-	}
-
-	/**
-	 * Set a retryTemplate.
-	 * @param retryTemplate the template.
-	 * @deprecated since 2.8 - use a suitably configured error handler instead.
-	 */
-	@Deprecated
-	public void setRetryTemplate(RetryTemplate retryTemplate) {
-		this.retryTemplate = retryTemplate;
-	}
-
-	/**
-	 * Get the recovery callback.
-	 * @return the recovery callback.
-	 * @deprecated since 2.8 - use a suitably configured error handler instead.
-	 */
-	@Deprecated
-	@Nullable
-	protected RecoveryCallback<?> getRecoveryCallback() {
-		return this.recoveryCallback;
-	}
-
-	/**
-	 * Set a callback to be used with the {@link #setRetryTemplate(RetryTemplate)}.
-	 * @param recoveryCallback the callback.
-	 * @deprecated since 2.8 - use a suitably configured error handler instead.
-	 */
-	@Deprecated
-	public void setRecoveryCallback(RecoveryCallback<? extends Object> recoveryCallback) {
-		this.recoveryCallback = recoveryCallback;
-	}
-
-	/**
-	 * Return the stateful retry.
-	 * @return the stateful retry.
-	 * @deprecated since 2.8 - use a suitably configured error handler instead.
-	 */
-	@Deprecated
-	protected boolean isStatefulRetry() {
-		return this.statefulRetry;
-	}
-
-	/**
-	 * When using a {@link RetryTemplate}, set to true to enable stateful retry. Use in
-	 * conjunction with a legacy
-	 * {@code org.springframework.kafka.listener.SeekToCurrentErrorHandler} when retry can
-	 * take excessive time; each failure goes back to the broker, to keep the Consumer
-	 * alive.
-	 * @param statefulRetry true to enable stateful retry.
-	 * @since 2.1.3
-	 * @deprecated since 2.8 - use a suitably configured error handler instead.
-	 */
-	@Deprecated
-	public void setStatefulRetry(boolean statefulRetry) {
-		this.statefulRetry = statefulRetry;
-	}
-
-	@Nullable
 	@Override
 	public String getClientIdPrefix() {
 		return this.clientIdPrefix;
@@ -544,7 +480,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	protected abstract MessagingMessageListenerAdapter<K, V> createMessageListener(MessageListenerContainer container,
 			@Nullable MessageConverter messageConverter);
 
-	@SuppressWarnings({ "unchecked", "deprecation" })
+	@SuppressWarnings("unchecked")
 	private void setupMessageListener(MessageListenerContainer container,
 			@Nullable MessageConverter messageConverter) {
 
@@ -557,14 +493,6 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		boolean isBatchListener = isBatchListener();
 		Assert.state(messageListener != null,
 				() -> "Endpoint [" + this + "] must provide a non null message listener");
-		Assert.state(this.retryTemplate == null || !isBatchListener,
-				"A 'RetryTemplate' is not supported with a batch listener; consider configuring the container "
-				+ "with a suitably configured 'SeekToCurrentBatchErrorHandler' instead");
-		if (this.retryTemplate != null) {
-			messageListener = new org.springframework.kafka.listener.adapter.RetryingMessageListenerAdapter<>(
-							(MessageListener<K, V>) messageListener,
-					this.retryTemplate, this.recoveryCallback, this.statefulRetry);
-		}
 		if (this.recordFilterStrategy != null) {
 			if (isBatchListener) {
 				if (((MessagingMessageListenerAdapter<K, V>) messageListener).isConsumerRecords()) {
