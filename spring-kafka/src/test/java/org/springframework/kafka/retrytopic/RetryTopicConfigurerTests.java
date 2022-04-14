@@ -24,7 +24,6 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.BDDMockito.willThrow;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
 import java.lang.reflect.Method;
@@ -53,6 +52,7 @@ import org.springframework.kafka.config.KafkaListenerEndpointRegistrar;
 import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
 import org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint;
 import org.springframework.kafka.support.EndpointHandlerMethod;
+import org.springframework.kafka.test.condition.LogLevels;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**
@@ -119,7 +119,8 @@ class RetryTopicConfigurerTests {
 	@Mock
 	private ListenerContainerFactoryConfigurer.Configuration lcfcConfiguration;
 
-	private static final Object objectMessage = new Object();
+	@Mock
+	private Object objectMessage;
 
 	private static final List<String> topics = Arrays.asList("topic1", "topic2");
 
@@ -356,13 +357,14 @@ class RetryTopicConfigurerTests {
 
 	}
 
+	@LogLevels(classes = RetryTopicConfigurer.class, level = "info")
 	@Test
 	@SuppressWarnings("deprecation")
 	void shouldLogConsumerRecordMessage() {
 		RetryTopicConfigurer.LoggingDltListenerHandlerMethod method =
 				new RetryTopicConfigurer.LoggingDltListenerHandlerMethod();
 		method.logMessage(consumerRecordMessage);
-		then(consumerRecordMessage).should(never()).topic();
+		then(consumerRecordMessage).should().topic();
 	}
 
 	@Test
@@ -370,6 +372,7 @@ class RetryTopicConfigurerTests {
 		RetryTopicConfigurer.LoggingDltListenerHandlerMethod method =
 				new RetryTopicConfigurer.LoggingDltListenerHandlerMethod();
 		method.logMessage(objectMessage);
+		then(objectMessage).shouldHaveNoInteractions();
 	}
 
 	static class NoOpsClass {
