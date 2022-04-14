@@ -376,8 +376,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	/**
 	 * When using a {@link RetryTemplate}, set to true to enable stateful retry. Use in
-	 * conjunction with a
-	 * {@link org.springframework.kafka.listener.SeekToCurrentErrorHandler} when retry can
+	 * conjunction with a legacy
+	 * {@code org.springframework.kafka.listener.SeekToCurrentErrorHandler} when retry can
 	 * take excessive time; each failure goes back to the broker, to keep the Consumer
 	 * alive.
 	 * @param statefulRetry true to enable stateful retry.

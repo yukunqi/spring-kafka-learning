@@ -38,7 +38,7 @@ import org.springframework.util.backoff.BackOff;
  * not provided in the exception, error handling is delegated to a
  * {@link FallbackBatchErrorHandler} with this handler's {@link BackOff}. If the record is
  * recovered, its offset is committed. This is a replacement for the legacy
- * {@link SeekToCurrentErrorHandler} and {@link SeekToCurrentBatchErrorHandler} (but the
+ * {@code SeekToCurrentErrorHandler} and {@code SeekToCurrentBatchErrorHandler} (but the
  * fallback now can send the messages to a recoverer after retries are completed instead
  * of retrying indefinitely).
  *
