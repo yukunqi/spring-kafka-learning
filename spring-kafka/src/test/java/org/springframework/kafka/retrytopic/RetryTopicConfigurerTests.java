@@ -362,11 +362,12 @@ class RetryTopicConfigurerTests {
 	@Test
 	@SuppressWarnings("deprecation")
 	void shouldLogConsumerRecordMessage() {
-		ListenerUtils.setLogOnlyMetadata(false);
+		ListenerUtils.setLogOnlyMetadata(true);
 		RetryTopicConfigurer.LoggingDltListenerHandlerMethod method =
 				new RetryTopicConfigurer.LoggingDltListenerHandlerMethod();
 		method.logMessage(consumerRecordMessage);
 		then(consumerRecordMessage).should().topic();
+		ListenerUtils.setLogOnlyMetadata(false);
 	}
 
 	@Test
