@@ -63,12 +63,12 @@ ext {
 	log4jVersion = '2.17.2'
 	micrometerVersion = '1.6.13'
 	mockitoVersion = '3.9.0'
-	reactorVersion = '2020.0.17'
+	reactorVersion = '2020.0.18'
 	scalaVersion = '2.13'
 	springBootVersion = '2.4.13' // docs module
 	springDataVersion = '2021.0.10'
 	springRetryVersion = '1.3.3'
-	springVersion = '5.3.18'
+	springVersion = '5.3.19'
 
 	idPrefix = 'kafka'
 }
