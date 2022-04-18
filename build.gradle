@@ -217,11 +217,6 @@ subprojects { subproject ->
 		}
 	}
 
-	artifactoryPublish {
-		dependsOn build
-		publications(publishing.publications.mavenJava)
-	}
-
 	publishing {
 		publications {
 			mavenJava(MavenPublication) {
