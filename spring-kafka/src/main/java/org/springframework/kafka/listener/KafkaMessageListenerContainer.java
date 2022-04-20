@@ -3159,17 +3159,23 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final class ConsumerAwareListenerMetadata implements ListenerMetadata {
 
+			ConsumerAwareListenerMetadata() {
+			}
+
 			@Override
+			@Nullable
 			public String getListenerId() {
 				return getBeanName();
 			}
 
 			@Override
+			@Nullable
 			public String getGroupId() {
 				return ListenerConsumer.this.consumerGroupId;
 			}
 
 			@Override
+			@Nullable
 			public byte[] getListenerInfo() {
 				return ListenerConsumer.this.listenerinfo;
 			}
