@@ -222,22 +222,6 @@ class RetryTopicConfigurationSupportTests {
 	}
 
 	@Test
-	void testCreatesTaskExecutorIfTimingAdjustmentEnabled() {
-		RetryTopicComponentFactory componentFactory = mock(RetryTopicComponentFactory.class);
-		ThreadPoolTaskExecutor taskExecutorMock = mock(ThreadPoolTaskExecutor.class);
-		given(componentFactory.taskExecutor()).willReturn(taskExecutorMock);
-		RetryTopicConfigurationSupport support = new RetryTopicConfigurationSupport() {
-			@Override
-			protected RetryTopicComponentFactory createComponentFactory() {
-				return componentFactory;
-			}
-		};
-		TaskExecutor taskExecutor = support.backoffManagerTaskExecutor();
-		then(componentFactory).should().taskExecutor();
-		assertThat(taskExecutor).isEqualTo(taskExecutorMock);
-	}
-
-	@Test
 	void testCreatesTaskExecutor() {
 		RetryTopicConfigurationSupport support = new RetryTopicConfigurationSupport();
 		TaskExecutor taskExecutor = support.backoffManagerTaskExecutor();
