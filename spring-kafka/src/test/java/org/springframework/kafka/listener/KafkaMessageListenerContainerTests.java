@@ -58,6 +58,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.aopalliance.intercept.MethodInterceptor;
 import org.apache.commons.logging.LogFactory;
@@ -83,6 +84,10 @@ import org.apache.kafka.common.serialization.IntegerDeserializer;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 
@@ -657,18 +662,10 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(container.isRunning()).isFalse();
 	}
 
-	@Test
-	void testInOrderAckManual() throws Exception {
-		testInOrderAck(AckMode.MANUAL);
-	}
-
-	@Test
-	void testInOrderAckManualImm() throws Exception {
-		testInOrderAck(AckMode.MANUAL_IMMEDIATE);
-	}
-
+	@ParameterizedTest(name = "{index} AckMode.{0}")
+	@EnumSource(value = AckMode.class, names = { "MANUAL", "MANUAL_IMMEDIATE" })
 	@SuppressWarnings("unchecked")
-	private void testInOrderAck(AckMode ackMode) throws Exception {
+	void testInOrderAck(AckMode ackMode) throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
 		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
@@ -723,28 +720,18 @@ public class KafkaMessageListenerContainerTests {
 		container.stop();
 	}
 
-	@Test
-	void testInOrderAckPauseUntilAckedManual() throws Exception {
-		testInOrderAckPauseUntilAcked(AckMode.MANUAL, false);
+	private static Stream<Arguments> testInOrderAckPauseUntilAckedParamters() {
+		return Stream.of(
+				Arguments.of(AckMode.MANUAL, false),
+				Arguments.of(AckMode.MANUAL, true),
+				Arguments.of(AckMode.MANUAL_IMMEDIATE, false),
+				Arguments.of(AckMode.MANUAL_IMMEDIATE, true));
 	}
 
-	@Test
-	void testInOrderAckPauseUntilAckedManualImm() throws Exception {
-		testInOrderAckPauseUntilAcked(AckMode.MANUAL_IMMEDIATE, false);
-	}
-
-	@Test
-	void testInOrderAckPauseUntilAckedManualBatch() throws Exception {
-		testInOrderAckPauseUntilAcked(AckMode.MANUAL, true);
-	}
-
-	@Test
-	void testInOrderAckPauseUntilAckedManualImmBatch() throws Exception {
-		testInOrderAckPauseUntilAcked(AckMode.MANUAL_IMMEDIATE, true);
-	}
-
+	@ParameterizedTest(name = "{index} AckMode.{0} batch:{1}")
+	@MethodSource("testInOrderAckPauseUntilAckedParamters")
 	@SuppressWarnings("unchecked")
-	private void testInOrderAckPauseUntilAcked(AckMode ackMode, boolean batch) throws Exception {
+	void testInOrderAckPauseUntilAcked(AckMode ackMode, boolean batch) throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
 		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
@@ -998,18 +985,10 @@ public class KafkaMessageListenerContainerTests {
 		verify(consumer, never()).wakeup();
 	}
 
-	@Test
-	public void testRecordAckMockForeignThread() throws Exception {
-		testRecordAckMockForeignThreadGuts(AckMode.MANUAL);
-	}
-
-	@Test
-	public void testRecordAckMockForeignThreadImmediate() throws Exception {
-		testRecordAckMockForeignThreadGuts(AckMode.MANUAL_IMMEDIATE);
-	}
-
+	@ParameterizedTest(name = "{index} AckMode.{0}")
+	@EnumSource(value = AckMode.class, names = { "MANUAL", "MANUAL_IMMEDIATE" })
 	@SuppressWarnings("unchecked")
-	private void testRecordAckMockForeignThreadGuts(AckMode ackMode) throws Exception {
+	void testRecordAckMockForeignThread(AckMode ackMode) throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
 		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
@@ -1500,25 +1479,6 @@ public class KafkaMessageListenerContainerTests {
 	}
 
 	@Test
-	public void testSeek() throws Exception {
-		Map<String, Object> props = KafkaTestUtils.consumerProps("test11", "false", embeddedKafka);
-		testSeekGuts(props, topic11, false);
-	}
-
-	@Test
-	public void testSeekAutoCommit() throws Exception {
-		Map<String, Object> props = KafkaTestUtils.consumerProps("test12", "true", embeddedKafka);
-		testSeekGuts(props, topic12, true);
-	}
-
-	@Test
-	public void testSeekAutoCommitDefault() throws Exception {
-		Map<String, Object> props = KafkaTestUtils.consumerProps("test15", "true", embeddedKafka);
-		props.remove(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG); // test false by default
-		testSeekGuts(props, topic15, false);
-	}
-
-	@Test
 	public void testSeekBatch() throws Exception {
 		logger.info("Start seek batch seek");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test16", "true", embeddedKafka);
@@ -1573,7 +1533,18 @@ public class KafkaMessageListenerContainerTests {
 		container.stop();
 	}
 
-	private void testSeekGuts(Map<String, Object> props, String topic, boolean autoCommit) throws Exception {
+	private static Stream<Arguments> testSeekParameters() {
+		Map<String, Object> noAutoCommit = KafkaTestUtils.consumerProps("test15", "true", embeddedKafka);
+		noAutoCommit.remove(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG); // test false by default
+		return Stream.of(
+				Arguments.of(KafkaTestUtils.consumerProps("test11", "false", embeddedKafka), topic11, false),
+				Arguments.of(KafkaTestUtils.consumerProps("test12", "true", embeddedKafka), topic12, true),
+				Arguments.of(noAutoCommit, topic15, false));
+	}
+
+	@ParameterizedTest(name = "topic:{1} autocommit:{2}")
+	@MethodSource("testSeekParameters")
+	void testSeek(Map<String, Object> props, String topic, boolean autoCommit) throws Exception {
 		logger.info("Start seek " + topic);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic);

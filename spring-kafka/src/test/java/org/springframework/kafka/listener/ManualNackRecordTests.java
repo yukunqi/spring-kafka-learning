@@ -248,6 +248,7 @@ public class ManualNackRecordTests {
 
 				@Override
 				@Nullable
+				@SuppressWarnings("rawtypes")
 				public ConsumerRecord intercept(ConsumerRecord record, Consumer consumer) {
 					return new ConsumerRecord(record.topic(), record.partition(), record.offset(), 0L,
 							TimestampType.NO_TIMESTAMP_TYPE, 0, 0, record.key(), record.value(), record.headers(),
