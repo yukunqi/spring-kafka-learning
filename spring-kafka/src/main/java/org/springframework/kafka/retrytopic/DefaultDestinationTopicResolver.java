@@ -34,11 +34,12 @@ import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.kafka.listener.ExceptionClassifier;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.listener.TimestampedException;
+import org.springframework.lang.Nullable;
 
 
 /**
  *
- * Default implementation of the DestinationTopicResolver interface.
+ * Default implementation of the {@link DestinationTopicResolver} interface.
  * The container is closed when a {@link ContextRefreshedEvent} is received
  * and no more destinations can be added after that.
  *
@@ -57,8 +58,6 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 			Arrays.asList(ListenerExecutionFailedException.class, TimestampedException.class);
 
 	private final Map<String, DestinationTopicHolder> sourceDestinationsHolderMap;
-
-	private final Map<String, DestinationTopic> destinationsTopicMap;
 
 	private final Clock clock;
 
@@ -81,7 +80,6 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 	public DefaultDestinationTopicResolver(Clock clock) {
 		this.clock = clock;
 		this.sourceDestinationsHolderMap = new HashMap<>();
-		this.destinationsTopicMap = new HashMap<>();
 		this.contextRefreshed = false;
 	}
 
@@ -103,7 +101,7 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 						&& isNotFatalException(e)
 						&& !isPastTimout(originalTimestamp, destinationTopicHolder)
 					? resolveRetryDestination(destinationTopicHolder)
-					: resolveDltOrNoOpsDestination(topic);
+					: getDltOrNoOpsDestination(topic);
 	}
 
 	private Boolean isNotFatalException(Exception e) {
@@ -140,18 +138,28 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 
 	@Override
 	public DestinationTopic getDestinationTopicByName(String topic) {
-		return Objects.requireNonNull(this.destinationsTopicMap.get(topic),
-				() -> "No topic found for " + topic);
+		return Objects.requireNonNull(this.sourceDestinationsHolderMap.get(topic),
+				() -> "No DestinationTopic found for " + topic).getSourceDestination();
 	}
 
-	private DestinationTopic resolveDltOrNoOpsDestination(String topic) {
-		DestinationTopic destination = getDestinationFor(topic);
+	@Nullable
+	@Override
+	public DestinationTopic getDltFor(String topicName) {
+		DestinationTopic destination = getDltOrNoOpsDestination(topicName);
+		return destination.isNoOpsTopic()
+				? null
+				: destination;
+	}
+
+	private DestinationTopic getDltOrNoOpsDestination(String topic) {
+		DestinationTopic destination = getNextDestinationTopicFor(topic);
 		return destination.isDltTopic() || destination.isNoOpsTopic()
 				? destination
-				: resolveDltOrNoOpsDestination(destination.getDestinationName());
+				: getDltOrNoOpsDestination(destination.getDestinationName());
 	}
 
-	private DestinationTopic getDestinationFor(String topic) {
+	@Override
+	public DestinationTopic getNextDestinationTopicFor(String topic) {
 		return getDestinationHolderFor(topic).getNextDestination();
 	}
 
@@ -179,9 +187,6 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 					+ DefaultDestinationTopicResolver.class.getSimpleName() + " is already refreshed.");
 		}
 		synchronized (this.sourceDestinationsHolderMap) {
-			this.destinationsTopicMap.putAll(destinationsToAdd
-					.stream()
-					.collect(Collectors.toMap(destination -> destination.getDestinationName(), destination -> destination)));
 			this.sourceDestinationsHolderMap.putAll(correlatePairSourceAndDestinationValues(destinationsToAdd));
 		}
 	}

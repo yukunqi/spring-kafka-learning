@@ -107,10 +107,15 @@ public class RetryTopicIntegrationTests {
 	@Autowired
 	private CountDownLatchContainer latchContainer;
 
+	@Autowired
+	DestinationTopicContainer topicContainer;
+
 	@Test
 	void shouldRetryFirstTopic() {
 		logger.debug("Sending message to topic " + FIRST_TOPIC);
 		kafkaTemplate.send(FIRST_TOPIC, "Testing topic 1");
+		assertThat(topicContainer.getNextDestinationTopicFor(FIRST_TOPIC).getDestinationName())
+				.isEqualTo("myRetryTopic1-retry");
 		assertThat(awaitLatch(latchContainer.countDownLatch1)).isTrue();
 		assertThat(awaitLatch(latchContainer.customDltCountdownLatch)).isTrue();
 		assertThat(awaitLatch(latchContainer.customErrorHandlerCountdownLatch)).isTrue();
@@ -173,7 +178,7 @@ public class RetryTopicIntegrationTests {
 	static class FirstTopicListener {
 
 		@Autowired
-		DestinationTopicResolver resolver;
+		DestinationTopicContainer topicContainer;
 
 		@Autowired
 		CountDownLatchContainer container;
