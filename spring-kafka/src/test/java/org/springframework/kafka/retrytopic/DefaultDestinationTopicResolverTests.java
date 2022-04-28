@@ -160,6 +160,26 @@ class DefaultDestinationTopicResolverTests extends DestinationTopicTests {
 	}
 
 	@Test
+	void shouldGetDestinationTopic() {
+		assertThat(defaultDestinationTopicContainer
+				.getDestinationTopicByName(mainDestinationTopic.getDestinationName())).isEqualTo(mainDestinationTopic);
+	}
+
+	@Test
+	void shouldGetNextDestinationTopic() {
+		assertThat(defaultDestinationTopicContainer
+				.getNextDestinationTopicFor(mainDestinationTopic.getDestinationName()))
+				.isEqualTo(firstRetryDestinationTopic);
+	}
+
+	@Test
+	void shouldGetDlt() {
+		assertThat(defaultDestinationTopicContainer
+				.getDltFor(mainDestinationTopic.getDestinationName()))
+				.isEqualTo(dltDestinationTopic);
+	}
+
+	@Test
 	void shouldThrowIfNoDestinationFound() {
 		assertThatNullPointerException().isThrownBy(() -> defaultDestinationTopicContainer.resolveDestinationTopic("Non-existing-topic", 0,
 						new IllegalArgumentException(), originalTimestamp));
