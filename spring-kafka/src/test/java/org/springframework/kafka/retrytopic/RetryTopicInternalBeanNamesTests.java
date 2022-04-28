@@ -45,6 +45,7 @@ class RetryTopicInternalBeanNamesTests {
 
 	static final String DEFAULT_KAFKA_TEMPLATE_BEAN_NAME = "retryTopicDefaultKafkaTemplate";
 
+	@SuppressWarnings("deprecation")
 	@Test
 	public void assertRetryTopicInternalBeanNamesConstants() {
 		new RetryTopicInternalBeanNames() { }; // for coverage
