@@ -1262,9 +1262,9 @@ When `nack()` is called, offsets will be committed for records before the index 
 See <<error-handlers>> for more information.
 
 IMPORTANT: The consumer is paused during the sleep so that we continue to poll the broker to keep the consumer alive.
-The actual sleep time, and its resolution depends on the container's `maxPollInterval` which defaults to 5 seconds.
-The minimum sleep time is equal to the `maxPollInterval` and all sleep times will be a multiple of it.
-For small sleep times, consider reducing the container's `maxPollInterval`.
+The actual sleep time, and its resolution, depends on the container's `pollTimeout` which defaults to 5 seconds.
+The minimum sleep time is equal to the `pollTimeout` and all sleep times will be a multiple of it.
+For small sleep times or, to increase its accuracy, consider reducing the container's `pollTimeout`.
 
 [[container-auto-startup]]
 ====== Listener Container Auto Startup
