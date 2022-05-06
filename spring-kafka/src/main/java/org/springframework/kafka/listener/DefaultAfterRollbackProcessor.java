@@ -107,17 +107,30 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 	/**
 	 * Construct an instance with the provided recoverer which will be called after the
 	 * backOff returns STOP for a topic/partition/offset.
-	 * @param recoverer the recoverer; if null, the default (logging) recoverer is used.
-	 * @param backOff the {@link BackOff}.
+	 * @param recoverer       the recoverer; if null, the default (logging) recoverer is used.
+	 * @param backOff         the {@link BackOff}.
 	 * @param kafkaOperations for sending the recovered offset to the transaction.
 	 * @param commitRecovered true to commit the recovered record's offset; requires a
-	 * {@link KafkaOperations}.
-	 * @since 2.5.3
+	 *                        {@link KafkaOperations}.
+	 * @since 2.9
 	 */
-	public DefaultAfterRollbackProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer,
-			BackOff backOff, @Nullable KafkaOperations<?, ?> kafkaOperations, boolean commitRecovered) {
+	public DefaultAfterRollbackProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff, @Nullable KafkaOperations<?, ?> kafkaOperations, boolean commitRecovered) {
+		this(recoverer, backOff, null, kafkaOperations, commitRecovered);
+	}
 
-		super(recoverer, backOff);
+	/**
+	 * Construct an instance with the provided recoverer which will be called after the
+	 * backOff returns STOP for a topic/partition/offset.
+	 * @param recoverer       the recoverer; if null, the default (logging) recoverer is used.
+	 * @param backOff         the {@link BackOff}.
+	 * @param backOffHandler  the {@link BackOffHandler}.
+	 * @param kafkaOperations for sending the recovered offset to the transaction.
+	 * @param commitRecovered true to commit the recovered record's offset; requires a
+	 *                        {@link KafkaOperations}.
+	 * @since 2.5.9
+	 */
+	public DefaultAfterRollbackProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff, @Nullable BackOffHandler backOffHandler, @Nullable KafkaOperations<?, ?> kafkaOperations, boolean commitRecovered) {
+		super(recoverer, backOff, backOffHandler);
 		this.kafkaTemplate = kafkaOperations;
 		super.setCommitRecovered(commitRecovered);
 		checkConfig();
