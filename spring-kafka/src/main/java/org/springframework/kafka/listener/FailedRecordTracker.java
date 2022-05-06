@@ -58,12 +58,14 @@ class FailedRecordTracker implements RecoveryStrategy {
 
 	private BiFunction<ConsumerRecord<?, ?>, Exception, BackOff> backOffFunction;
 
+	private final BackOffHandler backOffHandler;
+
 	private boolean resetStateOnRecoveryFailure = true;
 
 	private boolean resetStateOnExceptionChange = true;
 
 	FailedRecordTracker(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff,
-			LogAccessor logger) {
+						@Nullable BackOffHandler backOffHandler, LogAccessor logger) {
 
 		Assert.notNull(backOff, "'backOff' cannot be null");
 		if (recoverer == null) {
@@ -74,10 +76,10 @@ class FailedRecordTracker implements RecoveryStrategy {
 					failedRecord = map.get(new TopicPartition(rec.topic(), rec.partition()));
 				}
 				logger.error(thr, "Backoff "
-					+ (failedRecord == null
+						+ (failedRecord == null
 						? "none"
 						: failedRecord.getBackOffExecution())
-					+ " exhausted for " + KafkaUtils.format(rec));
+						+ " exhausted for " + KafkaUtils.format(rec));
 			};
 		}
 		else {
@@ -90,6 +92,14 @@ class FailedRecordTracker implements RecoveryStrategy {
 		}
 		this.noRetries = backOff.start().nextBackOff() == BackOffExecution.STOP;
 		this.backOff = backOff;
+
+		this.backOffHandler = backOffHandler == null ? new DefaultBackOffHandler() : backOffHandler;
+
+	}
+
+	FailedRecordTracker(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff,
+						LogAccessor logger) {
+		this(recoverer, backOff, null, logger);
 	}
 
 	/**
@@ -172,12 +182,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 				rl.failedDelivery(record, exception, failedRecord.getDeliveryAttempts().get()));
 		long nextBackOff = failedRecord.getBackOffExecution().nextBackOff();
 		if (nextBackOff != BackOffExecution.STOP) {
-			if (container == null) {
-				Thread.sleep(nextBackOff);
-			}
-			else {
-				ListenerUtils.stoppableSleep(container, nextBackOff);
-			}
+			this.backOffHandler.onNextBackOff(container, exception, nextBackOff);
 			return false;
 		}
 		else {
@@ -299,6 +304,22 @@ class FailedRecordTracker implements RecoveryStrategy {
 			this.lastException = lastException;
 		}
 
+	}
+
+	static class DefaultBackOffHandler implements BackOffHandler {
+		public void onNextBackOff(@Nullable MessageListenerContainer container, Exception exception, long nextBackOff) {
+			try {
+				if (container == null) {
+					Thread.sleep(nextBackOff);
+				}
+				else {
+					ListenerUtils.stoppableSleep(container, nextBackOff);
+				}
+			}
+			catch (InterruptedException e) {
+				throw new RuntimeException(e);
+			}
+		}
 	}
 
 }
