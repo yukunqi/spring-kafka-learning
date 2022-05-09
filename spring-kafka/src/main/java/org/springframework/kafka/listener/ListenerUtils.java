@@ -23,6 +23,7 @@ import java.io.ObjectStreamClass;
 import java.util.Map;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.header.Header;
@@ -41,6 +42,7 @@ import org.springframework.util.backoff.BackOffExecution;
  * Listener utilities.
  *
  * @author Gary Russell
+ * @author Francois Rosiere
  * @since 2.0
  *
  */
@@ -287,5 +289,21 @@ public final class ListenerUtils {
 		while (System.currentTimeMillis() < timeout);
 	}
 
+	/**
+	 * Create a new {@link  OffsetAndMetadata} using the given container and offset.
+	 * @param container a container.
+	 * @param offset an offset.
+	 * @return an offset and metadata.
+	 * @since 2.8.6
+	 */
+	public static OffsetAndMetadata createOffsetAndMetadata(MessageListenerContainer container,
+															long offset) {
+		final OffsetAndMetadataProvider metadataProvider = container.getContainerProperties()
+				.getOffsetAndMetadataProvider();
+		if (metadataProvider != null) {
+			return metadataProvider.provide(new DefaultListenerMetadata(container), offset);
+		}
+		return new OffsetAndMetadata(offset);
+	}
 }
 

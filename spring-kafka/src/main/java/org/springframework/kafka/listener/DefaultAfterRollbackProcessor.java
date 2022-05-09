@@ -44,6 +44,7 @@ import org.springframework.util.backoff.BackOffExecution;
  * @param <V> the value type.
  *
  * @author Gary Russell
+ * @author Francois Rosiere
  *
  * @since 1.3.5
  *
@@ -140,12 +141,12 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 			if (EOSMode.V1.equals(eosMode.getMode())) {
 				this.kafkaTemplate.sendOffsetsToTransaction(
 						Collections.singletonMap(new TopicPartition(skipped.topic(), skipped.partition()),
-								new OffsetAndMetadata(skipped.offset() + 1)));
+								createOffsetAndMetadata(container, skipped.offset() + 1)));
 			}
 			else {
 				this.kafkaTemplate.sendOffsetsToTransaction(
 						Collections.singletonMap(new TopicPartition(skipped.topic(), skipped.partition()),
-								new OffsetAndMetadata(skipped.offset() + 1)), consumer.groupMetadata());
+								createOffsetAndMetadata(container, skipped.offset() + 1)), consumer.groupMetadata());
 			}
 		}
 
@@ -172,4 +173,10 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 		this.lastIntervals.remove();
 	}
 
+	private static OffsetAndMetadata createOffsetAndMetadata(@Nullable MessageListenerContainer container, long offset) {
+		if (container == null) {
+			return new OffsetAndMetadata(offset);
+		}
+		return ListenerUtils.createOffsetAndMetadata(container, offset);
+	}
 }
