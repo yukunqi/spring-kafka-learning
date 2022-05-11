@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -69,7 +69,7 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass())); // NOSONAR
 
 	private static final BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition>
-		DEFAULT_DESTINATION_RESOLVER = (cr, e) -> new TopicPartition(cr.topic() + ".DLT", cr.partition());
+			DEFAULT_DESTINATION_RESOLVER = (cr, e) -> new TopicPartition(cr.topic() + ".DLT", cr.partition());
 
 	private static final long FIVE = 5L;
 
@@ -157,7 +157,6 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 	 * @param templates the {@link KafkaOperations}s to use for publishing.
 	 * @param destinationResolver the resolving function.
 	 */
-	@SuppressWarnings("unchecked")
 	public DeadLetterPublishingRecoverer(Map<Class<?>, KafkaOperations<? extends Object, ? extends Object>> templates,
 			BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver) {
 
@@ -170,28 +169,28 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 		this.transactional = firstTemplate.isTransactional();
 		Boolean tx = this.transactional;
 		Assert.isTrue(templates.values()
-			.stream()
-			.map(t -> t.isTransactional())
-			.allMatch(t -> t.equals(tx)), "All templates must have the same setting for transactional");
+				.stream()
+				.map(KafkaOperations::isTransactional)
+				.allMatch(t -> t.equals(tx)), "All templates must have the same setting for transactional");
 		this.destinationResolver = destinationResolver;
 	}
 
 	/**
-	* Create an instance with a template resolving function that receives the failed
-	* consumer record and the exception and returns a {@link KafkaOperations} and a
-	* flag on whether or not the publishing from this instance will be transactional
-	* or not. Also receives a destination resolving function that works similarly but
-	* returns a {@link TopicPartition} instead. If the partition in the {@link TopicPartition}
-	* is less than 0, no partition is set when publishing to the topic.
-	*
-	* @param templateResolver the function that resolver the {@link KafkaOperations} to use for publishing.
-	* @param transactional whether or not publishing by this instance should be transactional
-	* @param destinationResolver the resolving function.
-	* @since 2.7
-	*/
+	 * Create an instance with a template resolving function that receives the failed
+	 * consumer record and the exception and returns a {@link KafkaOperations} and a
+	 * flag on whether the publishing from this instance will be transactional
+	 * or not. Also receives a destination resolving function that works similarly but
+	 * returns a {@link TopicPartition} instead. If the partition in the {@link TopicPartition}
+	 * is less than 0, no partition is set when publishing to the topic.
+	 *
+	 * @param templateResolver the function that resolver the {@link KafkaOperations} to use for publishing.
+	 * @param transactional whether publishing by this instance should be transactional
+	 * @param destinationResolver the resolving function.
+	 * @since 2.7
+	 */
 	public DeadLetterPublishingRecoverer(Function<ProducerRecord<?, ?>, KafkaOperations<?, ?>> templateResolver,
-										boolean transactional,
-										BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver) {
+			boolean transactional,
+			BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver) {
 
 		Assert.notNull(templateResolver, "The templateResolver cannot be null");
 		Assert.notNull(destinationResolver, "The destinationResolver cannot be null");
@@ -293,7 +292,18 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 	}
 
 	/**
-	 * Set the minumum time to wait for message sending. Default is the producer
+	 * If true, wait for the send result and throw an exception if it fails.
+	 * It will wait for the milliseconds specified in waitForSendResultTimeout for the result.
+	 * @return true to wait.
+	 * @since 2.7.14
+	 * @see #setWaitForSendResultTimeout(Duration)
+	 */
+	protected boolean isFailIfSendResultIsError() {
+		return this.failIfSendResultIsError;
+	}
+
+	/**
+	 * Set the minimum time to wait for message sending. Default is the producer
 	 * configuration {@code delivery.timeout.ms} plus the {@link #setTimeoutBuffer(long)}.
 	 * @param waitForSendResultTimeout the timeout.
 	 * @since 2.7
@@ -305,8 +315,9 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 	}
 
 	/**
-	 * Set the number of milliseconds to add to the producer configuration {@code delivery.timeout.ms}
-	 * property to avoid timing out before the Kafka producer. Default 5000.
+	 * Set the number of milliseconds to add to the producer configuration
+	 * {@code delivery.timeout.ms} property to avoid timing out before the Kafka producer.
+	 * Default 5000.
 	 * @param buffer the buffer.
 	 * @since 2.7
 	 * @see #setWaitForSendResultTimeout(Duration)
@@ -316,15 +327,34 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 	}
 
 	/**
-	 * Set to true to remove previous exception headers and only retain headers for the
-	 * current exception. Default is false, which means all exception header values are
-	 * retained; this can cause a growth in record size when a record is republished many
-	 * times.
-	 * @param stripPreviousExceptionHeaders true to strip.
+	 * The number of milliseconds to add to the producer configuration
+	 * {@code delivery.timeout.ms} property to avoid timing out before the Kafka producer.
+	 * @return the buffer.
+	 * @since 2.7.14
+	 */
+	protected long getTimeoutBuffer() {
+		return this.timeoutBuffer;
+	}
+
+	/**
+	 * Set to false to retain previous exception headers as well as headers for the
+	 * current exception. Default is true, which means only the current headers are
+	 * retained; setting it to false this can cause a growth in record size when a record
+	 * is republished many times.
+	 * @param stripPreviousExceptionHeaders false to retain all.
 	 * @since 2.7.9
 	 */
 	public void setStripPreviousExceptionHeaders(boolean stripPreviousExceptionHeaders) {
 		this.stripPreviousExceptionHeaders = stripPreviousExceptionHeaders;
+	}
+
+	/**
+	 * True if publishing should run in a transaction.
+	 * @return true for transactional.
+	 * @since 2.7.14
+	 */
+	protected boolean isTransactional() {
+		return this.transactional;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -341,7 +371,7 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 		DeserializationException vDeserEx = ListenerUtils.getExceptionFromHeader(record,
 				ErrorHandlingDeserializer.VALUE_DESERIALIZER_EXCEPTION_HEADER, this.logger);
 		DeserializationException kDeserEx = ListenerUtils.getExceptionFromHeader(record,
-					ErrorHandlingDeserializer.KEY_DESERIALIZER_EXCEPTION_HEADER, this.logger);
+				ErrorHandlingDeserializer.KEY_DESERIALIZER_EXCEPTION_HEADER, this.logger);
 		Headers headers = new RecordHeaders(record.headers().toArray());
 		addAndEnhanceHeaders(record, exception, vDeserEx, kDeserEx, headers);
 		ProducerRecord<Object, Object> outRecord = createProducerRecord(record, tp, headers,
@@ -385,7 +415,7 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 
 	private void maybeThrow(ConsumerRecord<?, ?> record, Exception exception) {
 		String message = String.format("No destination returned for record %s and exception %s. " +
-				"failIfNoDestinationReturned: %s", ListenerUtils.recordToString(record), exception,
+						"failIfNoDestinationReturned: %s", ListenerUtils.recordToString(record), exception,
 				this.throwIfNoDestinationReturned);
 		this.logger.warn(message);
 		if (this.throwIfNoDestinationReturned) {
@@ -437,7 +467,7 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 
 	@SuppressWarnings("unchecked")
 	private KafkaOperations<Object, Object> findTemplateForValue(@Nullable Object value,
-																Map<Class<?>, KafkaOperations<?, ?>> templates) {
+			Map<Class<?>, KafkaOperations<?, ?>> templates) {
 		if (value == null) {
 			KafkaOperations<?, ?> operations = templates.get(Void.class);
 			if (operations == null) {
@@ -448,16 +478,16 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 			}
 		}
 		Optional<Class<?>> key = templates.keySet()
-			.stream()
-			.filter((k) -> k.isAssignableFrom(value.getClass()))
-			.findFirst();
+				.stream()
+				.filter((k) -> k.isAssignableFrom(value.getClass()))
+				.findFirst();
 		if (key.isPresent()) {
 			return (KafkaOperations<Object, Object>) templates.get(key.get());
 		}
 		this.logger.warn(() -> "Failed to find a template for " + value.getClass() + " attempting to use the last entry");
 		return (KafkaOperations<Object, Object>) templates.values()
 				.stream()
-				.reduce((first,  second) -> second)
+				.reduce((first, second) -> second)
 				.get();
 	}
 
@@ -509,7 +539,13 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 		}
 	}
 
-	private void verifySendResult(KafkaOperations<Object, Object> kafkaTemplate,
+	/**
+	 * Wait for the send future to complete.
+	 * @param kafkaTemplate the template used to send the record.
+	 * @param outRecord the record.
+	 * @param sendResult the future.
+	 */
+	protected void verifySendResult(KafkaOperations<Object, Object> kafkaTemplate,
 			ProducerRecord<Object, Object> outRecord,
 			@Nullable ListenableFuture<SendResult<Object, Object>> sendResult) {
 
@@ -529,7 +565,14 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 		}
 	}
 
-	private Duration determineSendTimeout(KafkaOperations<?, ?> template) {
+	/**
+	 * Determine the send timeout based on the template's producer factory and
+	 * {@link #setWaitForSendResultTimeout(Duration)}.
+	 * @param template the template.
+	 * @return the timeout.
+	 * @since 2.7.14
+	 */
+	protected Duration determineSendTimeout(KafkaOperations<?, ?> template) {
 		ProducerFactory<? extends Object, ? extends Object> producerFactory = template.getProducerFactory();
 		if (producerFactory != null) { // NOSONAR - will only occur in mock tests
 			Map<String, Object> props = producerFactory.getConfigurationProperties();
@@ -608,18 +651,18 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 	protected HeaderNames getHeaderNames() {
 		return HeaderNames.Builder
 				.original()
-					.offsetHeader(KafkaHeaders.DLT_ORIGINAL_OFFSET)
-					.timestampHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP)
-					.timestampTypeHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE)
-					.topicHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC)
-					.partitionHeader(KafkaHeaders.DLT_ORIGINAL_PARTITION)
+				.offsetHeader(KafkaHeaders.DLT_ORIGINAL_OFFSET)
+				.timestampHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP)
+				.timestampTypeHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE)
+				.topicHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC)
+				.partitionHeader(KafkaHeaders.DLT_ORIGINAL_PARTITION)
 				.exception()
-					.keyExceptionFqcn(KafkaHeaders.DLT_KEY_EXCEPTION_FQCN)
-					.exceptionFqcn(KafkaHeaders.DLT_EXCEPTION_FQCN)
-					.keyExceptionMessage(KafkaHeaders.DLT_KEY_EXCEPTION_MESSAGE)
-					.exceptionMessage(KafkaHeaders.DLT_EXCEPTION_MESSAGE)
-					.keyExceptionStacktrace(KafkaHeaders.DLT_KEY_EXCEPTION_STACKTRACE)
-					.exceptionStacktrace(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)
+				.keyExceptionFqcn(KafkaHeaders.DLT_KEY_EXCEPTION_FQCN)
+				.exceptionFqcn(KafkaHeaders.DLT_EXCEPTION_FQCN)
+				.keyExceptionMessage(KafkaHeaders.DLT_KEY_EXCEPTION_MESSAGE)
+				.exceptionMessage(KafkaHeaders.DLT_EXCEPTION_MESSAGE)
+				.keyExceptionStacktrace(KafkaHeaders.DLT_KEY_EXCEPTION_STACKTRACE)
+				.exceptionStacktrace(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)
 				.build();
 	}
 
@@ -631,6 +674,7 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 	public static class HeaderNames {
 
 		private final HeaderNames.Original original;
+
 		private final ExceptionInfo exceptionInfo;
 
 		HeaderNames(HeaderNames.Original original, ExceptionInfo exceptionInfo) {
@@ -639,10 +683,15 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 		}
 
 		static class Original {
+
 			private final String offsetHeader;
+
 			private final String timestampHeader;
+
 			private final String timestampTypeHeader;
+
 			private final String topicHeader;
+
 			private final String partitionHeader;
 
 			Original(String offsetHeader,
@@ -656,23 +705,29 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 				this.topicHeader = topicHeader;
 				this.partitionHeader = partitionHeader;
 			}
+
 		}
 
 		static class ExceptionInfo {
 
 			private final String keyExceptionFqcn;
+
 			private final String exceptionFqcn;
+
 			private final String keyExceptionMessage;
+
 			private final String exceptionMessage;
+
 			private final String keyExceptionStacktrace;
+
 			private final String exceptionStacktrace;
 
 			ExceptionInfo(String keyExceptionFqcn,
-						String exceptionFqcn,
-						String keyExceptionMessage,
-						String exceptionMessage,
-						String keyExceptionStacktrace,
-						String exceptionStacktrace) {
+					String exceptionFqcn,
+					String keyExceptionMessage,
+					String exceptionMessage,
+					String keyExceptionStacktrace,
+					String exceptionStacktrace) {
 				this.keyExceptionFqcn = keyExceptionFqcn;
 				this.exceptionFqcn = exceptionFqcn;
 				this.keyExceptionMessage = keyExceptionMessage;
@@ -680,6 +735,7 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 				this.keyExceptionStacktrace = keyExceptionStacktrace;
 				this.exceptionStacktrace = exceptionStacktrace;
 			}
+
 		}
 
 
@@ -805,6 +861,7 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 							this.topicHeader,
 							this.partitionHeader);
 				}
+
 			}
 
 			/**
@@ -919,7 +976,11 @@ public class DeadLetterPublishingRecoverer implements ConsumerAwareRecordRecover
 									this.keyExceptionStacktrace,
 									this.exceptionStacktrace));
 				}
+
 			}
+
 		}
+
 	}
+
 }
