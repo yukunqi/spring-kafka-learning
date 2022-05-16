@@ -37,7 +37,6 @@ import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
 import org.springframework.kafka.retrytopic.RetryTopicConfigurationBuilder;
 import org.springframework.kafka.retrytopic.RetryTopicConfigurer;
 import org.springframework.kafka.retrytopic.RetryTopicConstants;
-import org.springframework.kafka.retrytopic.RetryTopicInternalBeanNames;
 import org.springframework.kafka.support.EndpointHandlerMethod;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.backoff.ExponentialBackOffPolicy;
@@ -215,7 +214,8 @@ public class RetryableTopicAnnotationProcessor {
 			}
 		}
 		try {
-			return this.beanFactory.getBean(RetryTopicInternalBeanNames.DEFAULT_KAFKA_TEMPLATE_BEAN_NAME,
+			return this.beanFactory.getBean(
+					org.springframework.kafka.retrytopic.RetryTopicInternalBeanNames.DEFAULT_KAFKA_TEMPLATE_BEAN_NAME,
 					KafkaOperations.class);
 		}
 		catch (NoSuchBeanDefinitionException ex) {

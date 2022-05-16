@@ -246,6 +246,7 @@ public class ManualNackRecordTests {
 			factory.getContainerProperties().setMissingTopicsFatal(false);
 			factory.setRecordInterceptor(new RecordInterceptor() {
 
+				@SuppressWarnings("deprecation")
 				@Override
 				@Nullable
 				public ConsumerRecord intercept(ConsumerRecord record) {

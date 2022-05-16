@@ -87,7 +87,6 @@ import org.springframework.kafka.listener.ContainerGroupSequencer;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
 import org.springframework.kafka.retrytopic.RetryTopicBeanNames;
-import org.springframework.kafka.retrytopic.RetryTopicBootstrapper;
 import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
 import org.springframework.kafka.retrytopic.RetryTopicConfigurer;
 import org.springframework.kafka.support.TopicPartitionOffset;
@@ -527,8 +526,9 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		BeanDefinitionRegistry registry = (BeanDefinitionRegistry) this.beanFactory;
 		if (!registry.containsBeanDefinition("internalRetryTopicBootstrapper")) {
 			registry.registerBeanDefinition("internalRetryTopicBootstrapper",
-					new RootBeanDefinition(RetryTopicBootstrapper.class));
-			this.beanFactory.getBean("internalRetryTopicBootstrapper", RetryTopicBootstrapper.class).bootstrapRetryTopic();
+					new RootBeanDefinition(org.springframework.kafka.retrytopic.RetryTopicBootstrapper.class));
+			this.beanFactory.getBean("internalRetryTopicBootstrapper",
+					org.springframework.kafka.retrytopic.RetryTopicBootstrapper.class).bootstrapRetryTopic();
 		}
 	}
 
