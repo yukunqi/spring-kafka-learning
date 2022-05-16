@@ -269,7 +269,7 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 				.onErrorResume(error -> reactiveKafkaProducerTemplate.transactionManager()
 						.abort()
 						.then(Mono.error(error))))
-				.expectErrorMatches(throwable -> throwable instanceof KafkaException &&
+				.expectErrorMatches(throwable -> throwable instanceof IllegalStateException &&
 						throwable.getMessage().equals("TransactionalId reactive.transaction: Invalid transition " +
 								"attempted from state READY to state ABORTING_TRANSACTION"))
 				.verify(DEFAULT_VERIFY_TIMEOUT);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -63,6 +63,7 @@ class ErrorHandlerAdapter implements CommonErrorHandler {
 		this.batchErrorHandler = batchErrorHandler;
 	}
 
+	@SuppressWarnings("deprecation")
 	@Override
 	public boolean remainingRecords() {
 		return this.errorHandler instanceof RemainingRecordsErrorHandler;
@@ -122,6 +123,7 @@ class ErrorHandlerAdapter implements CommonErrorHandler {
 		}
 	}
 
+	@SuppressWarnings("deprecation")
 	@Override
 	public void handleRecord(Exception thrownException, ConsumerRecord<?, ?> record, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
