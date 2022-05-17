@@ -47,9 +47,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import javax.validation.Valid;
-import javax.validation.constraints.Max;
-
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
 import org.apache.commons.logging.Log;
@@ -159,6 +156,8 @@ import org.springframework.validation.Validator;
 import io.micrometer.core.instrument.ImmutableTag;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
 
 /**
  * @author Gary Russell
