@@ -2437,10 +2437,6 @@ When creating the `TopicPartitionOffset` s for the request, only positive, absol
 |BATCH
 |Controls how often offsets are committed - see <<committing-offsets>>.
 
-|[[ackOnError]]<<ackOnError,`ackOnError`>>
-|`false`
-|[DEPRECATED in favor of `ErrorHandler.isAckAfterHandle()`]
-
 |[[ackTime]]<<ackTime,`ackTime`>>
 |5000
 |The time in milliseconds after which pending offsets are committed when the `ackMode` is `TIME` or `COUNT_TIME`.
@@ -5111,7 +5107,6 @@ For example, with the `@KafkaListener` container factory, you can add `DefaultEr
 public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
     ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory();
     factory.setConsumerFactory(consumerFactory());
-    factory.getContainerProperties().setAckOnError(false);
     factory.getContainerProperties().setAckMode(AckMode.RECORD);
     factory.setCommonErrorHandler(new DefaultErrorHandler(new FixedBackOff(1000L, 2L)));
     return factory;
@@ -5598,7 +5593,7 @@ DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(temp
                 return new TopicPartition(r.topic() + ".other.failures", r.partition());
             }
         });
-ErrorHandler errorHandler = new DefaultErrorHandler(recoverer, new FixedBackOff(0L, 2L));
+CommonErrorHandler errorHandler = new DefaultErrorHandler(recoverer, new FixedBackOff(0L, 2L));
 ----
 ====
 
