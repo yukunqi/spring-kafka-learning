@@ -1525,7 +1525,7 @@ The following example shows how to do so:
 [source, java]
 ----
 @Bean
-public KafkaListenerContainerFactory<?, ?> batchFactory() {
+public KafkaListenerContainerFactory<?> batchFactory() {
     ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
             new ConcurrentKafkaListenerContainerFactory<>();
     factory.setConsumerFactory(consumerFactory());
@@ -3245,7 +3245,7 @@ Starting with version 2.3.4, you can add a `ContainerCustomizer` to the factory 
 [source, java]
 ----
 @Bean
-public KafkaListenerContainerFactory<?, ?> kafkaListenerContainerFactory() {
+public KafkaListenerContainerFactory<?> kafkaListenerContainerFactory() {
     ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
             new ConcurrentKafkaListenerContainerFactory<>();
     ...
@@ -4325,7 +4325,7 @@ The following example shows how to do so:
 [source, java]
 ----
 @Bean
-public KafkaListenerContainerFactory<?, ?> kafkaJsonListenerContainerFactory() {
+public KafkaListenerContainerFactory<?> kafkaJsonListenerContainerFactory() {
     ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
         new ConcurrentKafkaListenerContainerFactory<>();
     factory.setConsumerFactory(consumerFactory());
@@ -4603,7 +4603,7 @@ The following example creates beans that use this method:
 [source, java]
 ----
 @Bean
-public KafkaListenerContainerFactory<?, ?> kafkaListenerContainerFactory() {
+public KafkaListenerContainerFactory<?> kafkaListenerContainerFactory() {
     ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
             new ConcurrentKafkaListenerContainerFactory<>();
     factory.setConsumerFactory(consumerFactory());
