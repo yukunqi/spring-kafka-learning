@@ -40,7 +40,6 @@ import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.converter.MessageConverter;
-import org.springframework.messaging.handler.HandlerMethod;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.handler.annotation.support.PayloadMethodArgumentResolver;
@@ -74,6 +73,8 @@ public class DelegatingInvocableHandler {
 	private final Map<InvocableHandlerMethod, Expression> handlerSendTo = new ConcurrentHashMap<>();
 
 	private final Map<InvocableHandlerMethod, Boolean> handlerReturnsMessage = new ConcurrentHashMap<>();
+
+	private final Map<InvocableHandlerMethod, Boolean> handlerMetadataAware = new ConcurrentHashMap<>();
 
 	private final Object bean;
 
@@ -137,11 +138,12 @@ public class DelegatingInvocableHandler {
 			@Nullable BeanExpressionContext beanExpressionContext,
 			@Nullable BeanFactory beanFactory, @Nullable Validator validator) {
 
-		this.handlers = new ArrayList<>();
+		this.handlers = new ArrayList<>(handlers);
 		for (InvocableHandlerMethod handler : handlers) {
-			this.handlers.add(wrapIfNecessary(handler));
+			checkSpecial(handler);
 		}
-		this.defaultHandler = wrapIfNecessary(defaultHandler);
+		this.defaultHandler = defaultHandler;
+		checkSpecial(defaultHandler);
 		this.bean = bean;
 		this.resolver = beanExpressionResolver;
 		this.beanExpressionContext = beanExpressionContext;
@@ -151,18 +153,17 @@ public class DelegatingInvocableHandler {
 		this.validator = validator == null ? null : new PayloadValidator(validator);
 	}
 
-	@Nullable
-	private InvocableHandlerMethod wrapIfNecessary(@Nullable InvocableHandlerMethod handler) {
+	private void checkSpecial(@Nullable InvocableHandlerMethod handler) {
 		if (handler == null) {
-			return null;
+			return;
 		}
 		Parameter[] parameters = handler.getMethod().getParameters();
 		for (Parameter parameter : parameters) {
 			if (parameter.getType().equals(ConsumerRecordMetadata.class)) {
-				return new DelegatingInvocableHandler.MetadataAwareInvocableHandlerMethod(handler);
+				this.handlerMetadataAware.put(handler, true);
+				return;
 			}
 		}
-		return handler;
 	}
 
 	/**
@@ -191,7 +192,7 @@ public class DelegatingInvocableHandler {
 			}
 		}
 		Object result;
-		if (handler instanceof MetadataAwareInvocableHandlerMethod) {
+		if (Boolean.TRUE.equals(this.handlerMetadataAware.get(handler))) {
 			Object[] args = new Object[providedArgs.length + 1];
 			args[0] = AdapterUtils.buildConsumerRecordMetadataFromArray(providedArgs);
 			System.arraycopy(providedArgs, 0, args, 1, providedArgs.length);
@@ -348,19 +349,6 @@ public class DelegatingInvocableHandler {
 
 	public boolean hasDefaultHandler() {
 		return this.defaultHandler != null;
-	}
-
-	/**
-	 * A handler method that is aware of {@link ConsumerRecordMetadata}.
-	 *
-	 * @since 2.5
-	 */
-	private static final class MetadataAwareInvocableHandlerMethod extends InvocableHandlerMethod {
-
-		MetadataAwareInvocableHandlerMethod(HandlerMethod handlerMethod) {
-			super(handlerMethod);
-		}
-
 	}
 
 	private static final class PayloadValidator extends PayloadMethodArgumentResolver {
