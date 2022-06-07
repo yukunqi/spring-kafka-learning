@@ -106,6 +106,7 @@ public class KafkaAdminTests {
 		new DirectFieldAccessor(this.topic1).setPropertyValue("numPartitions", Optional.of(4));
 		new DirectFieldAccessor(this.topic2).setPropertyValue("numPartitions", Optional.of(3));
 		this.admin.initialize();
+		this.admin.setModifyTopicConfigs(true);
 
 		int n = 0;
 		await().until(() -> {
@@ -212,11 +213,12 @@ public class KafkaAdminTests {
 		AtomicReference<Method> addTopics = new AtomicReference<>();
 		AtomicReference<Method> modifyTopics = new AtomicReference<>();
 		ReflectionUtils.doWithMethods(KafkaAdmin.class, m -> {
-			m.setAccessible(true);
 			if (m.getName().equals("addTopics")) {
+				m.setAccessible(true);
 				addTopics.set(m);
 			}
 			else if (m.getName().equals("createMissingPartitions")) {
+				m.setAccessible(true);
 				modifyTopics.set(m);
 			}
 		});

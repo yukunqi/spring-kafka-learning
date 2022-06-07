@@ -92,6 +92,8 @@ public class KafkaAdmin extends KafkaResourceFactory
 
 	private boolean initializingContext;
 
+	private boolean modifyTopicConfigs;
+
 	/**
 	 * Create an instance with an {@link AdminClient} based on the supplied
 	 * configuration.
@@ -138,6 +140,16 @@ public class KafkaAdmin extends KafkaResourceFactory
 	 */
 	public void setAutoCreate(boolean autoCreate) {
 		this.autoCreate = autoCreate;
+	}
+
+	/**
+	 * Set to true to compare the current topic configuration properties with those in the
+	 * {@link NewTopic} bean, and update if different.
+	 * @param modifyTopicConfigs true to check and update configs if necessary.
+	 * @since 2.8.7
+	 */
+	public void setModifyTopicConfigs(boolean modifyTopicConfigs) {
+		this.modifyTopicConfigs = modifyTopicConfigs;
 	}
 
 	@Override
@@ -254,16 +266,19 @@ public class KafkaAdmin extends KafkaResourceFactory
 			if (topicsWithPartitionMismatches.size() > 0) {
 				createMissingPartitions(adminClient, topicsWithPartitionMismatches);
 			}
-			Map<ConfigResource, List<ConfigEntry>> mismatchingConfigs =
-					checkTopicsForConfigMismatches(adminClient, topics);
-			if (!mismatchingConfigs.isEmpty()) {
-				adjustConfigMismatches(adminClient, topics, mismatchingConfigs);
+			if (this.modifyTopicConfigs) {
+				Map<ConfigResource, List<ConfigEntry>> mismatchingConfigs =
+						checkTopicsForConfigMismatches(adminClient, topics);
+				if (!mismatchingConfigs.isEmpty()) {
+					adjustConfigMismatches(adminClient, topics, mismatchingConfigs);
+				}
 			}
 		}
 	}
 
 	private Map<ConfigResource, List<ConfigEntry>> checkTopicsForConfigMismatches(
 			AdminClient adminClient, Collection<NewTopic> topics) {
+
 		List<ConfigResource> configResources = topics.stream()
 				.map(topic -> new ConfigResource(Type.TOPIC, topic.name()))
 				.collect(Collectors.toList());
@@ -297,10 +312,10 @@ public class KafkaAdmin extends KafkaResourceFactory
 		}
 		catch (InterruptedException ie) {
 			Thread.currentThread().interrupt();
-			throw new KafkaException("Interrupted while getting topic descriptions", ie);
+			throw new KafkaException("Interrupted while getting topic descriptions:" + topics, ie);
 		}
 		catch (ExecutionException | TimeoutException ex) {
-			throw new KafkaException("Failed to obtain topic descriptions", ex);
+			throw new KafkaException("Failed to obtain topic descriptions:" + topics, ex);
 		}
 	}
 
