@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.support;
 
+import java.time.Duration;
+
 /**
  * Handle for acknowledging the processing of a
  * {@link org.apache.kafka.clients.consumer.ConsumerRecord}. Recipients can store the
@@ -37,28 +39,28 @@ public interface Acknowledgment {
 	/**
 	 * Negatively acknowledge the current record - discard remaining records from the poll
 	 * and re-seek all partitions so that this record will be redelivered after the sleep
-	 * time (in milliseconds). Must be called on the consumer thread.
+	 * duration. Must be called on the consumer thread.
 	 * <p>
-	 * @param sleepMillis the time to sleep in milliseconds; the actual sleep time will be larger
-	 * of this value and the container's {@code maxPollInterval}, which defaults to 5 seconds.
-	 * @since 2.3
+	 * @param sleep the duration to sleep; the actual sleep time will be larger of this value
+	 * and the container's {@code maxPollInterval}, which defaults to 5 seconds.
+	 * @since 2.8.7
 	 */
-	default void nack(long sleepMillis) {
+	default void nack(Duration sleep) {
 		throw new UnsupportedOperationException("nack(sleep) is not supported by this Acknowledgment");
 	}
 
 	/**
 	 * Negatively acknowledge the record at an index in a batch - commit the offset(s) of
 	 * records before the index and re-seek the partitions so that the record at the index
-	 * and subsequent records will be redelivered after the sleep time (in milliseconds).
+	 * and subsequent records will be redelivered after the sleep duration.
 	 * Must be called on the consumer thread.
 	 * <p>
 	 * @param index the index of the failed record in the batch.
-	 * @param sleepMillis the time to sleep in milliseconds; the actual sleep time will be larger
-	 * of this value and the container's {@code maxPollInterval}, which defaults to 5 seconds.
-	 * @since 2.3
+	 * @param sleep the duration to sleep; the actual sleep time will be larger of this value
+	 * and the container's {@code maxPollInterval}, which defaults to 5 seconds.
+	 * @since 2.8.7
 	 */
-	default void nack(int index, long sleepMillis) {
+	default void nack(int index, Duration sleep) {
 		throw new UnsupportedOperationException("nack(index, sleep) is not supported by this Acknowledgment");
 	}
 
