@@ -72,6 +72,7 @@ import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.convert.TypeDescriptor;
 import org.springframework.core.convert.converter.ConditionalGenericConverter;
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.core.convert.converter.ConverterFactory;
 import org.springframework.core.convert.converter.GenericConverter;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.format.Formatter;
@@ -1020,6 +1021,9 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	private void addFormatters(FormatterRegistry registry) {
 		for (Converter<?, ?> converter : getBeansOfType(Converter.class)) {
 			registry.addConverter(converter);
+		}
+		for (ConverterFactory<?, ?> converter : getBeansOfType(ConverterFactory.class)) {
+			registry.addConverterFactory(converter);
 		}
 		for (GenericConverter converter : getBeansOfType(GenericConverter.class)) {
 			registry.addConverter(converter);
