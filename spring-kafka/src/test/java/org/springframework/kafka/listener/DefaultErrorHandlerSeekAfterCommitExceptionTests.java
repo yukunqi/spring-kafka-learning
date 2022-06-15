@@ -149,7 +149,7 @@ public class DefaultErrorHandlerSeekAfterCommitExceptionTests {
 			ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
 			final Consumer consumer = consumer();
 			given(consumerFactory.createConsumer("grp", "", "-0", KafkaTestUtils.defaultPropertyOverrides()))
-				.willReturn(consumer);
+					.willReturn(consumer);
 			return consumerFactory;
 		}
 
@@ -226,7 +226,7 @@ public class DefaultErrorHandlerSeekAfterCommitExceptionTests {
 			factory.setConsumerFactory(consumerFactory());
 			factory.getContainerProperties().setAckMode(AckMode.RECORD);
 			factory.getContainerProperties().setDeliveryAttemptHeader(true);
-			factory.setRecordInterceptor((record, consumer) -> {
+			factory.setRecordInterceptor((record) -> {
 				Config.this.deliveryAttempt = record.headers().lastHeader(KafkaHeaders.DELIVERY_ATTEMPT);
 				return record;
 			});
