@@ -118,7 +118,7 @@ public class PartitionPausingBackOffManagerFactory extends AbstractKafkaBackOffM
 	 *
 	 * @param timingAdjustmentManager the adjustmentManager to be used.
 	 */
-	public void setTimingAdjustmentManager(KafkaConsumerTimingAdjuster timingAdjustmentManager) {
+	public final void setTimingAdjustmentManager(KafkaConsumerTimingAdjuster timingAdjustmentManager) {
 		Assert.isTrue(this.timingAdjustmentEnabled, () -> "TimingAdjustment is disabled for this factory.");
 		this.timingAdjustmentManager = timingAdjustmentManager;
 	}
@@ -127,7 +127,7 @@ public class PartitionPausingBackOffManagerFactory extends AbstractKafkaBackOffM
 	 * Set the {@link TaskExecutor} that will be used in the {@link KafkaConsumerTimingAdjuster}.
 	 * @param taskExecutor the taskExecutor to be used.
 	 */
-	public void setTaskExecutor(TaskExecutor taskExecutor) {
+	public final void setTaskExecutor(TaskExecutor taskExecutor) {
 		Assert.isTrue(this.timingAdjustmentEnabled, () -> "TimingAdjustment is disabled for this factory.");
 		this.taskExecutor = taskExecutor;
 	}

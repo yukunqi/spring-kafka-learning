@@ -18,6 +18,7 @@ package org.springframework.kafka.retrytopic;
 
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -362,7 +363,7 @@ public class RetryTopicConfigurationSupport {
 		@SuppressWarnings("varargs")
 		@SafeVarargs
 		public final BlockingRetriesConfigurer retryOn(Class<? extends Exception>... exceptions) {
-			this.retryableExceptions = exceptions;
+			this.retryableExceptions = Arrays.copyOf(exceptions, exceptions.length);
 			return this;
 		}
 
