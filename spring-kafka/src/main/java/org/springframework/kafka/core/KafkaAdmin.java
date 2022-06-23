@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -267,8 +268,10 @@ public class KafkaAdmin extends KafkaResourceFactory
 				createMissingPartitions(adminClient, topicsWithPartitionMismatches);
 			}
 			if (this.modifyTopicConfigs) {
+				List<NewTopic> toCheck = new LinkedList<>(topics);
+				toCheck.removeAll(topicsToAdd);
 				Map<ConfigResource, List<ConfigEntry>> mismatchingConfigs =
-						checkTopicsForConfigMismatches(adminClient, topics);
+						checkTopicsForConfigMismatches(adminClient, toCheck);
 				if (!mismatchingConfigs.isEmpty()) {
 					adjustConfigMismatches(adminClient, topics, mismatchingConfigs);
 				}
