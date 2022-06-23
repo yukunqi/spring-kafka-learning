@@ -24,6 +24,7 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 
+import java.lang.reflect.Method;
 import java.time.Clock;
 import java.util.List;
 import java.util.Map;
@@ -40,9 +41,11 @@ import org.springframework.kafka.listener.CommonErrorHandler;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
+import org.springframework.kafka.listener.KafkaConsumerTimingAdjuster;
 import org.springframework.kafka.listener.ListenerContainerRegistry;
 import org.springframework.kafka.listener.PartitionPausingBackOffManagerFactory;
 import org.springframework.kafka.support.converter.ConversionException;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.backoff.BackOff;
 
@@ -211,6 +214,38 @@ class RetryTopicConfigurationSupportTests {
 		then(factory).should().create();
 		then(factory).should().setTimingAdjustmentEnabled(false);
 		then(factory).should(never()).setTaskExecutor(taskExecutorMock);
+	}
+
+	@Test
+	void backOffManagerFactoryCoverage() throws Exception {
+		Method create = PartitionPausingBackOffManagerFactory.class.getDeclaredMethod("doCreateManager",
+				ListenerContainerRegistry.class);
+		create.setAccessible(true);
+		TaskExecutor te = mock(TaskExecutor.class);
+		KafkaConsumerTimingAdjuster mock = mock(KafkaConsumerTimingAdjuster.class);
+		PartitionPausingBackOffManagerFactory factory = new PartitionPausingBackOffManagerFactory(mock);
+		assertThat(KafkaTestUtils.getPropertyValue(factory, "clock")).isEqualTo(Clock.systemUTC());
+		assertThat(KafkaTestUtils.getPropertyValue(factory, "timingAdjustmentManager")).isEqualTo(mock);
+		create.invoke(factory, mock(ListenerContainerRegistry.class));
+		factory.setTaskExecutor(te);
+		assertThat(KafkaTestUtils.getPropertyValue(factory, "taskExecutor")).isEqualTo(te);
+		factory = new PartitionPausingBackOffManagerFactory(te);
+		assertThat(KafkaTestUtils.getPropertyValue(factory, "clock")).isEqualTo(Clock.systemUTC());
+		assertThat(KafkaTestUtils.getPropertyValue(factory, "taskExecutor")).isEqualTo(te);
+		create.invoke(factory, mock(ListenerContainerRegistry.class));
+		factory.setTimingAdjustmentManager(mock);
+		assertThat(KafkaTestUtils.getPropertyValue(factory, "timingAdjustmentManager")).isEqualTo(mock);
+		create.invoke(factory, mock(ListenerContainerRegistry.class));
+		factory = new PartitionPausingBackOffManagerFactory(false);
+		assertThat(KafkaTestUtils.getPropertyValue(factory, "clock")).isEqualTo(Clock.systemUTC());
+		assertThat(KafkaTestUtils.getPropertyValue(factory, "timingAdjustmentEnabled")).isEqualTo(Boolean.FALSE);
+		factory.setClock(Clock.systemDefaultZone());
+		assertThat(KafkaTestUtils.getPropertyValue(factory, "clock")).isEqualTo(Clock.systemDefaultZone());
+		factory = new PartitionPausingBackOffManagerFactory(Clock.systemDefaultZone());
+		assertThat(KafkaTestUtils.getPropertyValue(factory, "clock")).isEqualTo(Clock.systemDefaultZone());
+		assertThat(KafkaTestUtils.getPropertyValue(factory, "timingAdjustmentEnabled")).isEqualTo(Boolean.TRUE);
+		factory.setTimingAdjustmentEnabled(false);
+		assertThat(KafkaTestUtils.getPropertyValue(factory, "timingAdjustmentEnabled")).isEqualTo(Boolean.FALSE);
 	}
 
 	@Test
