@@ -764,6 +764,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private volatile long lastPoll = System.currentTimeMillis();
 
+		private boolean firstPoll;
+
 		@SuppressWarnings(UNCHECKED)
 		ListenerConsumer(GenericMessageListener<?> listener, ListenerType listenerType) {
 			Properties consumerProperties = propertiesFromProperties();
@@ -1347,6 +1349,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					this.logger.debug(() -> "Discarding polled records, container stopped: " + records.count());
 				}
 				return;
+			}
+			if (!this.firstPoll && this.definedPartitions != null && this.consumerSeekAwareListener != null) {
+				this.firstPoll = true;
+				this.consumerSeekAwareListener.onFirstPoll();
 			}
 			debugRecords(records);
 			resumeConsumerIfNeccessary();
@@ -3356,6 +3362,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				else {
 					this.userListener.onPartitionsAssigned(partitions);
+				}
+				if (!ListenerConsumer.this.firstPoll && ListenerConsumer.this.definedPartitions == null
+						&& ListenerConsumer.this.consumerSeekAwareListener != null) {
+
+					ListenerConsumer.this.firstPoll = true;
+					ListenerConsumer.this.consumerSeekAwareListener.onFirstPoll();
 				}
 			}
 
