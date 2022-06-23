@@ -271,7 +271,7 @@ public class KafkaAdmin extends KafkaResourceFactory
 				List<NewTopic> toCheck = new LinkedList<>(topics);
 				toCheck.removeAll(topicsToAdd);
 				Map<ConfigResource, List<ConfigEntry>> mismatchingConfigs =
-						checkTopicsForConfigMismatches(adminClient, topics);
+						checkTopicsForConfigMismatches(adminClient, toCheck);
 				if (!mismatchingConfigs.isEmpty()) {
 					adjustConfigMismatches(adminClient, topics, mismatchingConfigs);
 				}
