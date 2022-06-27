@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -31,6 +32,8 @@ import static org.mockito.Mockito.verify;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -45,6 +48,7 @@ import org.mockito.InOrder;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.support.converter.ConversionException;
 import org.springframework.kafka.support.serializer.DeserializationException;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.util.backoff.FixedBackOff;
 
 /**
@@ -233,6 +237,36 @@ public class DefaultErrorHandlerRecordTests {
 		assertThatExceptionOfType(KafkaException.class).isThrownBy(() -> handler.handleRemaining(illegalState,
 						records, consumer, container));
 		assertThat(System.currentTimeMillis() >= t1 + 200);
+	}
+
+	@Test
+	void pausingBackOff() throws InterruptedException {
+		ThreadPoolTaskScheduler sched = new ThreadPoolTaskScheduler();
+		sched.initialize();
+		ListenerContainerPauseService pauser = new ListenerContainerPauseService(null, sched);
+		DefaultErrorHandler handler = new DefaultErrorHandler((rec, ex) -> { }, new FixedBackOff(200L, 1L),
+				new ContainerPausingBackOffHandler(pauser));
+		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		CountDownLatch latch = new CountDownLatch(1);
+		AtomicBoolean paused = new AtomicBoolean();
+		willAnswer(inv -> {
+			return paused.get();
+		}).given(container).isPauseRequested();
+		willAnswer(inv -> {
+			paused.set(true);
+			return null;
+		}).given(container).pause();
+		willAnswer(inv -> {
+			paused.set(false);
+			latch.countDown();
+			return null;
+		}).given(container).resume();
+		ConsumerRecord<String, String> record1 = new ConsumerRecord<>("foo", 0, 0L, "foo", "bar");
+		long t1 = System.currentTimeMillis();
+		handler.handleOne(new RuntimeException(), record1, mock(Consumer.class), container);
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(System.currentTimeMillis() - t1).isGreaterThanOrEqualTo(200L);
+		sched.destroy();
 	}
 
 }
