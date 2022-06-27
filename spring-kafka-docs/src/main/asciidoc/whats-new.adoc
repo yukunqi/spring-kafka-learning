@@ -6,4 +6,13 @@ For changes in earlier version, see <<history>>.
 [[x29-kafka-client]]
 ==== Kafka Client Version
 
-This version requires the 3.1.0 `kafka-clients`
+This version requires the 3.2.0 `kafka-clients`
+
+[[x29-eh changes]]
+==== Error Handler Changes
+
+The `DefaultErrorHandler` can now be configured to pause the container for one poll and use the remaining results from the previous poll, instead of seeking to the offsets of the remaining records.
+See <<default-eh>> for more information.
+
+The `DefaultErrorHandler` now has a `BackOffHandler` property.
+See <<backoff-handlers>> for more information.

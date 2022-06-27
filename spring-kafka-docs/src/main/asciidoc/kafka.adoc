@@ -5081,6 +5081,16 @@ The container commits any pending offset commits before calling the error handle
 
 If you are using Spring Boot, you simply need to add the error handler as a `@Bean` and Boot will add it to the auto-configured factory.
 
+[[backoff-handlers]]
+===== Back Off Handlers
+
+Error handlers such as the <<default-eh>> use a `BackOff` to determine how long to wait before retrying a delivery.
+Starting with version 2.9, you can configure a custom `BackOffHandler`.
+The default handler simply suspends the thread until the back off time passes (or the container is stopped).
+The framework also provides the `ContainerPausingBackOffHandler` which pauses the listener container until the back off time passes and then resumes the container.
+This is useful when the delays are longer than the `max.poll.interval.ms` consumer property.
+Note that the resolution of the actual back off time will be affected by the `pollTimeout` container property.
+
 [[default-eh]]
 ===== DefaultErrorHandler
 
