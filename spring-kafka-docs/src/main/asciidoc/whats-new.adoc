@@ -8,7 +8,7 @@ For changes in earlier version, see <<history>>.
 
 This version requires the 3.2.0 `kafka-clients`
 
-[[x29-eh changes]]
+[[x29-eh-changes]]
 ==== Error Handler Changes
 
 The `DefaultErrorHandler` can now be configured to pause the container for one poll and use the remaining results from the previous poll, instead of seeking to the offsets of the remaining records.
