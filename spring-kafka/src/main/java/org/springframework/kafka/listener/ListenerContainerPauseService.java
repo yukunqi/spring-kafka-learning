@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2022 the original author or authors.
+ * Copyright 2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,105 +17,93 @@
 package org.springframework.kafka.listener;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Optional;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.LogFactory;
 
 import org.springframework.core.log.LogAccessor;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
+import org.springframework.scheduling.TaskScheduler;
+import org.springframework.util.Assert;
 
 /**
  * Service for pausing and resuming of {@link MessageListenerContainer}.
  *
  * @author Jan Marincek
+ * @author Gary Russell
  * @since 2.9
  */
 public class ListenerContainerPauseService {
 
 	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(ListenerContainerPauseService.class));
-	private final ListenerContainerRegistry registry;
-	private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
-	public ListenerContainerPauseService(ListenerContainerRegistry registry) {
-		this.registry = registry;
-	}
+	@Nullable
+	private final ListenerContainerRegistry registry;
+
+	private final TaskScheduler scheduler;
 
 	/**
-	 * Pause the listener by given id.
-	 * Checks if the listener has already been requested to pause.
-	 *
-	 * @param listenerId the id of the listener
+	 * Create an instance with the provided registry and scheduler.
+	 * @param registry the registry or null.
+	 * @param scheduler the scheduler.
 	 */
-	public void pause(String listenerId) {
-		getListenerContainer(listenerId).ifPresent(this::pause);
+	public ListenerContainerPauseService(@Nullable ListenerContainerRegistry registry, TaskScheduler scheduler) {
+		Assert.notNull(scheduler, "'scheduler' cannot be null");
+		this.registry = registry;
+		this.scheduler = scheduler;
 	}
 
 	/**
 	 * Pause the listener by given id.
 	 * Checks if the listener has already been requested to pause.
 	 * Sets executor schedule for resuming the same listener after pauseDuration.
-	 *
 	 * @param listenerId    the id of the listener
 	 * @param pauseDuration duration between pause() and resume() actions
 	 */
 	public void pause(String listenerId, Duration pauseDuration) {
+		Assert.notNull(this.registry, "Pause by id is only supported when a registry is provided");
 		getListenerContainer(listenerId)
 				.ifPresent(messageListenerContainer -> pause(messageListenerContainer, pauseDuration));
 	}
 
 	/**
-	 * Pause the listener by given container instance.
-	 * Checks if the listener has already been requested to pause.
-	 *
+	 * Pause the listener by given container instance. Checks if the listener has already
+	 * been requested to pause. Sets executor schedule for resuming the same listener
+	 * after pauseDuration.
 	 * @param messageListenerContainer the listener container
+	 * @param pauseDuration duration between pause() and resume() actions
 	 */
-	public void pause(@NonNull MessageListenerContainer messageListenerContainer) {
-		pause(messageListenerContainer, null);
-	}
-
-	/**
-	 * Pause the listener by given container instance.
-	 * Checks if the listener has already been requested to pause.
-	 * Sets executor schedule for resuming the same listener after pauseDuration.
-	 *
-	 * @param messageListenerContainer the listener container
-	 * @param pauseDuration            duration between pause() and resume() actions
-	 */
-	public void pause(@NonNull MessageListenerContainer messageListenerContainer, @Nullable Duration pauseDuration) {
+	public void pause(MessageListenerContainer messageListenerContainer, Duration pauseDuration) {
 		if (messageListenerContainer.isPauseRequested()) {
 			LOGGER.debug(() -> "Container " + messageListenerContainer + " already has pause requested");
 		}
 		else {
-			LOGGER.debug(() -> "Pausing container " + messageListenerContainer);
+			Instant resumeAt = Instant.now().plusMillis(pauseDuration.toMillis());
+			LOGGER.debug(() -> "Pausing container " + messageListenerContainer + "resume scheduled for "
+					+ resumeAt.atZone(ZoneId.systemDefault()).toLocalDateTime());
 			messageListenerContainer.pause();
-			if (messageListenerContainer.getListenerId() != null && pauseDuration != null) {
-				LOGGER.debug(() -> "Resuming of container " + messageListenerContainer + " scheduled for " + LocalDateTime.now().plus(pauseDuration));
-				this.executor.schedule(() -> resume(messageListenerContainer.getListenerId()), pauseDuration.toMillis(), TimeUnit.MILLISECONDS);
-			}
+			this.scheduler.schedule(() -> resume(messageListenerContainer), resumeAt);
 		}
 	}
 
 	/**
-	 * Resume the listener by given id.
-	 *
+	 * Resume the listener container by given id.
 	 * @param listenerId the id of the listener
 	 */
 	public void resume(@NonNull String listenerId) {
+		Assert.notNull(this.registry, "Resume by id is only supported when a registry is provided");
 		getListenerContainer(listenerId).ifPresent(this::resume);
 	}
 
 	/**
-	 * Resume the listener.
-	 *
+	 * Resume the listener container.
 	 * @param messageListenerContainer the listener container
 	 */
 	public void resume(@NonNull MessageListenerContainer messageListenerContainer) {
-		if (messageListenerContainer.isContainerPaused()) {
+		if (messageListenerContainer.isPauseRequested()) {
 			LOGGER.debug(() -> "Resuming container " + messageListenerContainer);
 			messageListenerContainer.resume();
 		}

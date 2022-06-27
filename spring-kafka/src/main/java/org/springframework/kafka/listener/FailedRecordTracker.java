@@ -65,7 +65,13 @@ class FailedRecordTracker implements RecoveryStrategy {
 	private boolean resetStateOnExceptionChange = true;
 
 	FailedRecordTracker(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff,
-						@Nullable BackOffHandler backOffHandler, LogAccessor logger) {
+			LogAccessor logger) {
+
+		this(recoverer, backOff, null, logger);
+	}
+
+	FailedRecordTracker(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff,
+			@Nullable BackOffHandler backOffHandler, LogAccessor logger) {
 
 		Assert.notNull(backOff, "'backOff' cannot be null");
 		if (recoverer == null) {
@@ -77,8 +83,8 @@ class FailedRecordTracker implements RecoveryStrategy {
 				}
 				logger.error(thr, "Backoff "
 						+ (failedRecord == null
-						? "none"
-						: failedRecord.getBackOffExecution())
+								? "none"
+								: failedRecord.getBackOffExecution())
 						+ " exhausted for " + KafkaUtils.format(rec));
 			};
 		}
@@ -95,11 +101,6 @@ class FailedRecordTracker implements RecoveryStrategy {
 
 		this.backOffHandler = backOffHandler == null ? new DefaultBackOffHandler() : backOffHandler;
 
-	}
-
-	FailedRecordTracker(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff,
-						LogAccessor logger) {
-		this(recoverer, backOff, null, logger);
 	}
 
 	/**
@@ -307,6 +308,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 	}
 
 	static class DefaultBackOffHandler implements BackOffHandler {
+		@Override
 		public void onNextBackOff(@Nullable MessageListenerContainer container, Exception exception, long nextBackOff) {
 			try {
 				if (container == null) {
