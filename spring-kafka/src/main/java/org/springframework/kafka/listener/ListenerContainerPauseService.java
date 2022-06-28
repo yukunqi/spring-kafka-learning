@@ -24,7 +24,6 @@ import java.util.Optional;
 import org.apache.commons.logging.LogFactory;
 
 import org.springframework.core.log.LogAccessor;
-import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.util.Assert;
@@ -93,7 +92,7 @@ public class ListenerContainerPauseService {
 	 * Resume the listener container by given id.
 	 * @param listenerId the id of the listener
 	 */
-	public void resume(@NonNull String listenerId) {
+	public void resume(String listenerId) {
 		Assert.notNull(this.registry, "Resume by id is only supported when a registry is provided");
 		getListenerContainer(listenerId).ifPresent(this::resume);
 	}
@@ -102,7 +101,7 @@ public class ListenerContainerPauseService {
 	 * Resume the listener container.
 	 * @param messageListenerContainer the listener container
 	 */
-	public void resume(@NonNull MessageListenerContainer messageListenerContainer) {
+	public void resume(MessageListenerContainer messageListenerContainer) {
 		if (messageListenerContainer.isPauseRequested()) {
 			LOGGER.debug(() -> "Resuming container " + messageListenerContainer);
 			messageListenerContainer.resume();

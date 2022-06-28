@@ -16,38 +16,31 @@
 
 package org.springframework.kafka.listener;
 
-import java.time.Duration;
-
 import org.springframework.lang.Nullable;
 
 /**
- * A {@link BackOffHandler} that pauses the container for the backoff.
+ * Default {@link BackOffHandler}; suspends the thread for the back off. If a container is
+ * provided, {@link ListenerUtils#stoppableSleep(MessageListenerContainer, long)} is used,
+ * to terminate the suspension if the container is stopped.
  *
+ * @author Jan Marincek
  * @author Gary Russell
  * @since 2.9
- *
  */
-public class ContainerPausingBackOffHandler implements BackOffHandler {
-
-	private final DefaultBackOffHandler defaultBackOffHandler = new DefaultBackOffHandler();
-
-	private final ListenerContainerPauseService pauser;
-
-	/**
-	 * Create an instance with the provided {@link ListenerContainerPauseService}.
-	 * @param pauser the pause service.
-	 */
-	public ContainerPausingBackOffHandler(ListenerContainerPauseService pauser) {
-		this.pauser = pauser;
-	}
+public class DefaultBackOffHandler implements BackOffHandler {
 
 	@Override
 	public void onNextBackOff(@Nullable MessageListenerContainer container, Exception exception, long nextBackOff) {
-		if (container == null) {
-			this.defaultBackOffHandler.onNextBackOff(container, exception, nextBackOff);
+		try {
+			if (container == null) {
+				Thread.sleep(nextBackOff);
+			}
+			else {
+				ListenerUtils.stoppableSleep(container, nextBackOff);
+			}
 		}
-		else {
-			this.pauser.pause(container, Duration.ofMillis(nextBackOff));
+		catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
 		}
 	}
 
