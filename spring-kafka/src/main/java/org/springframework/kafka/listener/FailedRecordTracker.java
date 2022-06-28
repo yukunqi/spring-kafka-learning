@@ -308,21 +308,4 @@ class FailedRecordTracker implements RecoveryStrategy {
 
 	}
 
-	static class DefaultBackOffHandler implements BackOffHandler {
-		@Override
-		public void onNextBackOff(@Nullable MessageListenerContainer container, Exception exception, long nextBackOff) {
-			try {
-				if (container == null) {
-					Thread.sleep(nextBackOff);
-				}
-				else {
-					ListenerUtils.stoppableSleep(container, nextBackOff);
-				}
-			}
-			catch (InterruptedException e) {
-				throw new RuntimeException(e);
-			}
-		}
-	}
-
 }

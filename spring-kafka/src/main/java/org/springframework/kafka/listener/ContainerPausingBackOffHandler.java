@@ -31,6 +31,8 @@ import org.springframework.lang.Nullable;
  */
 public class ContainerPausingBackOffHandler implements BackOffHandler {
 
+	private final DefaultBackOffHandler defaultBackOffHandler = new DefaultBackOffHandler();
+
 	private final ListenerContainerPauseService pauser;
 
 	/**
@@ -43,7 +45,12 @@ public class ContainerPausingBackOffHandler implements BackOffHandler {
 
 	@Override
 	public void onNextBackOff(@Nullable MessageListenerContainer container, Exception exception, long nextBackOff) {
-		this.pauser.pause(container, Duration.ofMillis(nextBackOff));
+		if (container == null) {
+			this.defaultBackOffHandler.onNextBackOff(container, exception, nextBackOff);
+		}
+		else {
+			this.pauser.pause(container, Duration.ofMillis(nextBackOff));
+		}
 	}
 
 	@Override
