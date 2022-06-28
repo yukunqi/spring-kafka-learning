@@ -342,8 +342,9 @@ public class KafkaAdmin extends KafkaResourceFactory
 					}
 					if (alterConfigOperations.size() > 0) {
 						try {
-							AlterConfigsResult alterConfigsResult = adminClient
-									.incrementalAlterConfigs(Map.of(topicConfigResource, alterConfigOperations));
+							AlterConfigsResult alterConfigsResult =
+									adminClient.incrementalAlterConfigs(
+											Collections.singletonMap(topicConfigResource, alterConfigOperations));
 							alterConfigsResult.all().get(this.operationTimeout, TimeUnit.SECONDS);
 						}
 						catch (InterruptedException ie) {

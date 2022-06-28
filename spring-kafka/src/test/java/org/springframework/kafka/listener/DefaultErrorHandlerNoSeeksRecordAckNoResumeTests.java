@@ -227,7 +227,7 @@ public class DefaultErrorHandlerNoSeeksRecordAckNoResumeTests {
 			factory.setConsumerFactory(consumerFactory(registry));
 			factory.getContainerProperties().setAckMode(AckMode.RECORD);
 			factory.getContainerProperties().setDeliveryAttemptHeader(true);
-			factory.setRecordInterceptor((record, consumer) -> {
+			factory.setRecordInterceptor((record) -> {
 				Config.this.deliveryAttempt = record.headers().lastHeader(KafkaHeaders.DELIVERY_ATTEMPT);
 				return record;
 			});
