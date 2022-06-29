@@ -553,9 +553,13 @@ public class ContainerProperties extends ConsumerProperties {
 	}
 
 	/**
-	 * Set the transaction manager to start a transaction; offsets are committed with
-	 * semantics equivalent to {@link AckMode#RECORD} and {@link AckMode#BATCH} depending
-	 * on the listener type (record or batch).
+	 * Set the transaction manager to start a transaction; if it is a
+	 * {@link org.springframework.kafka.transaction.KafkaAwareTransactionManager}, offsets
+	 * are committed with semantics equivalent to {@link AckMode#RECORD} and
+	 * {@link AckMode#BATCH} depending on the listener type (record or batch). For other
+	 * transaction managers, adding the transaction manager to the container facilitates,
+	 * for example, a record or batch interceptor participating in the same transaction
+	 * (you must set the container's {@code interceptBeforeTx} property to false).
 	 * @param transactionManager the transaction manager.
 	 * @since 1.3
 	 * @see #setAckMode(AckMode)
