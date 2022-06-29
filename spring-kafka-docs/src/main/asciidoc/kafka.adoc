@@ -3502,7 +3502,7 @@ With `EOSMode.BETA` it is no longer necessary to use the same `transactional.id`
 For transactions started by the template (or the transaction manager for `@Transaction`) you should set the property on the template and transaction manager respectively.
 This property must have a different value on each application instance.
 
-This problem (different rules for `transactional.id`) has been eliminated when `EOSMode.BETA` is being used (with broker versions >= 2.5); see <<exactly-once>>.
+NOTE: This problem (different rules for `transactional.id`) has been eliminated when `EOSMode.BETA` is being used (with broker versions >= 2.5); see <<exactly-once>>.
 
 [[tx-template-mixed]]
 ===== `KafkaTemplate` Transactional and non-Transactional Publishing
