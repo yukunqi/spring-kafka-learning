@@ -60,9 +60,7 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
-import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
-import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
@@ -110,7 +108,6 @@ public class DefaultErrorHandlerNoSeeksRecordAckNoResumeContainerPausedTests {
 		verify(this.consumer, never()).resume(any());
 		assertThat(this.config.count).isEqualTo(4);
 		assertThat(this.config.contents).contains("foo", "bar", "baz", "qux");
-		assertThat(this.config.deliveries).contains(1, 1, 1, 1);
 		verify(this.consumer, never()).seek(any(), anyLong());
 	}
 
@@ -119,8 +116,6 @@ public class DefaultErrorHandlerNoSeeksRecordAckNoResumeContainerPausedTests {
 	public static class Config {
 
 		final List<String> contents = new ArrayList<>();
-
-		final List<Integer> deliveries = new ArrayList<>();
 
 		final CountDownLatch pollLatch = new CountDownLatch(4);
 
@@ -135,9 +130,8 @@ public class DefaultErrorHandlerNoSeeksRecordAckNoResumeContainerPausedTests {
 		@KafkaListener(id = "id", groupId = "grp",
 				topicPartitions = @org.springframework.kafka.annotation.TopicPartition(topic = "foo",
 						partitions = "#{'0,1,2'.split(',')}"))
-		public void foo(String in, @Header(KafkaHeaders.DELIVERY_ATTEMPT) int delivery) {
+		public void foo(String in) {
 			this.contents.add(in);
-			this.deliveries.add(delivery);
 			this.deliveryLatch.countDown();
 			if (++this.count == 4 || this.count == 5) { // part 1, offset 1, first and second times
 				throw new RuntimeException("foo");

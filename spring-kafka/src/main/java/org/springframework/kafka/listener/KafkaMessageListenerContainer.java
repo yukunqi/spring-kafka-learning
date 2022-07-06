@@ -2784,7 +2784,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			else {
 				boolean handled = this.commonErrorHandler.handleOne(rte, record, this.consumer,
 						KafkaMessageListenerContainer.this.thisOrParentContainer);
-				Map<TopicPartition, List<ConsumerRecord<K, V>>> records = new HashMap<>();
+				Map<TopicPartition, List<ConsumerRecord<K, V>>> records = new LinkedHashMap<>();
 				if (!handled) {
 					records.computeIfAbsent(new TopicPartition(record.topic(), record.partition()),
 							tp -> new ArrayList<ConsumerRecord<K, V>>()).add(record);
