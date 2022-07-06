@@ -691,7 +691,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 
 			@Override
 			@Nullable
-			public ConsumerRecord intercept(ConsumerRecord rec, Consumer consumer) {
+			public ConsumerRecord intercept(ConsumerRecord rec) {
 				order.add("interceptor");
 				latch.get().countDown();
 				return rec;
