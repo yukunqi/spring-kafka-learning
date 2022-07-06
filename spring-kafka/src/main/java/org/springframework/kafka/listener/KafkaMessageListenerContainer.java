@@ -1571,7 +1571,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						KafkaMessageListenerContainer.this.emergencyStop.run();
 					}
 					TopicPartition firstPart = this.pendingRecordsAfterError.partitions().iterator().next();
-					boolean isPaused = isPartitionPauseRequested(firstPart);
+					boolean isPaused = isPaused() || isPartitionPauseRequested(firstPart);
 					this.logger.debug(() -> "First pending after error: " + firstPart + "; paused: " + isPaused);
 					if (!isPaused) {
 						records = this.pendingRecordsAfterError;
@@ -2782,8 +2782,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 							tp -> new ArrayList<ConsumerRecord<K, V>>()).add(record);
 				}
 				while (iterator.hasNext()) {
-					records.computeIfAbsent(new TopicPartition(record.topic(), record.partition()),
-							tp -> new ArrayList<ConsumerRecord<K, V>>()).add(iterator.next());
+					ConsumerRecord<K, V> next = iterator.next();
+					records.computeIfAbsent(new TopicPartition(next.topic(), next.partition()),
+							tp -> new ArrayList<ConsumerRecord<K, V>>()).add(next);
 				}
 				if (records.size() > 0) {
 					this.pendingRecordsAfterError = new ConsumerRecords<>(records);
