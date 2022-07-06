@@ -9,7 +9,7 @@ If you wish to use a different version of `kafka-clients` or `kafka-streams`, an
 .Maven
 ----
 <properties>
-    <kafka.version>3.1.0</kafka.version>
+    <kafka.version>3.2.0</kafka.version>
 </properties>
 
 <dependency>
@@ -26,22 +26,6 @@ If you wish to use a different version of `kafka-clients` or `kafka-streams`, an
     <groupId>org.springframework.kafka</groupId>
     <artifactId>spring-kafka-test</artifactId>
     <scope>test</scope>
-</dependency>
-
-<dependency>
-    <groupId>org.apache.kafka</groupId>
-    <artifactId>kafka-clients</artifactId>
-    <classifier>test</classifier>
-    <scope>test</scope>
-    <version>${kafka.version}</version>
-</dependency>
-
-<dependency>
-    <groupId>org.apache.kafka</groupId>
-    <artifactId>kafka_2.13</artifactId>
-    <classifier>test</classifier>
-    <scope>test</scope>
-    <version>${kafka.version}</version>
 </dependency>
 ----
 
