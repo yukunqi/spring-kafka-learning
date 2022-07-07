@@ -136,8 +136,11 @@ public class ListenerContainerPauseService {
 		}
 	}
 
+	/*
+	 * Callers must ensure this.registry is not null before calling.
+	 */
 	private Optional<MessageListenerContainer> getListenerContainer(String listenerId) {
-		MessageListenerContainer messageListenerContainer = this.registry.getListenerContainer(listenerId);
+		MessageListenerContainer messageListenerContainer = this.registry.getListenerContainer(listenerId); // NOSONAR
 		if (messageListenerContainer == null) {
 			LOGGER.warn(() -> "MessageListenerContainer " + listenerId + " does not exists");
 		}
