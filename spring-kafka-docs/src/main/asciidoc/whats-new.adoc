@@ -17,8 +17,14 @@ IMPORTANT: When using transactions, the minimum broker version is 2.5.
 
 See <<exactly-once>> and https://cwiki.apache.org/confluence/display/KAFKA/KIP-447%3A+Producer+scalability+for+exactly+once+semantics[KIP-447] for more information.
 
-[[global-embedded-kafka]]
+[[x30-global-embedded-kafka]]
 ==== Global Single Embedded Kafka
 
 The embedded Kafka (`EmbeddedKafkaBroker`) can now be start as a single global instance for the whole test plan.
 See <<same-broker-multiple-tests>> for more information.
+
+[[x30-retryable]]
+==== Retryable Topics Changes
+
+The bootstrapping of [[retry-topic]] infrastructure beans has changed in this release to avoid some timing problems that occurred in some application regarding application initialization.
+See <<retry-config>> for more information.
