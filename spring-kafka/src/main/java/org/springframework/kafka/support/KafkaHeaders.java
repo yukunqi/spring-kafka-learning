@@ -277,7 +277,7 @@ public abstract class KafkaHeaders {
 	 * Exception class name for a record published sent to another topic.
 	 * @since 2.8
 	 */
-	public static final String EXCEPTION_CAUSE_FQCN = PREFIX + "exception-fqcn";
+	public static final String EXCEPTION_CAUSE_FQCN = PREFIX + "exception-cause-fqcn";
 
 	/**
 	 * Exception stack trace for a record published to another topic.
