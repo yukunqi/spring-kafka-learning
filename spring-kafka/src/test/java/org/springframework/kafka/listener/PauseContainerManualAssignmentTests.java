@@ -56,11 +56,13 @@ import org.mockito.InOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.event.EventListener;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.event.ConsumerPausedEvent;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
@@ -114,6 +116,9 @@ public class PauseContainerManualAssignmentTests {
 		assertThat(this.config.count).isEqualTo(4);
 		assertThat(this.config.contents).contains("foo", "bar", "baz", "qux");
 		verify(this.consumer, never()).seek(any(), anyLong());
+		assertThat(this.config.eventLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.config.event.getPartitions()).contains(
+				new TopicPartition("foo", 0), new TopicPartition("foo", 1), new TopicPartition("foo", 2));
 	}
 
 	@Configuration
@@ -130,7 +135,11 @@ public class PauseContainerManualAssignmentTests {
 
 		final CountDownLatch commitLatch = new CountDownLatch(3);
 
+		final CountDownLatch eventLatch = new CountDownLatch(1);
+
 		int count;
+
+		volatile ConsumerPausedEvent event;
 
 		@KafkaListener(id = "id", groupId = "grp",
 				topicPartitions = @org.springframework.kafka.annotation.TopicPartition(topic = "foo",
@@ -226,6 +235,12 @@ public class PauseContainerManualAssignmentTests {
 			eh.setSeekAfterError(false);
 			factory.setCommonErrorHandler(eh);
 			return factory;
+		}
+
+		@EventListener
+		public void paused(ConsumerPausedEvent event) {
+			this.event = event;
+			this.eventLatch.countDown();
 		}
 
 	}
