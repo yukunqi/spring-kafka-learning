@@ -222,8 +222,6 @@ public class RetryTopicConfigurer implements BeanFactoryAware {
 
 	private final RetryTopicNamesProviderFactory retryTopicNamesProviderFactory;
 
-	private boolean useLegacyFactoryConfigurer = false;
-
 	@Deprecated
 	public RetryTopicConfigurer(DestinationTopicProcessor destinationTopicProcessor,
 								ListenerContainerFactoryResolver containerFactoryResolver,
@@ -394,35 +392,29 @@ public class RetryTopicConfigurer implements BeanFactoryAware {
 		return dltEndpointHandlerMethod != null ? dltEndpointHandlerMethod : DEFAULT_DLT_HANDLER;
 	}
 
-	@SuppressWarnings("deprecation")
 	private KafkaListenerContainerFactory<?> resolveAndConfigureFactoryForMainEndpoint(
 			KafkaListenerContainerFactory<?> providedFactory,
 			String defaultFactoryBeanName, RetryTopicConfiguration configuration) {
+
 		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory = this.containerFactoryResolver
 				.resolveFactoryForMainEndpoint(providedFactory, defaultFactoryBeanName,
 						configuration.forContainerFactoryResolver());
 
-		return this.useLegacyFactoryConfigurer
-				? this.listenerContainerFactoryConfigurer
-				.configureWithoutBackOffValues(resolvedFactory, configuration.forContainerFactoryConfigurer())
-				: this.listenerContainerFactoryConfigurer
-					.decorateFactoryWithoutSettingContainerProperties(resolvedFactory,
-							configuration.forContainerFactoryConfigurer());
+		return this.listenerContainerFactoryConfigurer
+				.decorateFactoryWithoutSettingContainerProperties(resolvedFactory,
+						configuration.forContainerFactoryConfigurer());
 	}
 
-	@SuppressWarnings("deprecation")
 	private KafkaListenerContainerFactory<?> resolveAndConfigureFactoryForRetryEndpoint(
 			KafkaListenerContainerFactory<?> providedFactory,
 			String defaultFactoryBeanName,
 			RetryTopicConfiguration configuration) {
+
 		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory =
 				this.containerFactoryResolver.resolveFactoryForRetryEndpoint(providedFactory, defaultFactoryBeanName,
 				configuration.forContainerFactoryResolver());
-		return this.useLegacyFactoryConfigurer
-				? this.listenerContainerFactoryConfigurer.configure(resolvedFactory,
-					configuration.forContainerFactoryConfigurer())
-				: this.listenerContainerFactoryConfigurer
-					.decorateFactory(resolvedFactory, configuration.forContainerFactoryConfigurer());
+		return this.listenerContainerFactoryConfigurer
+				.decorateFactory(resolvedFactory, configuration.forContainerFactoryConfigurer());
 	}
 
 	private void throwIfMultiMethodEndpoint(MethodKafkaListenerEndpoint<?, ?> mainEndpoint) {
@@ -437,17 +429,6 @@ public class RetryTopicConfigurer implements BeanFactoryAware {
 
 	public static EndpointHandlerMethod createHandlerMethodWith(Object bean, Method method) {
 		return new EndpointHandlerMethod(bean, method);
-	}
-
-	/**
-	 * Set to true if you want the {@link ListenerContainerFactoryConfigurer} to
-	 * behave as before 2.8.3.
-	 * @param useLegacyFactoryConfigurer Whether to use the legacy factory configuration.
-	 * @deprecated for removal after the deprecated legacy configuration methods are removed.
-	 */
-	@Deprecated
-	public void useLegacyFactoryConfigurer(boolean useLegacyFactoryConfigurer) {
-		this.useLegacyFactoryConfigurer = useLegacyFactoryConfigurer;
 	}
 
 	@Override
