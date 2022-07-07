@@ -46,7 +46,7 @@ public interface BackOffHandler {
 	 * @param partition the partition.
 	 * @param nextBackOff the next back off.
 	 */
-	default void onNextBackOff(@Nullable MessageListenerContainer container, TopicPartition partition,
+	default void onNextBackOff(MessageListenerContainer container, TopicPartition partition,
 			long nextBackOff) {
 
 		throw new UnsupportedOperationException();
