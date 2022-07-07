@@ -1681,7 +1681,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					this.consumerPaused = true;
 					this.pauseForPending = false;
 					this.logger.debug(() -> "Paused consumption from: " + this.consumer.paused());
-					publishConsumerPausedEvent(this.consumer.assignment());
+					publishConsumerPausedEvent(assigned);
 				}
 			}
 		}
