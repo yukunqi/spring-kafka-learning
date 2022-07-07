@@ -25,7 +25,6 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
 import java.math.BigInteger;
@@ -88,7 +87,7 @@ class ListenerContainerFactoryConfigurerTests {
 	private ContainerProperties containerProperties;
 
 	@Captor
-	private ArgumentCaptor<CommonErrorHandler> errorHandlerCaptor;
+	private ArgumentCaptor<DefaultErrorHandler> errorHandlerCaptor;
 
 	private final ConsumerRecord<?, ?> record =
 			new ConsumerRecord<>("test-topic", 1, 1234L, new Object(), new Object());
@@ -105,7 +104,7 @@ class ListenerContainerFactoryConfigurerTests {
 	private OffsetCommitCallback offsetCommitCallback;
 
 	@Mock
-	private java.util.function.Consumer<CommonErrorHandler> errorHandlerCustomizer;
+	private java.util.function.Consumer<DefaultErrorHandler> errorHandlerCustomizer;
 
 	@SuppressWarnings("rawtypes")
 	@Captor
@@ -159,180 +158,30 @@ class ListenerContainerFactoryConfigurerTests {
 		given(deadLetterPublishingRecovererFactory.create()).willReturn(recoverer);
 		given(containerProperties.getAckMode()).willReturn(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
 		given(containerProperties.getCommitCallback()).willReturn(offsetCommitCallback);
+		given(containerProperties.getMessageListener()).willReturn(listener);
 		given(configuration.forContainerFactoryConfigurer()).willReturn(lcfcConfiguration);
+		willReturn(container).given(containerFactory).createListenerContainer(endpoint);
 
 		// when
 		ListenerContainerFactoryConfigurer configurer =
 				new ListenerContainerFactoryConfigurer(kafkaConsumerBackoffManager,
 						deadLetterPublishingRecovererFactory, clock);
 		configurer.setErrorHandlerCustomizer(errorHandlerCustomizer);
-		configurer
-				.configure(containerFactory, configuration.forContainerFactoryConfigurer());
+		KafkaListenerContainerFactory<?> factory = configurer.decorateFactory(containerFactory,
+				configuration.forContainerFactoryConfigurer());
+		factory.createListenerContainer(endpoint);
 
 		// then
-		then(containerFactory).should(times(1)).setCommonErrorHandler(errorHandlerCaptor.capture());
-		CommonErrorHandler errorHandler = errorHandlerCaptor.getValue();
-		assertThat(DefaultErrorHandler.class.isAssignableFrom(errorHandler.getClass())).isTrue();
-		DefaultErrorHandler seekToCurrent = (DefaultErrorHandler) errorHandler;
+		then(container).should(times(1)).setCommonErrorHandler(errorHandlerCaptor.capture());
+		DefaultErrorHandler errorHandler = errorHandlerCaptor.getValue();
 
 		RuntimeException ex = new RuntimeException();
-		seekToCurrent.handleRemaining(ex, records, consumer, container);
+		errorHandler.handleRemaining(ex, records, consumer, container);
 
 		then(recoverer).should(times(1)).accept(record, consumer, ex);
 		then(consumer).should(times(1)).commitAsync(any(Map.class), eq(offsetCommitCallback));
 		then(errorHandlerCustomizer).should(times(1)).accept(errorHandler);
 
-	}
-
-	@SuppressWarnings("deprecation")
-	@Test
-	void shouldSetPartitionEventIntervalAndPollTimout() {
-
-		// given
-		given(container.getContainerProperties()).willReturn(containerProperties);
-		given(deadLetterPublishingRecovererFactory.create()).willReturn(recoverer);
-		given(containerProperties.getMessageListener()).willReturn(listener);
-		given(configuration.forContainerFactoryConfigurer()).willReturn(lcfcConfiguration);
-		given(containerProperties.getPollTimeout()).willReturn(ContainerProperties.DEFAULT_POLL_TIMEOUT);
-
-		// when
-		ListenerContainerFactoryConfigurer configurer =
-				new ListenerContainerFactoryConfigurer(kafkaConsumerBackoffManager,
-						deadLetterPublishingRecovererFactory, clock);
-		configurer
-				.configure(containerFactory, configuration.forContainerFactoryConfigurer());
-
-		// then
-		then(containerFactory).should(times(1))
-				.setContainerCustomizer(containerCustomizerCaptor.capture());
-		ContainerCustomizer containerCustomizer = containerCustomizerCaptor.getValue();
-		containerCustomizer.configure(container);
-
-		then(containerProperties).should(times(1))
-				.setIdlePartitionEventInterval(backOffValue / 4);
-		then(containerProperties).should(times(1))
-				.setPollTimeout(backOffValue / 4);
-	}
-
-	@SuppressWarnings("deprecation")
-	@Test
-	void shouldNotOverridePollTimeoutIfNotDefault() {
-
-		// given
-		given(container.getContainerProperties()).willReturn(containerProperties);
-		given(deadLetterPublishingRecovererFactory.create()).willReturn(recoverer);
-		given(containerProperties.getMessageListener()).willReturn(listener);
-		given(configuration.forContainerFactoryConfigurer()).willReturn(lcfcConfiguration);
-		long previousPollTimoutValue = 3000L;
-		given(containerProperties.getPollTimeout()).willReturn(previousPollTimoutValue);
-
-		// when
-		ListenerContainerFactoryConfigurer configurer =
-				new ListenerContainerFactoryConfigurer(kafkaConsumerBackoffManager,
-						deadLetterPublishingRecovererFactory, clock);
-		configurer
-				.configure(containerFactory, configuration.forContainerFactoryConfigurer());
-
-		// then
-		then(containerFactory).should(times(1))
-				.setContainerCustomizer(containerCustomizerCaptor.capture());
-		ContainerCustomizer containerCustomizer = containerCustomizerCaptor.getValue();
-		containerCustomizer.configure(container);
-
-		then(containerProperties).should(times(1))
-				.setIdlePartitionEventInterval(previousPollTimoutValue);
-		then(containerProperties).should(times(1))
-				.setPollTimeout(previousPollTimoutValue);
-	}
-
-	@SuppressWarnings("deprecation")
-	@Test
-	void shouldApplyMinimumPollTimeoutLimit() {
-
-		// given
-		given(container.getContainerProperties()).willReturn(containerProperties);
-		given(deadLetterPublishingRecovererFactory.create()).willReturn(recoverer);
-		given(containerProperties.getMessageListener()).willReturn(listener);
-		given(configuration.forContainerFactoryConfigurer())
-				.willReturn(new ListenerContainerFactoryConfigurer.Configuration(Collections.singletonList(500L)));
-		given(containerProperties.getPollTimeout()).willReturn(ContainerProperties.DEFAULT_POLL_TIMEOUT);
-
-		// when
-		ListenerContainerFactoryConfigurer configurer =
-				new ListenerContainerFactoryConfigurer(kafkaConsumerBackoffManager,
-						deadLetterPublishingRecovererFactory, clock);
-		configurer
-				.configure(containerFactory, configuration.forContainerFactoryConfigurer());
-
-		// then
-		then(containerFactory).should(times(1))
-				.setContainerCustomizer(containerCustomizerCaptor.capture());
-		ContainerCustomizer containerCustomizer = containerCustomizerCaptor.getValue();
-		containerCustomizer.configure(container);
-
-		then(containerProperties).should(times(1))
-				.setIdlePartitionEventInterval(100L);
-		then(containerProperties).should(times(1))
-				.setPollTimeout(100L);
-	}
-
-	@Test
-	void shouldApplyMaximumPollTimeoutLimit() {
-
-		// given
-		given(container.getContainerProperties()).willReturn(containerProperties);
-		given(deadLetterPublishingRecovererFactory.create()).willReturn(recoverer);
-		given(containerProperties.getMessageListener()).willReturn(listener);
-		given(configuration.forContainerFactoryConfigurer())
-				.willReturn(new ListenerContainerFactoryConfigurer.Configuration(Collections.singletonList(30000L)));
-		given(containerProperties.getPollTimeout()).willReturn(ContainerProperties.DEFAULT_POLL_TIMEOUT);
-
-		// when
-		ListenerContainerFactoryConfigurer configurer =
-				new ListenerContainerFactoryConfigurer(kafkaConsumerBackoffManager,
-						deadLetterPublishingRecovererFactory, clock);
-		configurer
-				.configure(containerFactory, configuration.forContainerFactoryConfigurer());
-
-		// then
-		then(containerFactory).should(times(1))
-				.setContainerCustomizer(containerCustomizerCaptor.capture());
-		ContainerCustomizer containerCustomizer = containerCustomizerCaptor.getValue();
-		containerCustomizer.configure(container);
-
-		then(containerProperties).should(times(1))
-				.setIdlePartitionEventInterval(5000L);
-		then(containerProperties).should(times(1))
-				.setPollTimeout(5000L);
-	}
-
-	@Test
-	void shouldNotSetPolltimoutAndPartitionIdleIfNoBackOffProvided() {
-
-		// given
-		given(container.getContainerProperties()).willReturn(containerProperties);
-		given(deadLetterPublishingRecovererFactory.create()).willReturn(recoverer);
-		given(containerProperties.getMessageListener()).willReturn(listener);
-		given(configuration.forContainerFactoryConfigurer())
-				.willReturn(lcfcConfiguration);
-
-		// when
-		ListenerContainerFactoryConfigurer configurer =
-				new ListenerContainerFactoryConfigurer(kafkaConsumerBackoffManager,
-						deadLetterPublishingRecovererFactory, clock);
-		configurer
-				.configureWithoutBackOffValues(containerFactory, configuration.forContainerFactoryConfigurer());
-
-		// then
-		then(containerFactory).should(times(1))
-				.setContainerCustomizer(containerCustomizerCaptor.capture());
-		ContainerCustomizer containerCustomizer = containerCustomizerCaptor.getValue();
-		containerCustomizer.configure(container);
-
-		then(containerProperties).should(never())
-				.setIdlePartitionEventInterval(anyLong());
-		then(containerProperties).should(never())
-				.setPollTimeout(anyLong());
 	}
 
 	@Test
@@ -348,22 +197,18 @@ class ListenerContainerFactoryConfigurerTests {
 		String testListenerId = "testListenerId";
 		given(container.getListenerId()).willReturn(testListenerId);
 		given(configuration.forContainerFactoryConfigurer()).willReturn(lcfcConfiguration);
+		willReturn(container).given(containerFactory).createListenerContainer(endpoint);
 
 		// when
 		ListenerContainerFactoryConfigurer configurer =
 				new ListenerContainerFactoryConfigurer(kafkaConsumerBackoffManager,
 						deadLetterPublishingRecovererFactory, clock);
 		configurer.setContainerCustomizer(configurerContainerCustomizer);
-		ConcurrentKafkaListenerContainerFactory<?, ?> factory = configurer
-				.configure(containerFactory, configuration.forContainerFactoryConfigurer());
+		KafkaListenerContainerFactory<?> factory = configurer
+				.decorateFactory(containerFactory, configuration.forContainerFactoryConfigurer());
+		factory.createListenerContainer(endpoint);
 
 		// then
-		then(containerFactory)
-				.should(times(1))
-				.setContainerCustomizer(containerCustomizerCaptor.capture());
-		ContainerCustomizer containerCustomizer = containerCustomizerCaptor.getValue();
-		containerCustomizer.configure(container);
-
 		then(container).should(times(1)).setupMessageListener(listenerAdapterCaptor.capture());
 		KafkaBackoffAwareMessageListenerAdapter<?, ?> listenerAdapter =
 				(KafkaBackoffAwareMessageListenerAdapter<?, ?>) listenerAdapterCaptor.getValue();
@@ -467,26 +312,4 @@ class ListenerContainerFactoryConfigurerTests {
 				.isInstanceOf(IllegalStateException.class);
 	}
 
-
-	@Test
-	void shouldCacheFactoryInstances() {
-
-		// given
-		given(deadLetterPublishingRecovererFactory.create()).willReturn(recoverer);
-		given(configuration.forContainerFactoryConfigurer()).willReturn(lcfcConfiguration);
-
-		// when
-		ListenerContainerFactoryConfigurer configurer =
-				new ListenerContainerFactoryConfigurer(kafkaConsumerBackoffManager,
-						deadLetterPublishingRecovererFactory, clock);
-		ConcurrentKafkaListenerContainerFactory<?, ?> factory = configurer
-				.configure(containerFactory, configuration.forContainerFactoryConfigurer());
-		ConcurrentKafkaListenerContainerFactory<?, ?> secondFactory = configurer
-				.configure(containerFactory, configuration.forContainerFactoryConfigurer());
-
-		// then
-		assertThat(secondFactory).isEqualTo(factory);
-		then(containerFactory).should(times(1)).setContainerCustomizer(any());
-		then(containerFactory).should(times(1)).setCommonErrorHandler(any());
-	}
 }
