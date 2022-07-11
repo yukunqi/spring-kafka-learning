@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.AbstractMap;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -76,7 +77,7 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 
 	private void updateClassifier(Map<Class<? extends Throwable>, CommonErrorHandler> delegates) {
 		Map<Class<? extends Throwable>, Boolean> classifications = delegates.keySet().stream()
-			.map(commonErrorHandler -> Map.entry(commonErrorHandler, true))
+			.map(commonErrorHandler -> new AbstractMap.SimpleEntry<>(commonErrorHandler, true))
 			.collect(Collectors.toMap(Entry::getKey, Entry::getValue));
 		this.classifier = new BinaryExceptionClassifier(classifications);
 	}
