@@ -22,9 +22,6 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
-import org.apache.commons.logging.LogFactory;
-
-import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
@@ -60,9 +57,6 @@ import org.springframework.util.backoff.BackOff;
  *
  */
 public class ListenerContainerFactoryConfigurer {
-
-	private static final LogAccessor LOGGER = new LogAccessor(
-			LogFactory.getLog(ListenerContainerFactoryConfigurer.class));
 
 	private BackOff providedBlockingBackOff = null;
 

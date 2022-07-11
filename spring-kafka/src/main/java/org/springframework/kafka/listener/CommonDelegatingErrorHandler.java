@@ -216,13 +216,14 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 
 	@Nullable
 	private Throwable traverseCauseChain(Throwable thrownException) {
-		while (thrownException != null && thrownException.getCause() != null) {
-			if (this.classifier.classify(thrownException)) { // NOSONAR using Boolean here is not dangerous
-				return thrownException;
+		Throwable cause = thrownException;
+		while (cause != null && cause.getCause() != null) {
+			if (this.classifier.classify(cause)) { // NOSONAR using Boolean here is not dangerous
+				return cause;
 			}
-			thrownException = thrownException.getCause();
+			cause = cause.getCause();
 		}
-		return thrownException;
+		return cause;
 	}
 
 }
