@@ -549,7 +549,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 				schedW = gac.getBean(RetryTopicSchedulerWrapper.class);
 			}
 			KafkaConsumerBackoffManager bom =
-					rtcs.kafkaConsumerBackoffManager(this.applicationContext, this.registrar.getEndpointRegistry(),
+					rtcs.kafkaConsumerBackoffManager(this.applicationContext, this.registrar.getEndpointRegistry(), // NOSONAR
 							schedW, sched);
 			RetryTopicConfigurer rtc = rtcs.retryTopicConfigurer(bom, destResolver, this.beanFactory);
 
