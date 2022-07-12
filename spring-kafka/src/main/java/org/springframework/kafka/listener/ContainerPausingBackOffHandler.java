@@ -46,7 +46,7 @@ public class ContainerPausingBackOffHandler implements BackOffHandler {
 	@Override
 	public void onNextBackOff(@Nullable MessageListenerContainer container, Exception exception, long nextBackOff) {
 		if (container == null) {
-			this.defaultBackOffHandler.onNextBackOff(container, exception, nextBackOff);
+			this.defaultBackOffHandler.onNextBackOff(container, exception, nextBackOff); // NOSONAR
 		}
 		else {
 			this.pauser.pause(container, Duration.ofMillis(nextBackOff));
