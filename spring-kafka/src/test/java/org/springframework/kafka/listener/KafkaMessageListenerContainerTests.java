@@ -2823,6 +2823,11 @@ public class KafkaMessageListenerContainerTests {
 				.asInstanceOf(InstanceOfAssertFactories.collection(TopicPartition.class))
 				.hasSize(1)
 				.contains(tp0);
+		assertThat(container)
+				.extracting("pauseRequestedPartitions")
+				.asInstanceOf(InstanceOfAssertFactories.collection(TopicPartition.class))
+				.hasSize(2)
+				.contains(tp0, tp1);
 		suspendConsumerThread.countDown();
 		container.stop();
 	}
