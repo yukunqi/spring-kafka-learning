@@ -107,7 +107,7 @@ public class DefaultKafkaProducerFactoryTests {
 						return null;
 					});
 				})
-				.withMessageContaining("Invalid transition");
+				.withStackTraceContaining("Invalid transition");
 
 		assertThat(queue).hasSize(0);
 

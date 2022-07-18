@@ -131,7 +131,7 @@ public class ErrorHandlingDeserializerTests {
 		ehd.deserialize("foo", headers, new byte[1]);
 		DeserializationException dex = ListenerUtils.byteArrayToDeserializationException(null,
 				headers.lastHeader(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER).value());
-		assertThat(dex.getMessage())
+		assertThat(dex.getCause().getMessage())
 				.contains("Could not serialize")
 				.contains("original exception message");
 	}
