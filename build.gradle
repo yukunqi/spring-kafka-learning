@@ -1,5 +1,5 @@
 buildscript {
-	ext.kotlinVersion = '1.5.31'
+	ext.kotlinVersion = '1.7.0'
 	repositories {
 		mavenCentral()
 		gradlePluginPortal()
@@ -156,7 +156,7 @@ subprojects { subproject ->
 
 	compileTestKotlin {
 		kotlinOptions {
-			jvmTarget = '16'
+			jvmTarget = '17'
 		}
 	}
 
@@ -335,7 +335,7 @@ project ('spring-kafka') {
 		optionalApi 'io.projectreactor:reactor-core'
 		optionalApi 'io.projectreactor.kafka:reactor-kafka'
 		optionalApi 'io.micrometer:micrometer-core'
-		optionalApi 'io.micrometer:micrometer-tracing-api'
+		optionalApi 'io.micrometer:micrometer-tracing'
 
 		testImplementation project (':spring-kafka-test')
 		testImplementation 'io.projectreactor:reactor-test'
@@ -390,7 +390,7 @@ project ('spring-kafka-docs') {
 
 	compileKotlin {
 		kotlinOptions {
-			jvmTarget = '16'
+			jvmTarget = '17'
 		}
 	}
 
