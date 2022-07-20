@@ -369,8 +369,6 @@ public interface KafkaOperations<K, V> {
 	default KafkaOperations2<K, V> usingCompletableFuture() {
 		return new KafkaOperations2<K, V>() {
 
-			KafkaOperations<K, V> ops;
-
 			@Override
 			public CompletableFuture<SendResult<K, V>> sendDefault(V data) {
 				return KafkaOperations.this.sendDefault(data).completable();
@@ -499,7 +497,7 @@ public interface KafkaOperations<K, V> {
 
 		};
 
-	}
+	} // NOSONAR method line count
 
 	/**
 	 * A callback for executing arbitrary operations on the {@link Producer}.

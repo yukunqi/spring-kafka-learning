@@ -39,19 +39,21 @@ import org.springframework.util.concurrent.ListenableFuture;
  */
 public class RequestReplyTypedMessageFuture<K, V, P> extends RequestReplyMessageFuture<K, V> {
 
+	private static final String UNCHECKED = "unchecked";
+
 	private Completable completable;
 
 	RequestReplyTypedMessageFuture(ListenableFuture<SendResult<K, V>> sendFuture) {
 		super(sendFuture);
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings(UNCHECKED)
 	@Override
 	public Message<P> get() throws InterruptedException, ExecutionException {
 		return (Message<P>) super.get();
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings(UNCHECKED)
 	@Override
 	public Message<P> get(long timeout, TimeUnit unit)
 			throws InterruptedException, ExecutionException, TimeoutException {
@@ -74,17 +76,17 @@ public class RequestReplyTypedMessageFuture<K, V, P> extends RequestReplyMessage
 	 */
 	public class Completable extends RequestReplyMessageFuture.Completable {
 
-		Completable(RequestReplyMessageFuture requestReplyMessageFuture, Future delegate) {
+		Completable(RequestReplyMessageFuture requestReplyMessageFuture, Future<Message<?>> delegate) { // NOSONAR
 			requestReplyMessageFuture.super(delegate);
 		}
 
-		@SuppressWarnings("unchecked")
+		@SuppressWarnings(UNCHECKED)
 		@Override
 		public Message<P> get() throws InterruptedException, ExecutionException {
 			return (Message<P>) super.get();
 		}
 
-		@SuppressWarnings("unchecked")
+		@SuppressWarnings(UNCHECKED)
 		@Override
 		public Message<P> get(long timeout, TimeUnit unit)
 				throws InterruptedException, ExecutionException, TimeoutException {
