@@ -163,7 +163,7 @@ class ErrorHandlerAdapter implements CommonErrorHandler {
 	@Override
 	public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
 		if (this.batchErrorHandler instanceof RetryingBatchErrorHandler) {
-			((FallbackBatchErrorHandler) this.batchErrorHandler).onPartitionsAssigned(consumer, partitions);
+			((RetryingBatchErrorHandler) this.batchErrorHandler).onPartitionsAssigned(consumer, partitions);
 		}
 	}
 
