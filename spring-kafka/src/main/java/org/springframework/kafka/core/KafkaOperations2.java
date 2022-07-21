@@ -33,6 +33,8 @@ import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 
+import org.springframework.kafka.core.KafkaOperations.OperationsCallback;
+import org.springframework.kafka.core.KafkaOperations.ProducerCallback;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
@@ -44,19 +46,12 @@ import org.springframework.messaging.Message;
  * @param <K> the key type.
  * @param <V> the value type.
  *
- * If the Kafka topic is set with {@link org.apache.kafka.common.record.TimestampType#CREATE_TIME CreateTime}
- * all send operations will use the user provided time if provided, else
- * {@link org.apache.kafka.clients.producer.KafkaProducer} will generate one
- *
- * If the topic is set with {@link org.apache.kafka.common.record.TimestampType#LOG_APPEND_TIME LogAppendTime}
- * then the user provided timestamp will be ignored and instead will be the
- * Kafka broker local time when the message is appended
- *
- * @author Marius Bogoevici
  * @author Gary Russell
- * @author Biju Kunjummen
+ * @since 2.9
+ * @deprecated no longer needed; use {@code KafkaOperations}.
  */
-public interface KafkaOperations<K, V> {
+@Deprecated
+public interface KafkaOperations2<K, V> {
 
 	/**
 	 * Default timeout for {@link #receive(String, int, long)}.
@@ -94,7 +89,6 @@ public interface KafkaOperations<K, V> {
 	 * @param key the key.
 	 * @param data the data.
 	 * @return a Future for the {@link SendResult}.
-	 * @since 1.3
 	 */
 	CompletableFuture<SendResult<K, V>> sendDefault(Integer partition, Long timestamp, K key, V data);
 
@@ -133,7 +127,6 @@ public interface KafkaOperations<K, V> {
 	 * @param key the key.
 	 * @param data the data.
 	 * @return a Future for the {@link SendResult}.
-	 * @since 1.3
 	 */
 	CompletableFuture<SendResult<K, V>> send(String topic, Integer partition, Long timestamp, K key, V data);
 
@@ -141,7 +134,6 @@ public interface KafkaOperations<K, V> {
 	 * Send the provided {@link ProducerRecord}.
 	 * @param record the record.
 	 * @return a Future for the {@link SendResult}.
-	 * @since 1.3
 	 */
 	CompletableFuture<SendResult<K, V>> send(ProducerRecord<K, V> record);
 
@@ -160,14 +152,12 @@ public interface KafkaOperations<K, V> {
 	 * See {@link Producer#partitionsFor(String)}.
 	 * @param topic the topic.
 	 * @return the partition info.
-	 * @since 1.1
 	 */
 	List<PartitionInfo> partitionsFor(String topic);
 
 	/**
 	 * See {@link Producer#metrics()}.
 	 * @return the metrics.
-	 * @since 1.1
 	 */
 	Map<MetricName, ? extends Metric> metrics();
 
@@ -176,7 +166,6 @@ public interface KafkaOperations<K, V> {
 	 * @param callback the callback.
 	 * @param <T> the result type.
 	 * @return the result.
-	 * @since 1.1
 	 */
 	@Nullable
 	<T> T execute(ProducerCallback<K, V, T> callback);
@@ -188,7 +177,6 @@ public interface KafkaOperations<K, V> {
 	 * @param callback the callback.
 	 * @param <T> the result type.
 	 * @return the result.
-	 * @since 1.1
 	 */
 	@Nullable
 	<T> T executeInTransaction(OperationsCallback<K, V, T> callback);
@@ -207,7 +195,6 @@ public interface KafkaOperations<K, V> {
 	 * Use with 2.5 brokers or later.
 	 * @param offsets The offsets.
 	 * @param groupMetadata the consumer group metadata.
-	 * @since 2.5
 	 * @see Producer#sendOffsetsToTransaction(Map, ConsumerGroupMetadata)
 	 */
 	default void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets,
@@ -220,14 +207,12 @@ public interface KafkaOperations<K, V> {
 	 * Return true if the implementation supports transactions (has a transaction-capable
 	 * producer factory).
 	 * @return true or false.
-	 * @since 2.3
 	 */
 	boolean isTransactional();
 
 	/**
 	 * Return true if this template, when transactional, allows non-transactional operations.
 	 * @return true to allow.
-	 * @since 2.4.3
 	 */
 	default boolean isAllowNonTransactional() {
 		return false;
@@ -237,7 +222,6 @@ public interface KafkaOperations<K, V> {
 	 * Return true if the template is currently running in a transaction on the calling
 	 * thread.
 	 * @return true if a transaction is running.
-	 * @since 2.5
 	 */
 	default boolean inTransaction() {
 		return false;
@@ -246,7 +230,6 @@ public interface KafkaOperations<K, V> {
 	/**
 	 * Return the producer factory used by this template.
 	 * @return the factory.
-	 * @since 2.5
 	 */
 	default ProducerFactory<K, V> getProducerFactory() {
 		throw new UnsupportedOperationException("This implementation does not support this operation");
@@ -258,7 +241,6 @@ public interface KafkaOperations<K, V> {
 	 * @param partition the partition.
 	 * @param offset the offset.
 	 * @return the record or null.
-	 * @since 2.8
 	 * @see #DEFAULT_POLL_TIMEOUT
 	 */
 	@Nullable
@@ -273,7 +255,6 @@ public interface KafkaOperations<K, V> {
 	 * @param offset the offset.
 	 * @param pollTimeout the timeout.
 	 * @return the record or null.
-	 * @since 2.8
 	 */
 	@Nullable
 	ConsumerRecord<K, V> receive(String topic, int partition, long offset, Duration pollTimeout);
@@ -283,7 +264,6 @@ public interface KafkaOperations<K, V> {
 	 * absolute, positive offsets are supported.
 	 * @param requested a collection of record requests (topic/partition/offset).
 	 * @return the records
-	 * @since 2.8
 	 * @see #DEFAULT_POLL_TIMEOUT
 	 */
 	default ConsumerRecords<K, V> receive(Collection<TopicPartitionOffset> requested) {
@@ -295,34 +275,7 @@ public interface KafkaOperations<K, V> {
 	 * @param requested a collection of record requests (topic/partition/offset).
 	 * @param pollTimeout the timeout.
 	 * @return the record or null.
-	 * @since 2.8
 	 */
 	ConsumerRecords<K, V> receive(Collection<TopicPartitionOffset> requested, Duration pollTimeout);
-
-	/**
-	 * A callback for executing arbitrary operations on the {@link Producer}.
-	 * @param <K> the key type.
-	 * @param <V> the value type.
-	 * @param <T> the return type.
-	 * @since 1.3
-	 */
-	interface ProducerCallback<K, V, T> {
-
-		T doInKafka(Producer<K, V> producer);
-
-	}
-
-	/**
-	 * A callback for executing arbitrary operations on the {@link KafkaOperations}.
-	 * @param <K> the key type.
-	 * @param <V> the value type.
-	 * @param <T> the return type.
-	 * @since 1.3
-	 */
-	interface OperationsCallback<K, V, T> {
-
-		T doInOperations(KafkaOperations<K, V> operations);
-
-	}
 
 }
