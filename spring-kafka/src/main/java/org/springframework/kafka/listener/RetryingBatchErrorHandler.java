@@ -55,9 +55,9 @@ public class RetryingBatchErrorHandler extends KafkaExceptionLogLevelAware
 	@SuppressWarnings("deprecation")
 	private final CommonErrorHandler seeker = new ErrorHandlerAdapter(new SeekToCurrentBatchErrorHandler());
 
-	private boolean ackAfterHandle = true;
+	private final ThreadLocal<Boolean> retrying = ThreadLocal.withInitial(() -> false);
 
-	private boolean retrying;
+	private boolean ackAfterHandle = true;
 
 	/**
 	 * Construct an instance with a default {@link FixedBackOff} (unlimited attempts with
@@ -104,14 +104,18 @@ public class RetryingBatchErrorHandler extends KafkaExceptionLogLevelAware
 			this.logger.error(thrownException, "Called with no records; consumer exception");
 			return;
 		}
-		this.retrying = true;
-		ErrorHandlingUtils.retryBatch(thrownException, records, consumer, container, invokeListener, this.backOff,
-				this.seeker, this.recoverer, this.logger, getLogLevel());
-		this.retrying = false;
+		this.retrying.set(true);
+		try {
+			ErrorHandlingUtils.retryBatch(thrownException, records, consumer, container, invokeListener, this.backOff,
+					this.seeker, this.recoverer, this.logger, getLogLevel());
+		}
+		finally {
+			this.retrying.set(false);
+		}
 	}
 
 	public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
-		if (this.retrying) {
+		if (this.retrying.get()) {
 			consumer.pause(consumer.assignment());
 		}
 	}
