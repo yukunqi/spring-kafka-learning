@@ -16,17 +16,21 @@
 
 package org.springframework.kafka.listener;
 
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -42,6 +46,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 
 import org.springframework.kafka.KafkaException;
+import org.springframework.util.ReflectionUtils;
 import org.springframework.util.backoff.FixedBackOff;
 
 /**
@@ -202,4 +207,35 @@ public class FallbackBatchErrorHandlerTests {
 		verifyNoMoreInteractions(consumer);
 	}
 
+	@Test
+	void resetRetryingFlagOnExceptionFromRetryBatch() {
+		FallbackBatchErrorHandler eh = new FallbackBatchErrorHandler(new FixedBackOff(0L, 1L), (consumerRecord, e) -> { });
+
+		Consumer<?, ?> consumer = mock(Consumer.class);
+		// KafkaException could be thrown from SeekToCurrentBatchErrorHandler, but it is hard to mock
+		KafkaException exception = new KafkaException("Failed consumer.resume()");
+		willThrow(exception).given(consumer).resume(any());
+
+		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		given(container.isRunning()).willReturn(true);
+
+		Map<TopicPartition, List<ConsumerRecord<Object, Object>>> map = new HashMap<>();
+		map.put(new TopicPartition("foo", 0),
+				Collections.singletonList(new ConsumerRecord<>("foo", 0, 0L, "foo", "bar")));
+		ConsumerRecords<?, ?> records = new ConsumerRecords<>(map);
+
+		assertThatThrownBy(() -> eh.handle(new RuntimeException(), records, consumer, container, () -> { }))
+				.isSameAs(exception);
+
+		assertThat(getRetryingFieldValue(eh))
+				.withFailMessage("retrying field was not reset to false")
+				.isFalse();
+	}
+
+	private boolean getRetryingFieldValue(FallbackBatchErrorHandler errorHandler) {
+		Field field = ReflectionUtils.findField(FallbackBatchErrorHandler.class, "retrying");
+		ReflectionUtils.makeAccessible(field);
+		ThreadLocal<Boolean> value = (ThreadLocal<Boolean>) ReflectionUtils.getField(field, errorHandler);
+		return value.get();
+	}
 }

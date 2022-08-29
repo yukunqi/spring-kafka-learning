@@ -56,7 +56,7 @@ class FallbackBatchErrorHandler extends KafkaExceptionLogLevelAware
 
 	private boolean ackAfterHandle = true;
 
-	private boolean retrying;
+	private final ThreadLocal<Boolean> retrying = ThreadLocal.withInitial(() -> false);
 
 	/**
 	 * Construct an instance with a default {@link FixedBackOff} (unlimited attempts with
@@ -103,14 +103,18 @@ class FallbackBatchErrorHandler extends KafkaExceptionLogLevelAware
 			this.logger.error(thrownException, "Called with no records; consumer exception");
 			return;
 		}
-		this.retrying = true;
-		ErrorHandlingUtils.retryBatch(thrownException, records, consumer, container, invokeListener, this.backOff,
-				this.seeker, this.recoverer, this.logger, getLogLevel());
-		this.retrying = false;
+		this.retrying.set(true);
+		try {
+			ErrorHandlingUtils.retryBatch(thrownException, records, consumer, container, invokeListener, this.backOff,
+					this.seeker, this.recoverer, this.logger, getLogLevel());
+		}
+		finally {
+			this.retrying.set(false);
+		}
 	}
 
 	public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
-		if (this.retrying) {
+		if (this.retrying.get()) {
 			consumer.pause(consumer.assignment());
 		}
 	}
