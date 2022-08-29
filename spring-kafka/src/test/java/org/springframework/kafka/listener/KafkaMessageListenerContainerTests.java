@@ -3745,7 +3745,7 @@ public class KafkaMessageListenerContainerTests {
 				Arguments.of(AckMode.BATCH, true));
 		}
 
-	@ParameterizedTest(name = "{index} AckMode.{0} early intercept {1}")
+	@ParameterizedTest(name = "{index} testInvokeRecordInterceptorAllSkipped AckMode.{0} early intercept {1}")
 	@MethodSource("paramsForRecordAllSkipped")
 	@SuppressWarnings({"unchecked", "deprecation"})
 	public void testInvokeRecordInterceptorAllSkipped(AckMode ackMode, boolean early) throws Exception {
@@ -3762,7 +3762,7 @@ public class KafkaMessageListenerContainerTests {
 			Thread.sleep(50);
 			return first.getAndSet(false) ? consumerRecords : ConsumerRecords.empty();
 		});
-		CountDownLatch latch = new CountDownLatch(1);
+		CountDownLatch latch = new CountDownLatch(AckMode.RECORD.equals(ackMode) ? 2 : 1);
 		willAnswer(inv -> {
 			latch.countDown();
 			return null;
@@ -3815,7 +3815,7 @@ public class KafkaMessageListenerContainerTests {
 		container.stop();
 	}
 
-	@ParameterizedTest(name = "{index} early intercept {0}")
+	@ParameterizedTest(name = "{index} testInvokeBatchInterceptorAllSkipped early intercept {0}")
 	@ValueSource(booleans = { true, false })
 	@SuppressWarnings({"unchecked", "deprecation"})
 	public void testInvokeBatchInterceptorAllSkipped(boolean early) throws Exception {
