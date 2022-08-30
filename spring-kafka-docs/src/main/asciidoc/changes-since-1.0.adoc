@@ -25,11 +25,8 @@ A new container property `stopImmediate` is now available.
 See <<container-props>> for more information.
 
 Error handlers that use a `BackOff` between delivery attempts (e.g. `SeekToCurrentErrorHandler` and `DefaultAfterRollbackProcessor`) will now exit the back off interval soon after the container is stopped, rather than delaying the stop.
-See <<after-rollback>> and <<seek-to-current>> for more information.
 
 Error handlers and after rollback processors that extend `FailedRecordProcessor` can now be configured with one or more `RetryListener` s to receive information about retry and recovery progress.
-
-See See <<after-rollback>>, <<seek-to-current>>, and <<recovering-batch-eh>> for more information.
 
 The `RecordInterceptor` now has additional methods called after the listener returns (normally, or by throwing an exception).
 It also has a sub-interface `ConsumerAwareRecordInterceptor`.
@@ -124,7 +121,6 @@ See <<exactly-once>> for more information.
 
 Various error handlers (that extend `FailedRecordProcessor`) and the `DefaultAfterRollbackProcessor` now reset the `BackOff` if recovery fails.
 In addition, you can now select the `BackOff` to use based on the failed record and/or exception.
-See <<seek-to-current>>, <<recovering-batch-eh>>, <<dead-letters>> and <<after-rollback>> for more information.
 
 You can now configure an `adviceChain` in the container properties.
 See <<container-props>> for more information.
@@ -145,7 +141,6 @@ See <<seek>> for more information.
 ==== ErrorHandler Changes
 
 Subclasses of `FailedRecordProcessor` (e.g. `SeekToCurrentErrorHandler`, `DefaultAfterRollbackProcessor`, `RecoveringBatchErrorHandler`) can now be configured to reset the retry state if the exception is a different type to that which occurred previously with this record.
-See <<seek-to-current>>, <<after-rollback>>, <<recovering-batch-eh>> for more information.
 
 ==== Producer Factory Changes
 
@@ -372,7 +367,6 @@ Because the listener container has it's own mechanism for committing offsets, it
 It now sets it to false automatically unless specifically set in the consumer factory or the container's consumer property overrides.
 
 The `ackOnError` property is now `false` by default.
-See <<seek-to-current>> for more information.
 
 It is now possible to obtain the consumer's `group.id` property in the listener method.
 See <<listener-group-id>> for more information.
@@ -412,8 +406,6 @@ The `SeekToCurrentErrorHandler` now treats certain exceptions as fatal and disab
 The `SeekToCurrentErrorHandler` and `SeekToCurrentBatchErrorHandler` can now be configured to apply a `BackOff` (thread sleep) between delivery attempts.
 
 Starting with version 2.3.2, recovered records' offsets will be committed when the error handler returns after recovering a failed record.
-
-See <<seek-to-current>> for more information.
 
 The `DeadLetterPublishingRecoverer`, when used in conjunction with an `ErrorHandlingDeserializer`, now sets the payload of the message sent to the dead-letter topic, to the original value that could not be deserialized.
 Previously, it was `null` and user code needed to extract the `DeserializationException` from the message headers.
@@ -521,13 +513,10 @@ They can be configured to publish failed records to a dead-letter topic.
 
 Starting with version 2.2.4, the consumer's group ID can be used while selecting the dead letter topic name.
 
-See <<after-rollback>>, <<seek-to-current>>, and <<dead-letters>> for more information.
-
 The `ConsumerStoppingEvent` has been added.
 See <<events>> for more information.
 
 The `SeekToCurrentErrorHandler` can now be configured to commit the offset of a recovered record when the container is configured with `AckMode.MANUAL_IMMEDIATE` (since 2.2.4).
-See <<seek-to-current>> for more information.
 
 ==== @KafkaListener Changes
 
