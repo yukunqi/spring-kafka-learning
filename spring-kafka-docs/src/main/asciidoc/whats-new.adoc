@@ -26,7 +26,7 @@ See <<same-broker-multiple-tests>> for more information.
 [[x30-retryable]]
 ==== Retryable Topics Changes
 
-The bootstrapping of [[retry-topic]] infrastructure beans has changed in this release to avoid some timing problems that occurred in some application regarding application initialization.
+The bootstrapping of <<retry-topic>> infrastructure beans has changed in this release to avoid some timing problems that occurred in some application regarding application initialization.
 See <<retry-config>> for more information.
 
 [[x30-lc-changes]]
