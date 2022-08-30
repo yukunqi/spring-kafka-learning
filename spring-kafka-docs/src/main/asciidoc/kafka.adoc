@@ -2671,7 +2671,7 @@ See <<error-handlers>>.
 |See desc.
 |Deprecated - see `commonErrorHandler`.
 
-|[[groupId]]<<groupId,`groupId`>>
+|[[groupId2]]<<groupId2,`groupId`>>
 |See desc.
 |The `containerProperties.groupId`, if present, otherwise the `group.id` property from the consumer factory.
 
@@ -2738,11 +2738,11 @@ Also see `interceptBeforeTx`.
 |`true`
 |Set to false to suppress adding a suffix to the `client.id` consumer property, when the `concurrency` is only 1.
 
-|[[assignedPartitions]]<<assignedPartitions,`assignedPartitions`>>
+|[[assignedPartitions2]]<<assignedPartitions2,`assignedPartitions`>>
 |(read only)
 |The aggregate of partitions currently assigned to this container's child `KafkaMessageListenerContainer` s (explicitly or not).
 
-|[[assignedPartitionsByClientId]]<<assignedPartitionsByClientId,`assignedPartitionsByClientId`>>
+|[[assignedPartitionsByClientId2]]<<assignedPartitionsByClientId2,`assignedPartitionsByClientId`>>
 |(read only)
 |The partitions currently assigned to this container's child `KafkaMessageListenerContainer` s (explicitly or not), keyed by the child container's consumer's `client.id` property.
 
@@ -2750,7 +2750,7 @@ Also see `interceptBeforeTx`.
 |1
 |The number of child `KafkaMessageListenerContainer` s to manage.
 
-|[[containerPaused]]<<containerPaused,`containerPaused`>>
+|[[containerPaused2]]<<containerPaused2,`containerPaused`>>
 |n/a
 |True if pause has been requested and all child containers' consumer has actually paused.
 
