@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.core;
 
+import java.util.function.BiConsumer;
+
 import org.springframework.util.concurrent.FailureCallback;
 
 /**
@@ -27,8 +29,11 @@ import org.springframework.util.concurrent.FailureCallback;
  *
  * @author Gary Russell
  * @since 2.5
+ * @deprecated as of 2.9.1, in favor of
+ * {@link java.util.concurrent.CompletableFuture#whenComplete(BiConsumer)}
  *
  */
+@Deprecated
 @FunctionalInterface
 public interface KafkaFailureCallback<K, V> extends FailureCallback {
 

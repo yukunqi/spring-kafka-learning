@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.core;
 
+import java.util.function.BiConsumer;
+
 import org.springframework.kafka.support.SendResult;
 import org.springframework.util.concurrent.ListenableFutureCallback;
 
@@ -28,8 +30,11 @@ import org.springframework.util.concurrent.ListenableFutureCallback;
  *
  * @author Gary Russell
  * @since 2.5
+ * @deprecated as of 2.9.1, in favor of
+ * {@link java.util.concurrent.CompletableFuture#whenComplete(BiConsumer)}
  *
  */
+@Deprecated
 public interface KafkaSendCallback<K, V> extends ListenableFutureCallback<SendResult<K, V>>, KafkaFailureCallback<K, V> {
 
 }
