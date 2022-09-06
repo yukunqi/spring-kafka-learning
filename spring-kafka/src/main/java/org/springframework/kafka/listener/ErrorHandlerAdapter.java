@@ -161,9 +161,12 @@ class ErrorHandlerAdapter implements CommonErrorHandler {
 
 	@SuppressWarnings("deprecation")
 	@Override
-	public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
+	public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions,
+			Runnable publishPause) {
+
 		if (this.batchErrorHandler instanceof RetryingBatchErrorHandler) {
-			((RetryingBatchErrorHandler) this.batchErrorHandler).onPartitionsAssigned(consumer, partitions);
+			((RetryingBatchErrorHandler) this.batchErrorHandler).onPartitionsAssigned(consumer, partitions,
+					publishPause);
 		}
 	}
 

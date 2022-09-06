@@ -114,9 +114,19 @@ public class RetryingBatchErrorHandler extends KafkaExceptionLogLevelAware
 		}
 	}
 
+	@Deprecated
 	public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
 		if (this.retrying.get()) {
 			consumer.pause(consumer.assignment());
+		}
+	}
+
+	public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions,
+			Runnable publishPause) {
+
+		if (this.retrying.get()) {
+			consumer.pause(consumer.assignment());
+			publishPause.run();
 		}
 	}
 
