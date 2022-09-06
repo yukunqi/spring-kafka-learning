@@ -58,9 +58,7 @@ import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.ReflectionHints;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
-import org.springframework.aot.hint.support.RuntimeHintsUtils;
 import org.springframework.kafka.annotation.KafkaBootstrapConfiguration;
-import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.KafkaListenerAnnotationBeanPostProcessor;
 import org.springframework.kafka.config.AbstractKafkaListenerContainerFactory;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
@@ -101,7 +99,6 @@ public class KafkaRuntimeHints implements RuntimeHintsRegistrar {
 
 	@Override
 	public void registerHints(RuntimeHints hints, @Nullable ClassLoader classLoader) {
-		RuntimeHintsUtils.registerSynthesizedAnnotation(hints, KafkaListener.class);
 		ReflectionHints reflectionHints = hints.reflection();
 		Stream.of(
 					ConsumerProperties.class,
