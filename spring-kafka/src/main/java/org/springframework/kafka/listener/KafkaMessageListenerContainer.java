@@ -452,15 +452,15 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 	}
 
-	private void publishConsumerPausedEvent(Collection<TopicPartition> partitions) {
+	void publishConsumerPausedEvent(Collection<TopicPartition> partitions, String reason) {
 		ApplicationEventPublisher publisher = getApplicationEventPublisher();
 		if (publisher != null) {
 			publisher.publishEvent(new ConsumerPausedEvent(this, this.thisOrParentContainer,
-					Collections.unmodifiableCollection(partitions)));
+					Collections.unmodifiableCollection(partitions), reason));
 		}
 	}
 
-	private void publishConsumerResumedEvent(Collection<TopicPartition> partitions) {
+	void publishConsumerResumedEvent(Collection<TopicPartition> partitions) {
 		ApplicationEventPublisher publisher = getApplicationEventPublisher();
 		if (publisher != null) {
 			publisher.publishEvent(new ConsumerResumedEvent(this, this.thisOrParentContainer,
@@ -1710,7 +1710,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					this.consumerPaused = true;
 					this.pauseForPending = false;
 					this.logger.debug(() -> "Paused consumption from: " + this.consumer.paused());
-					publishConsumerPausedEvent(assigned);
+					publishConsumerPausedEvent(assigned, this.pausedForAsyncAcks
+							? "Incomplete out of order acks"
+							: "User requested");
 				}
 			}
 		}
@@ -1721,6 +1723,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					this.nackWakeTimeMillis = 0;
 					this.consumer.resume(this.pausedForNack);
 					this.logger.debug(() -> "Resumed after nack sleep: " + this.pausedForNack);
+					publishConsumerResumedEvent(this.pausedForNack);
 					this.pausedForNack.clear();
 				}
 			}
@@ -2653,6 +2656,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.logger.debug(() -> "Pausing for nack sleep: " + ListenerConsumer.this.pausedForNack);
 				try {
 					this.consumer.pause(this.pausedForNack);
+					publishConsumerPausedEvent(this.pausedForNack, "Nack with sleep time received");
 				}
 				catch (IllegalStateException ex) {
 					// this should never happen; defensive, just in case...
@@ -3479,7 +3483,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				if (ListenerConsumer.this.commonErrorHandler != null) {
 					ListenerConsumer.this.commonErrorHandler.onPartitionsAssigned(ListenerConsumer.this.consumer,
-							partitions);
+							partitions, () -> publishConsumerPausedEvent(partitions,
+									"Paused by error handler after rebalance"));
 				}
 			}
 
@@ -3490,7 +3495,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					ListenerConsumer.this.logger.warn("Paused consumer resumed by Kafka due to rebalance; "
 							+ "consumer paused again, so the initial poll() will never return any records");
 					ListenerConsumer.this.logger.debug(() -> "Paused consumption from: " + partitions);
-					publishConsumerPausedEvent(partitions);
+					publishConsumerPausedEvent(partitions, "Re-paused after rebalance");
 				}
 				Collection<TopicPartition> toRepause = new LinkedList<>();
 				partitions.forEach(tp -> {
@@ -3501,7 +3506,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				if (!ListenerConsumer.this.consumerPaused && toRepause.size() > 0) {
 					ListenerConsumer.this.consumer.pause(toRepause);
 					ListenerConsumer.this.logger.debug(() -> "Paused consumption from: " + toRepause);
-					publishConsumerPausedEvent(toRepause);
+					publishConsumerPausedEvent(toRepause, "Re-paused after rebalance");
 				}
 				this.revoked.removeAll(toRepause);
 				ListenerConsumer.this.pausedPartitions.removeAll(this.revoked);

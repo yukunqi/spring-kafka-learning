@@ -113,9 +113,12 @@ class FallbackBatchErrorHandler extends KafkaExceptionLogLevelAware
 		}
 	}
 
-	public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
+	public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions,
+			Runnable publishPause) {
+
 		if (this.retrying.get()) {
 			consumer.pause(consumer.assignment());
+			publishPause.run();
 		}
 	}
 

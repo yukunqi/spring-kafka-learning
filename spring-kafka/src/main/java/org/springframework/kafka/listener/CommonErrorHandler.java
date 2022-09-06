@@ -218,9 +218,11 @@ public interface CommonErrorHandler extends DeliveryAttemptAware {
 	 * Called when partitions are assigned.
 	 * @param consumer the consumer.
 	 * @param partitions the newly assigned partitions.
-	 * @since 2.8.8
+	 * @param publishPause called to publish a consumer paused event.
+	 * @since 2.8.9
 	 */
-	default void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
+	default void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions,
+			Runnable publishPause) {
 	}
 
 }
