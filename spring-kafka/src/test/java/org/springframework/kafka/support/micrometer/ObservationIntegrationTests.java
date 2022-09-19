@@ -159,8 +159,6 @@ public class ObservationIntegrationTests extends SampleTestRunner {
 
 		final CountDownLatch latch1 = new CountDownLatch(1);
 
-		volatile ConsumerRecord<Integer, String> record;
-
 		public Listener(KafkaTemplate<Integer, String> template) {
 			this.template = template;
 		}
@@ -172,11 +170,9 @@ public class ObservationIntegrationTests extends SampleTestRunner {
 
 		@KafkaListener(id = "obs2", topics = "int.observation.testT2")
 		void listen2(ConsumerRecord<Integer, String> in) {
-			this.record = in;
 			this.latch1.countDown();
 		}
 
 	}
-
 
 }
