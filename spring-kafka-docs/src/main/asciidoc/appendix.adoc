@@ -9,7 +9,7 @@ If you wish to use a different version of `kafka-clients` or `kafka-streams`, an
 .Maven
 ----
 <properties>
-    <kafka.version>3.2.0</kafka.version>
+    <kafka.version>3.2.3</kafka.version>
 </properties>
 
 <dependency>
@@ -32,7 +32,7 @@ If you wish to use a different version of `kafka-clients` or `kafka-streams`, an
 [source, groovy, subs="+attributes", role="secondary"]
 .Gradle
 ----
-ext['kafka.version'] = '2.8.1'
+ext['kafka.version'] = '3.2.3'
 
 dependencies {
     implementation 'org.springframework.kafka:spring-kafka'
