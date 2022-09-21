@@ -79,15 +79,6 @@ public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 		return this.fallbackBatchHandler;
 	}
 
-	/**
-	 * Return the fallback batch error handler.
-	 * @return the handler.
-	 * @since 2.8.8
-	 */
-	protected CommonErrorHandler getFallbackBatchHandler() {
-		return this.fallbackBatchHandler;
-	}
-
 	protected void doHandle(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
 			MessageListenerContainer container, Runnable invokeListener) {
 

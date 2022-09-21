@@ -30,6 +30,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
+import org.springframework.util.Assert;
 import org.springframework.util.backoff.BackOff;
 
 /**
