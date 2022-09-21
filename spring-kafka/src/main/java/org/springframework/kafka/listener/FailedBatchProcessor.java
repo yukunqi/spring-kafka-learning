@@ -79,26 +79,48 @@ public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 		return this.fallbackBatchHandler;
 	}
 
+	/**
+	 * Return the fallback batch error handler.
+	 * @return the handler.
+	 * @since 2.8.8
+	 */
+	protected CommonErrorHandler getFallbackBatchHandler() {
+		return this.fallbackBatchHandler;
+	}
+
 	protected void doHandle(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
 			MessageListenerContainer container, Runnable invokeListener) {
 
 		BatchListenerFailedException batchListenerFailedException = getBatchListenerFailedException(thrownException);
 		if (batchListenerFailedException == null) {
-			this.logger.debug(thrownException, "Expected a BatchListenerFailedException; re-seeking batch");
-			this.fallbackBatchHandler.handleBatch(thrownException, data, consumer, container, invokeListener);
+			this.logger.debug(thrownException, "Expected a BatchListenerFailedException; re-delivering full batch");
+			fallback(thrownException, data, consumer, container, invokeListener);
 		}
 		else {
+			getRetryListeners().forEach(listener -> listener.failedDelivery(data, thrownException, 1));
 			ConsumerRecord<?, ?> record = batchListenerFailedException.getRecord();
 			int index = record != null ? findIndex(data, record) : batchListenerFailedException.getIndex();
 			if (index < 0 || index >= data.count()) {
 				this.logger.warn(batchListenerFailedException, () ->
 						String.format("Record not found in batch: %s-%d@%d; re-seeking batch",
 								record.topic(), record.partition(), record.offset()));
-				this.fallbackBatchHandler.handleBatch(thrownException, data, consumer, container, invokeListener);
+				fallback(thrownException, data, consumer, container, invokeListener);
 			}
 			else {
 				seekOrRecover(thrownException, data, consumer, container, index);
 			}
+		}
+	}
+
+	private void fallback(Exception thrownException, ConsumerRecords<?, ?> data, Consumer<?, ?> consumer,
+			MessageListenerContainer container, Runnable invokeListener) {
+
+		ErrorHandlingUtils.setRetryListeners(getRetryListeners());
+		try {
+			this.fallbackBatchHandler.handleBatch(thrownException, data, consumer, container, invokeListener);
+		}
+		finally {
+			ErrorHandlingUtils.clearRetryListeners();
 		}
 	}
 
