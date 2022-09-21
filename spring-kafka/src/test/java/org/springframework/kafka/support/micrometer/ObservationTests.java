@@ -96,6 +96,7 @@ public class ObservationTests {
 		SimpleSpan span = spans.poll();
 		assertThat(span.getTags()).containsEntry("spring.kafka.template.name", "template");
 		assertThat(span.getName()).isEqualTo("observation.testT1 send");
+		await().until(() -> spans.peekFirst().getTags().size() == 3);
 		span = spans.poll();
 		assertThat(span.getTags())
 				.containsAllEntriesOf(
