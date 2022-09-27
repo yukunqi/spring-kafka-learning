@@ -79,6 +79,7 @@ import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaResourceHolder;
 import org.springframework.kafka.event.ConsumerFailedToStartEvent;
 import org.springframework.kafka.event.ConsumerPartitionPausedEvent;
@@ -107,8 +108,8 @@ import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.LogIfLevelEnabled;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.TopicPartitionOffset.SeekPosition;
-import org.springframework.kafka.support.micrometer.DefaultKafkaListenerObservationConvention;
 import org.springframework.kafka.support.micrometer.KafkaListenerObservation;
+import org.springframework.kafka.support.micrometer.KafkaListenerObservation.DefaultKafkaListenerObservationConvention;
 import org.springframework.kafka.support.micrometer.KafkaRecordReceiverContext;
 import org.springframework.kafka.support.micrometer.MicrometerHolder;
 import org.springframework.kafka.support.serializer.DeserializationException;
@@ -365,9 +366,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 		GenericMessageListener<?> listener = (GenericMessageListener<?>) messageListener;
 		ListenerType listenerType = determineListenerType(listener);
-		ObservationRegistry observationRegistry = null;
+		ObservationRegistry observationRegistry = ObservationRegistry.NOOP;
 		ApplicationContext applicationContext = getApplicationContext();
-		if (applicationContext != null) {
+		if (applicationContext != null && containerProperties.isObservationEnabled()) {
 			ObjectProvider<ObservationRegistry> registry =
 					applicationContext.getBeanProvider(ObservationRegistry.class);
 			observationRegistry = registry.getIfUnique();
@@ -777,6 +778,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final ObservationRegistry observationRegistry;
 
+		@Nullable
+		private final KafkaAdmin kafkaAdmin;
+
+		private String clusterId;
+
 		private Map<TopicPartition, OffsetMetadata> definedPartitions;
 
 		private int count;
@@ -827,7 +833,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		@SuppressWarnings(UNCHECKED)
 		ListenerConsumer(GenericMessageListener<?> listener, ListenerType listenerType,
-				@Nullable ObservationRegistry observationRegistry) {
+				ObservationRegistry observationRegistry) {
 
 			this.observationRegistry = observationRegistry;
 			Properties consumerProperties = propertiesFromProperties();
@@ -909,6 +915,31 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.lastReceivePartition = new HashMap<>();
 			this.lastAlertPartition = new HashMap<>();
 			this.wasIdlePartition = new HashMap<>();
+			this.kafkaAdmin = obtainAdmin();
+			obtainClusterId();
+		}
+
+		@Nullable
+		private KafkaAdmin obtainAdmin() {
+			ApplicationContext applicationContext = getApplicationContext();
+			if (applicationContext != null) {
+				return applicationContext.getBeanProvider(KafkaAdmin.class).getIfUnique();
+			}
+			return null;
+		}
+
+		@Nullable
+		private String clusterId() {
+			if (this.clusterId == null && this.kafkaAdmin != null) {
+				obtainClusterId();
+			}
+			return this.clusterId;
+		}
+
+		private void obtainClusterId() {
+			if (this.kafkaAdmin != null) {
+				this.clusterId = this.kafkaAdmin.clusterId();
+			}
 		}
 
 		@Nullable
@@ -2706,16 +2737,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				Iterator<ConsumerRecord<K, V>> iterator) {
 
 			Object sample = startMicrometerSample();
-			Observation observation;
-			if (!this.containerProperties.isObservationEnabled() || this.observationRegistry == null) {
-				observation = Observation.NOOP;
-			}
-			else {
-				observation = KafkaListenerObservation.LISTENER_OBSERVATION.observation(
-						this.containerProperties.getObservationConvention(),
-						DefaultKafkaListenerObservationConvention.INSTANCE,
-						new KafkaRecordReceiverContext(record, getListenerId()), this.observationRegistry);
-			}
+			Observation observation = KafkaListenerObservation.LISTENER_OBSERVATION.observation(
+					this.containerProperties.getObservationConvention(),
+					DefaultKafkaListenerObservationConvention.INSTANCE,
+					() -> new KafkaRecordReceiverContext(record, getListenerId(), this::clusterId),
+					this.observationRegistry);
 			return observation.observe(() -> {
 				try {
 					invokeOnMessage(record);

@@ -48,7 +48,6 @@ import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.beans.factory.DisposableBean;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
@@ -64,9 +63,9 @@ import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
-import org.springframework.kafka.support.micrometer.DefaultKafkaTemplateObservationConvention;
 import org.springframework.kafka.support.micrometer.KafkaRecordSenderContext;
 import org.springframework.kafka.support.micrometer.KafkaTemplateObservation;
+import org.springframework.kafka.support.micrometer.KafkaTemplateObservation.DefaultKafkaTemplateObservationConvention;
 import org.springframework.kafka.support.micrometer.KafkaTemplateObservationConvention;
 import org.springframework.kafka.support.micrometer.MicrometerHolder;
 import org.springframework.lang.Nullable;
@@ -145,7 +144,11 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 
 	private KafkaTemplateObservationConvention observationConvention;
 
-	private ObservationRegistry observationRegistry;
+	private ObservationRegistry observationRegistry = ObservationRegistry.NOOP;
+
+	private KafkaAdmin kafkaAdmin;
+
+	private String clusterId;
 
 	/**
 	 * Create an instance using the supplied producer factory and autoFlush false.
@@ -418,14 +421,23 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 
 	@Override
 	public void afterSingletonsInstantiated() {
-		if (this.observationEnabled && this.observationRegistry == null && this.applicationContext != null) {
-			ObjectProvider<ObservationRegistry> registry =
-					this.applicationContext.getBeanProvider(ObservationRegistry.class);
-			this.observationRegistry = registry.getIfUnique();
+		if (this.observationEnabled && this.applicationContext != null) {
+			this.observationRegistry = this.applicationContext.getBeanProvider(ObservationRegistry.class).getIfUnique();
+			this.kafkaAdmin = this.applicationContext.getBeanProvider(KafkaAdmin.class).getIfUnique();
+			if (this.kafkaAdmin != null) {
+				this.clusterId = this.kafkaAdmin.clusterId();
+			}
 		}
 		else if (this.micrometerEnabled) {
 			this.micrometerHolder = obtainMicrometerHolder();
 		}
+	}
+
+	private String clusterId() {
+		if (this.kafkaAdmin != null && this.clusterId == null) {
+			this.clusterId = this.kafkaAdmin.clusterId();
+		}
+		return this.clusterId;
 	}
 
 	@Override
@@ -668,15 +680,10 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	}
 
 	private CompletableFuture<SendResult<K, V>> observeSend(final ProducerRecord<K, V> producerRecord) {
-		Observation observation;
-		if (!this.observationEnabled || this.observationRegistry == null) {
-			observation = Observation.NOOP;
-		}
-		else {
-			observation = KafkaTemplateObservation.TEMPLATE_OBSERVATION.observation(
-					this.observationConvention, DefaultKafkaTemplateObservationConvention.INSTANCE,
-					new KafkaRecordSenderContext(producerRecord, this.beanName), this.observationRegistry);
-		}
+		Observation observation = KafkaTemplateObservation.TEMPLATE_OBSERVATION.observation(
+				this.observationConvention, DefaultKafkaTemplateObservationConvention.INSTANCE,
+				() -> new KafkaRecordSenderContext(producerRecord, this.beanName, this::clusterId),
+				this.observationRegistry);
 		try {
 			observation.start();
 			return doSend(producerRecord, observation);
@@ -695,7 +702,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	 * RecordMetadata}.
 	 */
 	protected CompletableFuture<SendResult<K, V>> doSend(final ProducerRecord<K, V> producerRecord,
-			@Nullable Observation observation) {
+			Observation observation) {
 
 		final Producer<K, V> producer = getTheProducer(producerRecord.topic());
 		this.logger.trace(() -> "Sending: " + KafkaUtils.format(producerRecord));
