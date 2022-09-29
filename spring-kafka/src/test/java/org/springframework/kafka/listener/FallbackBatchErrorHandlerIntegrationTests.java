@@ -22,12 +22,14 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -37,11 +39,14 @@ import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.context.ApplicationEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.event.ConsumerPausedEvent;
+import org.springframework.kafka.event.ConsumerResumedEvent;
 import org.springframework.kafka.event.ConsumerStoppedEvent;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
@@ -96,8 +101,8 @@ public class FallbackBatchErrorHandlerIntegrationTests {
 			throw new ListenerExecutionFailedException("fail for retry batch");
 		});
 
-		KafkaMessageListenerContainer<Integer, String> container =
-				new KafkaMessageListenerContainer<>(cf, containerProps);
+		ConcurrentMessageListenerContainer<Integer, String> container =
+				new ConcurrentMessageListenerContainer<>(cf, containerProps);
 		container.setBeanName("retryBatch");
 		final CountDownLatch recoverLatch = new CountDownLatch(1);
 		final AtomicReference<String> failedGroupId = new AtomicReference<>();
@@ -118,10 +123,21 @@ public class FallbackBatchErrorHandlerIntegrationTests {
 		FallbackBatchErrorHandler errorHandler = new FallbackBatchErrorHandler(new FixedBackOff(0L, 3), recoverer);
 		container.setBatchErrorHandler(errorHandler);
 		final CountDownLatch stopLatch = new CountDownLatch(1);
-		container.setApplicationEventPublisher(e -> {
-			if (e instanceof ConsumerStoppedEvent) {
-				stopLatch.countDown();
+		List<ApplicationEvent> events = new ArrayList<>();
+		container.setApplicationEventPublisher(new ApplicationEventPublisher() {
+
+			@Override
+			public void publishEvent(ApplicationEvent e) {
+				events.add(e);
+				if (e instanceof ConsumerStoppedEvent) {
+					stopLatch.countDown();
+				}
 			}
+
+			@Override
+			public void publishEvent(Object event) {
+			}
+
 		});
 		container.start();
 
@@ -142,6 +158,14 @@ public class FallbackBatchErrorHandlerIntegrationTests {
 		pf.destroy();
 		consumer.close();
 		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(events.stream()
+				.filter(ev -> ev instanceof ConsumerPausedEvent)
+				.collect(Collectors.toList()))
+				.hasSize(1);
+		assertThat(events.stream()
+				.filter(ev -> ev instanceof ConsumerResumedEvent)
+				.collect(Collectors.toList()))
+				.hasSize(1);
 	}
 
 	@SuppressWarnings("deprecation")
