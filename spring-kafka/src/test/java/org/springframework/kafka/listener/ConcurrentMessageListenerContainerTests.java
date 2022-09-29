@@ -33,8 +33,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -149,7 +151,7 @@ public class ConcurrentMessageListenerContainerTests {
 				new ConcurrentMessageListenerContainer<>(cf, containerProps);
 		container.setConcurrency(2);
 		container.setBeanName("testAuto");
-		List<KafkaEvent> events = new ArrayList<>();
+		BlockingQueue<KafkaEvent> events = new LinkedBlockingQueue<>();
 		CountDownLatch stopLatch = new CountDownLatch(4);
 		container.setApplicationEventPublisher(e -> {
 			events.add((KafkaEvent) e);
