@@ -50,6 +50,7 @@ import org.apache.kafka.clients.admin.CreateTopicsResult;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
+import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.common.utils.AppInfoParser;
@@ -71,7 +72,6 @@ import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
 
 import kafka.cluster.EndPoint;
-import kafka.common.KafkaException;
 import kafka.server.KafkaBroker;
 import kafka.server.KafkaConfig;
 import kafka.server.KafkaServer;
