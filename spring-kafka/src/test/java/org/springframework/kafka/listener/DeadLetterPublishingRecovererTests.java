@@ -24,6 +24,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.BDDMockito.willCallRealMethod;
 import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
@@ -314,7 +315,7 @@ public class DeadLetterPublishingRecovererTests {
 		return baos.toByteArray();
 	}
 
-	@SuppressWarnings({"unchecked", "rawtypes"})
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Test
 	void allOriginalHeaders() {
 		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
@@ -334,7 +335,7 @@ public class DeadLetterPublishingRecovererTests {
 		assertThat(headers.lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE)).isNotNull();
 	}
 
-	@SuppressWarnings({"unchecked", "rawtypes"})
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Test
 	void dontAppendOriginalHeaders() {
 		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
@@ -385,7 +386,7 @@ public class DeadLetterPublishingRecovererTests {
 		assertThat(exceptionHeaders.hasNext()).isFalse();
 	}
 
-	@SuppressWarnings({"unchecked", "rawtypes"})
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Test
 	void appendOriginalHeaders() {
 		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
@@ -824,13 +825,13 @@ public class DeadLetterPublishingRecovererTests {
 		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "bar", null);
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
 		recoverer.setHeadersFunction((rec, ex) -> {
-			return new RecordHeaders(new RecordHeader[] { new RecordHeader("foo", "one".getBytes()) });
+			return new RecordHeaders(new RecordHeader[]{ new RecordHeader("foo", "one".getBytes()) });
 		});
 		recoverer.addHeadersFunction((rec, ex) -> {
-			return new RecordHeaders(new RecordHeader[] { new RecordHeader("bar", "two".getBytes()) });
+			return new RecordHeaders(new RecordHeader[]{ new RecordHeader("bar", "two".getBytes()) });
 		});
 		recoverer.addHeadersFunction((rec, ex) -> {
-			return new RecordHeaders(new RecordHeader[] { new RecordHeader("foo", "three".getBytes()) });
+			return new RecordHeaders(new RecordHeader[]{ new RecordHeader("foo", "three".getBytes()) });
 		});
 		recoverer.accept(record, new ListenerExecutionFailedException("test", "group", new RuntimeException()));
 		ArgumentCaptor<ProducerRecord> producerRecordCaptor = ArgumentCaptor.forClass(ProducerRecord.class);
@@ -861,12 +862,12 @@ public class DeadLetterPublishingRecovererTests {
 		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "bar", null);
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
 		recoverer.setHeadersFunction((rec, ex) -> {
-			RecordHeaders headers = new RecordHeaders(new RecordHeader[] { new RecordHeader("foo", "one".getBytes()) });
+			RecordHeaders headers = new RecordHeaders(new RecordHeader[]{ new RecordHeader("foo", "one".getBytes()) });
 			headers.setReadOnly();
 			return headers;
 		});
 		recoverer.addHeadersFunction((rec, ex) -> {
-			return new RecordHeaders(new RecordHeader[] { new RecordHeader("bar", "two".getBytes()) });
+			return new RecordHeaders(new RecordHeader[]{ new RecordHeader("bar", "two".getBytes()) });
 		});
 		recoverer.accept(record, new ListenerExecutionFailedException("test", "group", new RuntimeException()));
 		ArgumentCaptor<ProducerRecord> producerRecordCaptor = ArgumentCaptor.forClass(ProducerRecord.class);
@@ -874,6 +875,27 @@ public class DeadLetterPublishingRecovererTests {
 		ProducerRecord outRecord = producerRecordCaptor.getValue();
 		Headers headers = outRecord.headers();
 		assertThat(KafkaTestUtils.getPropertyValue(headers, "headers", List.class)).hasSize(12);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void nonCompliantProducerFactory() throws Exception {
+		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
+		ProducerFactory pf = mock(ProducerFactory.class);
+
+		willCallRealMethod().given(pf).getConfigurationProperties();
+
+		given(template.getProducerFactory()).willReturn(pf);
+		ListenableFuture<?> future = mock(ListenableFuture.class);
+		ArgumentCaptor<Long> timeoutCaptor = ArgumentCaptor.forClass(Long.class);
+		given(template.send(any(ProducerRecord.class))).willReturn(future);
+		given(future.get(timeoutCaptor.capture(), eq(TimeUnit.MILLISECONDS))).willThrow(new TimeoutException());
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "bar", null);
+		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
+		recoverer.setFailIfSendResultIsError(true);
+		assertThatThrownBy(() -> recoverer.accept(record, new RuntimeException()))
+				.isExactlyInstanceOf(KafkaException.class);
+		assertThat(timeoutCaptor.getValue()).isEqualTo(Duration.ofSeconds(125).toMillis());
 	}
 
 }
