@@ -202,7 +202,7 @@ public class KafkaAdmin extends KafkaResourceFactory
 				try {
 					synchronized (this) {
 						this.clusterId = adminClient.describeCluster().clusterId().get(this.operationTimeout,
-								TimeUnit.MILLISECONDS);
+								TimeUnit.SECONDS);
 					}
 					addOrModifyTopicsIfNeeded(adminClient, newTopics);
 					return true;
@@ -230,7 +230,7 @@ public class KafkaAdmin extends KafkaResourceFactory
 	public String clusterId() {
 		if (this.clusterId == null) {
 			try (AdminClient client = createAdmin()) {
-				this.clusterId = client.describeCluster().clusterId().get(this.operationTimeout, TimeUnit.MILLISECONDS);
+				this.clusterId = client.describeCluster().clusterId().get(this.operationTimeout, TimeUnit.SECONDS);
 			}
 			catch (Exception ex) {
 				LOGGER.error(ex, "Could not obtaine cluster info");
