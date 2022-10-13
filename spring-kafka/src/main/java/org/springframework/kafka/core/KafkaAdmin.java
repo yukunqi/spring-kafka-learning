@@ -22,13 +22,16 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import org.apache.commons.logging.LogFactory;
@@ -57,6 +60,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
+import org.springframework.kafka.support.TopicForRetryable;
 import org.springframework.lang.Nullable;
 
 /**
@@ -181,10 +185,7 @@ public class KafkaAdmin extends KafkaResourceFactory
 	 * @see #setAutoCreate(boolean)
 	 */
 	public final boolean initialize() {
-		Collection<NewTopic> newTopics = new ArrayList<>(
-				this.applicationContext.getBeansOfType(NewTopic.class, false, false).values());
-		Collection<NewTopics> wrappers = this.applicationContext.getBeansOfType(NewTopics.class, false, false).values();
-		wrappers.forEach(wrapper -> newTopics.addAll(wrapper.getNewTopics()));
+		Collection<NewTopic> newTopics = newTopics();
 		if (newTopics.size() > 0) {
 			AdminClient adminClient = null;
 			try {
@@ -223,6 +224,41 @@ public class KafkaAdmin extends KafkaResourceFactory
 		}
 		this.initializingContext = false;
 		return false;
+	}
+
+	/*
+	 * Remove any TopicForRetryable bean if there is also a NewTopic with the same topic name.
+	 */
+	private Collection<NewTopic> newTopics() {
+		Map<String, NewTopic> newTopicsMap = new HashMap<>(
+				this.applicationContext.getBeansOfType(NewTopic.class, false, false));
+		Map<String, NewTopics> wrappers = this.applicationContext.getBeansOfType(NewTopics.class, false, false);
+		AtomicInteger count = new AtomicInteger();
+		wrappers.forEach((name, newTopics) -> {
+			newTopics.getNewTopics().forEach(nt -> newTopicsMap.put(name + "#" + count.getAndIncrement(), nt));
+		});
+		Map<String, NewTopic> topicsForRetry = newTopicsMap.entrySet().stream()
+				.filter(entry -> entry.getValue() instanceof TopicForRetryable)
+				.collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+		for (Entry<String, NewTopic> entry : topicsForRetry.entrySet()) {
+			Iterator<Entry<String, NewTopic>> iterator = newTopicsMap.entrySet().iterator();
+			boolean remove = false;
+			while (iterator.hasNext()) {
+				Entry<String, NewTopic> nt = iterator.next();
+				// if we have a NewTopic and TopicForRetry with the same name, remove the latter
+				if (nt.getValue().name().equals(entry.getValue().name())
+						&& !(nt.getValue() instanceof TopicForRetryable)) {
+
+					remove = true;
+					break;
+				}
+			}
+			if (remove) {
+				newTopicsMap.remove(entry.getKey());
+			}
+		}
+		Collection<NewTopic> newTopics = new ArrayList<>(newTopicsMap.values());
+		return newTopics;
 	}
 
 	@Override
