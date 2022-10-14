@@ -250,8 +250,7 @@ public class KafkaAdmin extends KafkaResourceFactory
 				newTopicsMap.remove(entry.getKey());
 			}
 		}
-		Collection<NewTopic> newTopics = new ArrayList<>(newTopicsMap.values());
-		return newTopics;
+		return new ArrayList<>(newTopicsMap.values());
 	}
 
 	@Override
