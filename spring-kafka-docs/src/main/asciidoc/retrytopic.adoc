@@ -314,7 +314,7 @@ class Listener implements MessageListener<String, String> {
 ----
 ====
 
-IMPORTANT: Auto creation of topics will only occur if the configuration is processed before the application context is refereshed, as in the above example.
+IMPORTANT: Auto creation of topics will only occur if the configuration is processed before the application context is refreshed, as in the above example.
 To configure containers at runtime, the topics will need to be created using some other technique.
 
 ==== Features
