@@ -35,6 +35,9 @@ See <<same-broker-multiple-tests>> for more information.
 This feature is no longer considered experimental (as far as its API is concerned), the feature itself has been supported since 2.7, but with a greater than normal possibility of breaking API changes.
 
 The bootstrapping of <<retry-topic>> infrastructure beans has changed in this release to avoid some timing problems that occurred in some application regarding application initialization.
+
+You can now set a different `concurrency` for the retry containers; by default, the concurrency is the same as the main container.
+
 See <<retry-config>> for more information.
 
 [[x30-lc-changes]]
