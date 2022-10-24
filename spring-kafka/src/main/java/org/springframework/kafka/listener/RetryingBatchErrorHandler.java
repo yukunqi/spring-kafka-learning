@@ -43,7 +43,7 @@ import org.springframework.util.backoff.FixedBackOff;
  *
  */
 @Deprecated
-public class RetryingBatchErrorHandler extends KafkaExceptionLogLevelAware
+public class RetryingBatchErrorHandler extends ExceptionClassifier
 		implements ListenerInvokingBatchErrorHandler {
 
 	private final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass()));
@@ -107,7 +107,7 @@ public class RetryingBatchErrorHandler extends KafkaExceptionLogLevelAware
 		this.retrying.set(true);
 		try {
 			ErrorHandlingUtils.retryBatch(thrownException, records, consumer, container, invokeListener, this.backOff,
-					this.seeker, this.recoverer, this.logger, getLogLevel());
+					this.seeker, this.recoverer, this.logger, getLogLevel(), null, getClassifier());
 		}
 		finally {
 			this.retrying.set(false);

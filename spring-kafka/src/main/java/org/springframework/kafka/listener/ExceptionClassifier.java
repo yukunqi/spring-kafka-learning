@@ -16,8 +16,10 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import org.springframework.classify.BinaryExceptionClassifier;
 import org.springframework.kafka.support.converter.ConversionException;
@@ -117,6 +119,16 @@ public abstract class ExceptionClassifier extends KafkaExceptionLogLevelAware {
 	@SuppressWarnings("varargs")
 	public final void addNotRetryableExceptions(Class<? extends Exception>... exceptionTypes) {
 		add(false, exceptionTypes);
+		notRetryable(Arrays.stream(exceptionTypes));
+	}
+
+	/**
+	 * Subclasses can override this to receive notification of configuration of not
+	 * retryable exceptions.
+	 * @param notRetryable the not retryable exceptions.
+	 * @since 2.9.3
+	 */
+	protected void notRetryable(Stream<Class<? extends Exception>> notRetryable) {
 	}
 
 	/**
