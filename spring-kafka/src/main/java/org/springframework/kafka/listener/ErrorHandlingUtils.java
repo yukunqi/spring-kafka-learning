@@ -87,7 +87,7 @@ public final class ErrorHandlingUtils {
 			CommonErrorHandler seeker, BiConsumer<ConsumerRecords<?, ?>, Exception> recoverer, LogAccessor logger,
 			KafkaException.Level logLevel) {
 
-		retryBatch(thrownException, records, consumer, container, invokeListener, backOff, seeker, null, logger,
+		retryBatch(thrownException, records, consumer, container, invokeListener, backOff, seeker, recoverer, logger,
 				logLevel, null, new BinaryExceptionClassifier(true));
 	}
 
