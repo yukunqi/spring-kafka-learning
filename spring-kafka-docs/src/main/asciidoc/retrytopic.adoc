@@ -82,6 +82,23 @@ public void processMessage(MyPojo message) {
 NOTE: If you don't specify a kafkaTemplate name a bean with name `defaultRetryTopicKafkaTemplate` will be looked up.
 If no bean is found an exception is thrown.
 
+Starting with version 3.0, the `@RetryableTopic` annotation can be used as a meta-annotation on custom annotations; for example:
+
+====
+[source, java]
+----
+@Target({ElementType.METHOD})
+@Retention(RetentionPolicy.RUNTIME)
+@RetryableTopic
+static @interface MetaAnnotatedRetryableTopic {
+
+    @AliasFor(attribute = "concurrency", annotation = RetryableTopic.class)
+    String parallelism() default "3";
+
+}
+----
+====
+
 ===== Using `RetryTopicConfiguration` beans
 
 You can also configure the non-blocking retry support by creating `RetryTopicConfiguration` beans in a `@Configuration` annotated class.

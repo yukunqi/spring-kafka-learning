@@ -38,6 +38,8 @@ The bootstrapping of <<retry-topic>> infrastructure beans has changed in this re
 
 You can now set a different `concurrency` for the retry containers; by default, the concurrency is the same as the main container.
 
+`@RetryableTopic` can now be used as a meta-annotation on custom annotations, including support for `@AliasFor` properties.
+
 See <<retry-config>> for more information.
 
 You can now configure multiple `@RetryableTopic` listeners on the same topic in the same application context.
