@@ -46,7 +46,7 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 
 	private final BiFunction<ConsumerRecord<?, ?>, Exception, BackOff> noRetriesForClassified =
 			(rec, ex) -> {
-				if (!getClassifier().classify(ex)) {
+				if (!getClassifier().classify(ex) || SeekUtils.isBackoffException(ex)) {
 					return NO_RETRIES_OR_DELAY_BACKOFF;
 				}
 				return this.userBackOffFunction.apply(rec, ex);
