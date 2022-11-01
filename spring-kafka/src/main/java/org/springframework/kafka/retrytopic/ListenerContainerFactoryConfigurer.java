@@ -35,6 +35,7 @@ import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.listener.adapter.KafkaBackoffAwareMessageListenerAdapter;
 import org.springframework.kafka.support.TopicPartitionOffset;
+import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.backoff.BackOff;
 
@@ -59,9 +60,11 @@ import org.springframework.util.backoff.BackOff;
  */
 public class ListenerContainerFactoryConfigurer {
 
-	private BackOff providedBlockingBackOff = null;
+	@Nullable
+	private BackOff providedBlockingBackOff;
 
-	private Class<? extends Exception>[] blockingExceptionTypes = null;
+	@Nullable
+	private Class<? extends Exception>[] blockingExceptionTypes;
 
 	private boolean retainStandardFatal;
 
