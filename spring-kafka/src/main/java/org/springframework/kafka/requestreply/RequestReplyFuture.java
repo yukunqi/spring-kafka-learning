@@ -37,8 +37,6 @@ public class RequestReplyFuture<K, V, R> extends CompletableFuture<ConsumerRecor
 
 	private volatile CompletableFuture<SendResult<K, V>> sendFuture;
 
-	private CompletableFuture<SendResult<K, V>> completableSendFuture;
-
 	protected void setSendFuture(CompletableFuture<SendResult<K, V>> sendFuture) {
 		this.sendFuture = sendFuture;
 	}

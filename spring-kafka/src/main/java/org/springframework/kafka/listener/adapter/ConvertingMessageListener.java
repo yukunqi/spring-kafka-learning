@@ -55,9 +55,11 @@ import org.springframework.util.Assert;
 public class ConvertingMessageListener<V> implements DelegatingMessageListener<MessageListener>, AcknowledgingConsumerAwareMessageListener<Object, Object> {
 
 	private final MessageListener delegate;
+
 	private final Class<V> desiredValueType;
 
 	private MessageConverter messageConverter;
+
 	private KafkaHeaderMapper headerMapper;
 
 	/**
@@ -121,9 +123,8 @@ public class ConvertingMessageListener<V> implements DelegatingMessageListener<M
 	}
 
 	private ConsumerRecord convertConsumerRecord(ConsumerRecord receivedRecord) {
-		Map<String, Object> headerMap = null;
+		Map<String, Object> headerMap = new HashMap<>();
 		if (this.headerMapper != null) {
-			headerMap = new HashMap<>();
 			this.headerMapper.toHeaders(receivedRecord.headers(), headerMap);
 		}
 

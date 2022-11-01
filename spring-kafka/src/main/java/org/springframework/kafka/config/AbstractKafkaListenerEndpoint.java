@@ -49,7 +49,6 @@ import org.springframework.kafka.support.JavaUtils;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.converter.MessageConverter;
 import org.springframework.lang.Nullable;
-import org.springframework.retry.RecoveryCallback;
 import org.springframework.util.Assert;
 import org.springframework.util.ObjectUtils;
 
@@ -93,10 +92,6 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	private RecordFilterStrategy<K, V> recordFilterStrategy;
 
 	private boolean ackDiscarded;
-
-	private RecoveryCallback<? extends Object> recoveryCallback;
-
-	private boolean statefulRetry;
 
 	private Boolean batchListener;
 
