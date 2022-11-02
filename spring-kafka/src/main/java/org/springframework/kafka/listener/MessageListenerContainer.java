@@ -191,7 +191,6 @@ public interface MessageListenerContainer extends SmartLifecycle, DisposableBean
 	 * @return the id or bean name.
 	 * @since 2.2.5
 	 */
-	@Nullable
 	default String getListenerId() {
 		throw new UnsupportedOperationException("This container does not support retrieving the listener id");
 	}

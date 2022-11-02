@@ -105,15 +105,13 @@ public class KafkaAvroBeanRegistrationAotProcessor implements BeanRegistrationAo
 				avroTypes.add((Class<?>) paramType);
 			}
 		}
-		else if (container) {
-			if (paramType instanceof ParameterizedType) {
-				Type[] generics = ((ParameterizedType) paramType).getActualTypeArguments();
-				if (generics.length > 0) {
-					checkAvro(generics[0], avroTypes);
-				}
-				if (generics.length == 2) {
-					checkAvro(generics[1], avroTypes);
-				}
+		else if (container && paramType instanceof ParameterizedType) {
+			Type[] generics = ((ParameterizedType) paramType).getActualTypeArguments();
+			if (generics.length > 0) {
+				checkAvro(generics[0], avroTypes);
+			}
+			if (generics.length == 2) {
+				checkAvro(generics[1], avroTypes);
 			}
 		}
 	}

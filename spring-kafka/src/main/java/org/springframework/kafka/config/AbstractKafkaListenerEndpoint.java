@@ -148,11 +148,11 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		return this.beanResolver;
 	}
 
-	public void setId(String id) {
+	public void setId(@Nullable String id) {
 		this.id = id;
 	}
 
-	public void setMainListenerId(String id) {
+	public void setMainListenerId(@Nullable String id) {
 		this.mainListenerId = id;
 	}
 

@@ -41,6 +41,7 @@ import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.SeekUtils;
 import org.springframework.kafka.listener.TimestampedException;
 import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
@@ -336,7 +337,7 @@ public class DeadLetterPublishingRecovererFactory {
 					: Instant.now().toEpochMilli();
 	}
 
-	private TimestampedException getTimestampedException(Throwable e) {
+	private TimestampedException getTimestampedException(@Nullable Throwable e) {
 		if (e == null) {
 			throw new IllegalArgumentException("Provided exception does not contain a "
 					+ TimestampedException.class.getSimpleName() + " cause.");
@@ -360,6 +361,7 @@ public class DeadLetterPublishingRecovererFactory {
 				: consumerRecord.timestamp();
 	}
 
+	@Nullable
 	private Header getOriginaTimeStampHeader(ConsumerRecord<?, ?> consumerRecord) {
 		return consumerRecord.headers()
 					.lastHeader(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP);

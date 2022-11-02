@@ -81,29 +81,31 @@ public class ListenerContainerFactoryResolver {
 
 	ConcurrentKafkaListenerContainerFactory<?, ?> resolveFactoryForMainEndpoint(
 			@Nullable KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotationInstance,
-			String defaultContainerFactoryBeanName,
-			Configuration config) {
+			String defaultContainerFactoryBeanName, Configuration config) {
+
 		KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotation =
 				getFactoryFromKLA(factoryFromKafkaListenerAnnotationInstance, defaultContainerFactoryBeanName);
 		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory = resolveFactory(this.mainEndpointResolvers,
 				factoryFromKafkaListenerAnnotation, config);
-		return this.mainEndpointCache.addIfAbsent(factoryFromKafkaListenerAnnotation, config, resolvedFactory);
+		return this.mainEndpointCache.addIfAbsent(factoryFromKafkaListenerAnnotation, config, resolvedFactory); // NOSONAR
 	}
 
 	ConcurrentKafkaListenerContainerFactory<?, ?> resolveFactoryForRetryEndpoint(
 			@Nullable KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotationInstance,
-			String defaultContainerFactoryBeanName,
-			Configuration config) {
+			String defaultContainerFactoryBeanName, Configuration config) {
+
 		KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotation =
 				getFactoryFromKLA(factoryFromKafkaListenerAnnotationInstance, defaultContainerFactoryBeanName);
 		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory = resolveFactory(this.retryEndpointResolvers,
 				factoryFromKafkaListenerAnnotation, config);
-		return this.retryEndpointCache.addIfAbsent(factoryFromKafkaListenerAnnotation, config, resolvedFactory);
+		return this.retryEndpointCache.addIfAbsent(factoryFromKafkaListenerAnnotation, config, resolvedFactory); // NOSONAR
 	}
 
 	@Nullable
-	private KafkaListenerContainerFactory<?> getFactoryFromKLA(KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotationInstance,
-															String defaultContainerFactoryBeanName) {
+	private KafkaListenerContainerFactory<?> getFactoryFromKLA(
+			@Nullable KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotationInstance,
+			String defaultContainerFactoryBeanName) {
+
 		KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotation =
 				factoryFromKafkaListenerAnnotationInstance;
 		if (factoryFromKafkaListenerAnnotation == null) {
@@ -113,7 +115,7 @@ public class ListenerContainerFactoryResolver {
 	}
 
 	private ConcurrentKafkaListenerContainerFactory<?, ?> resolveFactory(List<FactoryResolver> factoryResolvers,
-			KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotation,
+			@Nullable KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotation,
 			Configuration config) {
 
 		ConcurrentKafkaListenerContainerFactory<?, ?> verifiedFactoryFromKafkaListenerAnnotation = verifyClass(
@@ -132,7 +134,9 @@ public class ListenerContainerFactoryResolver {
 	}
 
 	@Nullable
-	private ConcurrentKafkaListenerContainerFactory<?, ?> verifyClass(KafkaListenerContainerFactory<?> fromKafkaListenerAnnotationFactory) {
+	private ConcurrentKafkaListenerContainerFactory<?, ?> verifyClass(
+			@Nullable KafkaListenerContainerFactory<?> fromKafkaListenerAnnotationFactory) {
+
 		return fromKafkaListenerAnnotationFactory != null
 				&& ConcurrentKafkaListenerContainerFactory.class.isAssignableFrom(fromKafkaListenerAnnotationFactory.getClass())
 				? (ConcurrentKafkaListenerContainerFactory<?, ?>) fromKafkaListenerAnnotationFactory

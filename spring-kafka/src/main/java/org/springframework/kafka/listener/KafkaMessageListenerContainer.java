@@ -614,7 +614,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				: new LoggingCommitCallback();
 
 		private final OffsetAndMetadataProvider offsetAndMetadataProvider = this.containerProperties.getOffsetAndMetadataProvider() == null
-				?  (listenerMetadata, offset) -> new OffsetAndMetadata(offset)
+				?  (metadata, offset) -> new OffsetAndMetadata(offset)
 				: this.containerProperties.getOffsetAndMetadataProvider();
 
 		private final ListenerMetadata listenerMetadata = new DefaultListenerMetadata(KafkaMessageListenerContainer.this);
@@ -1327,14 +1327,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		@Override // NOSONAR complexity
 		public void run() {
-			publishConsumerStartingEvent();
-			this.consumerThread = Thread.currentThread();
-			setupSeeks();
-			KafkaUtils.setConsumerGroupId(this.consumerGroupId);
-			this.count = 0;
-			this.last = System.currentTimeMillis();
-			initAssignedPartitions();
-			publishConsumerStartedEvent();
+			initialize();
 			Throwable exitThrowable = null;
 			boolean failedAuthRetry = false;
 			while (isRunning()) {
@@ -1398,6 +1391,17 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 			wrapUp(exitThrowable);
+		}
+
+		protected void initialize() {
+			publishConsumerStartingEvent();
+			this.consumerThread = Thread.currentThread();
+			setupSeeks();
+			KafkaUtils.setConsumerGroupId(this.consumerGroupId);
+			this.count = 0;
+			this.last = System.currentTimeMillis();
+			initAssignedPartitions();
+			publishConsumerStartedEvent();
 		}
 
 		private void setupSeeks() {

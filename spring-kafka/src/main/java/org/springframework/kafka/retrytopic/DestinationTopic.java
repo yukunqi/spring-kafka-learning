@@ -137,6 +137,7 @@ public class DestinationTopic {
 
 		private final long timeout;
 
+		@Nullable
 		private final Boolean autoStartDltHandler;
 
 		/**

@@ -48,6 +48,7 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.event.ContainerStoppedEvent;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.TopicPartitionOffset;
+import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
@@ -67,6 +68,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		implements GenericMessageListenerContainer<K, V>, BeanNameAware, ApplicationEventPublisherAware,
 			ApplicationContextAware {
 
+	private static final String VERSION_2_8 = "2.8";
+
 	/**
 	 * The default {@link org.springframework.context.SmartLifecycle} phase for listener
 	 * containers {@value #DEFAULT_PHASE}.
@@ -85,7 +88,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private final Set<TopicPartition> pauseRequestedPartitions = ConcurrentHashMap.newKeySet();
 
-	private String beanName;
+	@NonNull
+	private String beanName = "noBeanNameSet";
 
 	private ApplicationEventPublisher applicationEventPublisher;
 
@@ -217,7 +221,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * @deprecated in favor of {@link #setCommonErrorHandler(CommonErrorHandler)}
 	 * @see #setCommonErrorHandler(CommonErrorHandler)
 	 */
-	@Deprecated(since = "2.8", forRemoval = true) // in 3.1
+	@Deprecated(since = VERSION_2_8, forRemoval = true) // in 3.1
 	public void setErrorHandler(ErrorHandler errorHandler) {
 		this.errorHandler = errorHandler;
 	}
@@ -229,7 +233,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * @deprecated in favor of {@link #setCommonErrorHandler(CommonErrorHandler)}
 	 * @see #setCommonErrorHandler(CommonErrorHandler)
 	 */
-	@Deprecated(since = "2.8", forRemoval = true) // in 3.1
+	@Deprecated(since = VERSION_2_8, forRemoval = true) // in 3.1
 	public void setGenericErrorHandler(@Nullable GenericErrorHandler<?> errorHandler) {
 		this.errorHandler = errorHandler;
 	}
@@ -241,7 +245,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * @deprecated in favor of {@link #setCommonErrorHandler(CommonErrorHandler)}
 	 * @see #setCommonErrorHandler(CommonErrorHandler)
 	 */
-	@Deprecated(since = "2.8", forRemoval = true) // in 3.1
+	@Deprecated(since = VERSION_2_8, forRemoval = true) // in 3.1
 	public void setBatchErrorHandler(BatchErrorHandler errorHandler) {
 		this.errorHandler = errorHandler;
 	}
@@ -253,7 +257,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * @deprecated in favor of {@link #getCommonErrorHandler()}
 	 * @see #getCommonErrorHandler()
 	 */
-	@Deprecated(since = "2.8", forRemoval = true) // in 3.1
+	@Deprecated(since = VERSION_2_8, forRemoval = true) // in 3.1
 	@Nullable
 	public GenericErrorHandler<?> getGenericErrorHandler() {
 		return this.errorHandler;
@@ -374,7 +378,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	}
 
 	@Override
-	@Nullable
 	public String getListenerId() {
 		return this.beanName; // the container factory sets the bean name to the id attribute
 	}

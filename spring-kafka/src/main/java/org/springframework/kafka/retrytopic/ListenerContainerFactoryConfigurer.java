@@ -208,12 +208,14 @@ public class ListenerContainerFactoryConfigurer {
 			implements KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<?, ?>> {
 
 		private final ConcurrentKafkaListenerContainerFactory<?, ?> delegate;
+
 		private final Configuration configuration;
+
 		private final boolean isSetContainerProperties;
 
 		RetryTopicListenerContainerFactoryDecorator(ConcurrentKafkaListenerContainerFactory<?, ?> delegate,
-														Configuration configuration,
-														boolean isSetContainerProperties) {
+				Configuration configuration, boolean isSetContainerProperties) {
+
 			this.delegate = delegate;
 			this.configuration = configuration;
 			this.isSetContainerProperties = isSetContainerProperties;
@@ -226,6 +228,7 @@ public class ListenerContainerFactoryConfigurer {
 
 		private ConcurrentMessageListenerContainer<?, ?> decorate(
 				ConcurrentMessageListenerContainer<?, ?> listenerContainer) {
+
 			String mainListenerId = listenerContainer.getMainListenerId();
 			if (mainListenerId == null) {
 				mainListenerId = listenerContainer.getListenerId();

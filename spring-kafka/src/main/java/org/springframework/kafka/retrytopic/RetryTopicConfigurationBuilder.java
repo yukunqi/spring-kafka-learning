@@ -68,6 +68,7 @@ public class RetryTopicConfigurationBuilder {
 
 	private String listenerContainerFactoryName;
 
+	@Nullable
 	private BinaryExceptionClassifierBuilder classifierBuilder;
 
 	private FixedDelayStrategy fixedDelayStrategy = FixedDelayStrategy.MULTIPLE_TOPICS;
@@ -78,6 +79,7 @@ public class RetryTopicConfigurationBuilder {
 
 	private TopicSuffixingStrategy topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_DELAY_VALUE;
 
+	@Nullable
 	private Boolean autoStartDltHandler;
 
 	private Integer concurrency;

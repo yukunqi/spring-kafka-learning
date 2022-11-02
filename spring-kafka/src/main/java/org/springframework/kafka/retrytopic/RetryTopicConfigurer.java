@@ -298,7 +298,11 @@ public class RetryTopicConfigurer implements BeanFactoryAware {
 											@Nullable KafkaListenerContainerFactory<?> factory,
 											String defaultContainerFactoryBeanName) {
 		throwIfMultiMethodEndpoint(mainEndpoint);
-		DestinationTopicProcessor.Context context = new DestinationTopicProcessor.Context(mainEndpoint.getId(),
+		String id = mainEndpoint.getId();
+		if (id == null) {
+			id = "no.id.provided";
+		}
+		DestinationTopicProcessor.Context context = new DestinationTopicProcessor.Context(id,
 				configuration.getDestinationTopicProperties());
 		configureEndpoints(mainEndpoint, endpointProcessor, factory, registrar, configuration, context,
 				defaultContainerFactoryBeanName);
