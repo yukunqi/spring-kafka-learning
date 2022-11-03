@@ -201,9 +201,6 @@ public class KafkaAdmin extends KafkaResourceFactory
 					addOrModifyTopicsIfNeeded(adminClient, newTopics);
 					return true;
 				}
-				catch (InterruptedException ex) {
-					Thread.currentThread().interrupt();
-				}
 				catch (Exception ex) {
 					if (!this.initializingContext || this.fatalIfBrokerNotAvailable) {
 						throw new IllegalStateException("Could not configure topics", ex);
