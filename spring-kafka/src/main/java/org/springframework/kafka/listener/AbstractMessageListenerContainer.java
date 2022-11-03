@@ -510,7 +510,11 @@ public abstract class AbstractMessageListenerContainer<K, V>
 									entry.getValue().get(this.topicCheckTimeout, TimeUnit.SECONDS);
 									return false;
 								}
-								catch (@SuppressWarnings("unused") Exception e) {
+								catch (InterruptedException ex) {
+									Thread.currentThread().interrupt();
+									return true;
+								}
+								catch (@SuppressWarnings("unused") Exception ex) {
 									return true;
 								}
 							})

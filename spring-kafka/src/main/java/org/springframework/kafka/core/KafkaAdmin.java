@@ -208,12 +208,15 @@ public class KafkaAdmin extends KafkaResourceFactory
 					addOrModifyTopicsIfNeeded(adminClient, newTopics);
 					return true;
 				}
-				catch (Exception e) {
+				catch (InterruptedException ex) {
+					Thread.currentThread().interrupt();
+				}
+				catch (Exception ex) {
 					if (!this.initializingContext || this.fatalIfBrokerNotAvailable) {
-						throw new IllegalStateException("Could not configure topics", e);
+						throw new IllegalStateException("Could not configure topics", ex);
 					}
 					else {
-						LOGGER.error(e, "Could not configure topics");
+						LOGGER.error(ex, "Could not configure topics");
 					}
 				}
 				finally {
@@ -266,6 +269,9 @@ public class KafkaAdmin extends KafkaResourceFactory
 		if (this.clusterId == null) {
 			try (AdminClient client = createAdmin()) {
 				this.clusterId = client.describeCluster().clusterId().get(this.operationTimeout, TimeUnit.SECONDS);
+			}
+			catch (InterruptedException ex) {
+				Thread.currentThread().interrupt();
 			}
 			catch (Exception ex) {
 				LOGGER.error(ex, "Could not obtaine cluster info");
