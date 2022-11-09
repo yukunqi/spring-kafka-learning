@@ -1605,6 +1605,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				ListenerUtils.stoppableSleep(KafkaMessageListenerContainer.this, duration.toMillis());
 			}
 			catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
 				this.logger.error(e, "Interrupted while sleeping");
 			}
 		}
