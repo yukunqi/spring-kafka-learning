@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -93,7 +93,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 		RetryTopicIntegrationTests.FOURTH_TOPIC,
 		RetryTopicIntegrationTests.FIFTH_TOPIC })
 @TestPropertySource(properties = "five.attempts=5")
-public class RetryTopicIntegrationTests extends AbstractRetryTopicIntegrationTests {
+public class RetryTopicIntegrationTests {
 
 	private static final Logger logger = LoggerFactory.getLogger(RetryTopicIntegrationTests.class);
 
