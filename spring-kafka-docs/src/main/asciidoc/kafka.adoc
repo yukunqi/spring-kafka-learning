@@ -1469,6 +1469,8 @@ public void listen(@Payload String foo,
 ----
 ====
 
+IMPORTANT: Parameter annotations (`@Payload`, `@Header`) must be specified on the concrete implementation of the listener method; they will not be detected if they are defined on an interface.
+
 Starting with version 2.5, instead of using discrete headers, you can receive record metadata in a `ConsumerRecordMetadata` parameter.
 
 ====
@@ -2965,7 +2967,7 @@ The event is normally published on the consumer thread, so it is safe to interac
 The following example uses both `@KafkaListener` and `@EventListener`:
 
 ====
-[source, xml]
+[source, java]
 ----
 public class Listener {
 
