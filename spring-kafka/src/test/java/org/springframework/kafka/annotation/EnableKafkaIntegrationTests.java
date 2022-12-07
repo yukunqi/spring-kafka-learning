@@ -2210,8 +2210,8 @@ public class EnableKafkaIntegrationTests {
 		public void projectionListener(ProjectionSample sample) {
 			this.username = sample.getUsername();
 			this.name = sample.getName();
-			this.projectionLatch.countDown();
 			this.customThreadName = Thread.currentThread().getName();
+			this.projectionLatch.countDown();
 		}
 
 		@KafkaListener(id = "customMethodArgumentResolver", topics = "annotated39")
