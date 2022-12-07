@@ -563,11 +563,17 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				: this.containerProperties.getOffsetAndMetadataProvider();
 
 		private final ListenerMetadata listenerMetadata = new DefaultListenerMetadata(KafkaMessageListenerContainer.this);
-
+		/**
+		 * 当前消费者线程用于和kafka交互的consumer API
+		 */
 		private final Consumer<K, V> consumer;
-
+		/**
+		 * 用于延迟批量提交offsets 配合ackMode offsets的数据来源自acks
+		 */
 		private final Map<String, Map<Integer, Long>> offsets = new LinkedHashMap<>();
-
+		/**
+		 * kafka分配给当前消费者的分区列表
+		 */
 		private final Collection<TopicPartition> assignedPartitions = new LinkedHashSet<>();
 
 		private final Map<TopicPartition, OffsetAndMetadata> lastCommits = new HashMap<>();
@@ -577,11 +583,17 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private final GenericMessageListener<?> genericListener;
 
 		private final ConsumerSeekAware consumerSeekAwareListener;
-
+		/**
+		 * 具体处理消息的监听者接口
+		 */
 		private final MessageListener<K, V> listener;
-
+		/**
+		 * 批量处理消息的监听者接口
+		 */
 		private final BatchMessageListener<K, V> batchListener;
-
+		/**
+		 * 监听者接口的类型
+		 */
 		private final ListenerType listenerType;
 
 		private final boolean isConsumerAwareListener;
@@ -592,6 +604,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final boolean autoCommit;
 
+		/*-------ackMode相关的成员变量-------*/
+		//https://docs.spring.io/spring-kafka/docs/2.5.8.RELEASE/reference/html/#committing-offsets
 		private final boolean isManualAck = this.containerProperties.getAckMode().equals(AckMode.MANUAL);
 
 		private final boolean isCountAck = this.containerProperties.getAckMode().equals(AckMode.COUNT)
@@ -605,13 +619,20 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private final boolean isAnyManualAck = this.isManualAck || this.isManualImmediateAck;
 
 		private final boolean isRecordAck = this.containerProperties.getAckMode().equals(AckMode.RECORD);
+		/*------ackMode相关的设置参数------*/
 
+
+		/**
+		 * ack阻塞队列用于延迟批量确认已经处理的ConsumerRecord列表
+		 */
 		private final BlockingQueue<ConsumerRecord<K, V>> acks = new LinkedBlockingQueue<>();
 
 		private final BlockingQueue<TopicPartitionOffset> seeks = new LinkedBlockingQueue<>();
 
 		private final CommonErrorHandler commonErrorHandler;
 
+
+		/*------事务相关的成员变量------*/
 		private final PlatformTransactionManager transactionManager = this.containerProperties.getTransactionManager();
 
 		@SuppressWarnings(RAWTYPES)
@@ -620,11 +641,19 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						? ((KafkaAwareTransactionManager) this.transactionManager) : null;
 
 		private final TransactionTemplate transactionTemplate;
+		/*------事务相关的成员变量------*/
+
+
 
 		private final String consumerGroupId = getGroupId();
 
+		/**
+		 * 任务调度器 用于调度monitorTask
+		 */
 		private final TaskScheduler taskScheduler;
-
+		/**
+		 * 消费者监控的异步任务 checkConsumer方法的执行线程
+		 */
 		private final ScheduledFuture<?> monitorTask;
 
 		private final LogIfLevelEnabled commitLogger = new LogIfLevelEnabled(this.logger,
@@ -632,14 +661,22 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final Duration pollTimeout = Duration.ofMillis(this.containerProperties.getPollTimeout());
 
+		/*------对记录的key和value 进行checkNull判断------*/
 		private final boolean checkNullKeyForExceptions;
 
 		private final boolean checkNullValueForExceptions;
+		/*------对记录的key和value 进行checkNull判断------*/
 
+
+		/*------syncCommits的成员变量------*/
 		private final boolean syncCommits = this.containerProperties.isSyncCommits();
-
 		private final Duration syncCommitTimeout;
+		/*------syncCommits的成员变量------*/
 
+
+
+
+		/*------记录拦截器的成员变量------*/
 		private final RecordInterceptor<K, V> recordInterceptor = !isInterceptBeforeTx() && this.kafkaTxManager != null
 				? getRecordInterceptor()
 				: null;
@@ -661,6 +698,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						: null;
 
 		private final BatchInterceptor<K, V> commonBatchInterceptor = getBatchInterceptor();
+		/*------记录拦截器的成员变量------*/
+
+
+
 
 		private final ThreadStateProcessor pollThreadStateProcessor;
 
