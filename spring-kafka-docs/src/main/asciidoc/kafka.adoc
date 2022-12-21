@@ -3414,7 +3414,7 @@ A similar listener is provided for the `StreamsBuilderFactoryBean` - see <<strea
 
 Using Micrometer for observation is now supported, since version 3.0, for the `KafkaTemplate` and listener containers.
 
-Set `observationEnabled` on each component to enable observation; this will disable <<micrometer,Micrometer Timers>> because the timers will now be managed with each observation.
+Set `observationEnabled` to `true` on the `KafkaTemplate` and `ContainerProperties` to enable observation; this will disable <<micrometer,Micrometer Timers>> because the timers will now be managed with each observation.
 
 Refer to https://micrometer.io/docs/tracing[Micrometer Tracing] for more information.
 
