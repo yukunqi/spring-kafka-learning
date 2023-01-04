@@ -883,7 +883,7 @@ public class DeadLetterPublishingRecovererTests {
 	@Test
 	void replaceNotAppendHeader() {
 		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
-		CompletableFuture future = mock(CompletableFuture.class);
+		ListenableFuture future = mock(ListenableFuture.class);
 		given(template.send(any(ProducerRecord.class))).willReturn(future);
 		Headers headers = new RecordHeaders().add(new RecordHeader("foo", "orig".getBytes()));
 		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
