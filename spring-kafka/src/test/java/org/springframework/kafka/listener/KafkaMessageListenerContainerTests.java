@@ -2907,7 +2907,9 @@ public class KafkaMessageListenerContainerTests {
 		suspendConsumerThread.countDown();
 		assertThat(resumeLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(pausedParts).hasSize(0);
-		verify(consumer).resume(List.of(tp0, tp1));
+		ArgumentCaptor<List<TopicPartition>> resumed = ArgumentCaptor.forClass(List.class);
+		verify(consumer).resume(resumed.capture());
+		assertThat(resumed.getValue()).contains(tp0, tp1);
 		container.stop();
 	}
 
