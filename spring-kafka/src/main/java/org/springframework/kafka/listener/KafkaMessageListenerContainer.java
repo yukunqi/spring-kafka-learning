@@ -759,9 +759,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private final Set<TopicPartition> pausedForNack = new HashSet<>();
 
 		private Map<TopicPartition, OffsetMetadata> definedPartitions;
-
+		/**
+		 * 当前未提交的记录数 用于实现 count相关的ackMode
+		 */
 		private int count;
-
+		/**
+		 * 用于记录最近一次commit操作的时间戳
+		 */
 		private long last = System.currentTimeMillis();
 
 		private boolean fatalError;
@@ -1901,6 +1905,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
+		/**
+		 * 根据ackMode处理ack的过程
+		 * @param record
+		 */
 		private void processAck(ConsumerRecord<K, V> record) {
 			if (!Thread.currentThread().equals(this.consumerThread)) {
 				try {
@@ -2685,6 +2693,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
+		/**
+		 * 调用消费逻辑底层方法
+		 * @param record
+		 */
 		private void invokeOnMessage(final ConsumerRecord<K, V> record) {
 
 			if (record.value() instanceof DeserializationException) {
@@ -2699,7 +2711,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (record.key() == null && this.checkNullKeyForExceptions) {
 				checkDeser(record, SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER);
 			}
+			//执行消费逻辑
 			doInvokeOnMessage(record);
+			//确认消息record
 			if (this.nackSleepDurationMillis < 0 && !this.isManualImmediateAck) {
 				ackCurrent(record);
 			}
@@ -2840,13 +2854,17 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
+		/**
+		 * 提交对record的消费commit
+		 * @param record
+		 */
 		public void ackCurrent(final ConsumerRecord<K, V> record) {
 
-			if (this.isRecordAck) {
+			if (this.isRecordAck) {//是record确认模式 直接生成offset 提交
 				Map<TopicPartition, OffsetAndMetadata> offsetsToCommit =
 						Collections.singletonMap(new TopicPartition(record.topic(), record.partition()),
 								createOffsetAndMetadata(record.offset() + 1));
-				if (this.producer == null) {
+				if (this.producer == null) {//todo 为啥producer 为空 才直接提交 不为空 要加入ack 缓冲区
 					this.commitLogger.log(() -> COMMITTING + offsetsToCommit);
 					if (this.syncCommits) {
 						commitSync(offsetsToCommit);
@@ -2883,16 +2901,21 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
+		/**
+		 * 根据设置的ackMode来执行处理commits的过程
+		 */
 		private void processCommits() {
 			this.count += this.acks.size();
+			//将ack转成offset
 			handleAcks();
 			AckMode ackMode = this.containerProperties.getAckMode();
-			if (!this.isManualImmediateAck) {
-				if (!this.isManualAck) {
+			if (!this.isManualImmediateAck) {//不是手动立即ack模式
+				if (!this.isManualAck) {//不是手动ack模式
 					updatePendingOffsets();
 				}
+				//是否当前pending的待commit的records 超过了设置的ackCount
 				boolean countExceeded = this.isCountAck && this.count >= this.containerProperties.getAckCount();
-				if ((!this.isTimeOnlyAck && !this.isCountAck) || countExceeded) {
+				if ((!this.isTimeOnlyAck && !this.isCountAck) || countExceeded) {//record 或者batch的ack模式 或者countExceeded 都要进行commit
 					if (this.isCountAck) {
 						this.logger.debug(() -> "Committing in " + ackMode.name() + " because count "
 								+ this.count
@@ -2901,7 +2924,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					commitIfNecessary();
 					this.count = 0;
 				}
-				else {
+				else {// 和时间相关的ack逻辑
 					timedAcks(ackMode);
 				}
 			}
@@ -3099,6 +3122,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					.compute(record.partition(), (k, v) -> v == null ? record.offset() : Math.max(v, record.offset()));
 		}
 
+		/**
+		 * 真正底层的commit方法
+		 */
 		private void commitIfNecessary() {
 			Map<TopicPartition, OffsetAndMetadata> commits = buildCommits();
 			this.logger.debug(() -> "Commit list: " + commits);
