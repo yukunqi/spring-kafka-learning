@@ -601,7 +601,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private final boolean isBatchListener;
 
 		private final boolean wantsFullRecords;
-
+		/**
+		 * 标识kafka是否自动提交 下面的全部功能都是基于非自动提交完成的。
+		 * //todo 如果是自动提交会发生什么事情？kafka会自动做什么操作？
+		 */
 		private final boolean autoCommit;
 
 		/*-------ackMode相关的成员变量-------*/
@@ -624,6 +627,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		/**
 		 * ack阻塞队列用于延迟批量确认已经处理的ConsumerRecord列表
+		 *
+		 * 数据流向 ack->offsets
 		 */
 		private final BlockingQueue<ConsumerRecord<K, V>> acks = new LinkedBlockingQueue<>();
 
@@ -725,7 +730,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private final DeliveryAttemptAware deliveryAttemptAware;
 
 		private final EOSMode eosMode = this.containerProperties.getEosMode();
-
+		/***
+		 * 重平衡场景下的待提交commits
+		 */
 		private final Map<TopicPartition, OffsetAndMetadata> commitsDuringRebalance = new HashMap<>();
 
 		private final String clientId;
@@ -785,9 +792,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private Iterator<TopicPartition> batchIterator;
 
 		private ConsumerRecords<K, V> lastBatch;
-
+		//todo producer 的作用是？消费时提交对应的offset给到producer事务
 		private Producer<?, ?> producer;
-
+		/**
+		 * 标识当前是否处于commit恢复的场景
+		 */
 		private boolean commitRecovered;
 
 		private boolean wasIdle;
@@ -797,7 +806,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private boolean pausedForAsyncAcks;
 
 		private boolean receivedSome;
-
+		/**
+		 * 异常之后的pending记录列表
+		 */
 		private ConsumerRecords<K, V> pendingRecordsAfterError;
 
 		private volatile boolean consumerPaused;
@@ -1355,14 +1366,22 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		protected void pollAndInvoke() {
+			//处理commits
 			doProcessCommits();
+			//事务相关操作
 			fixTxOffsetsIfNeeded();
+			//在两次poll间隔休眠
 			idleBetweenPollIfNecessary();
+			//处理seeks
 			if (this.seeks.size() > 0) {
 				processSeeks();
 			}
+			//有必要的话暂停消费
 			pauseConsumerIfNecessary();
+			//有必要的话暂停对应分区
 			pausePartitionsIfNecessary();
+
+			//**拉取记录-start**//
 			this.lastPoll = System.currentTimeMillis();
 			if (!isRunning()) {
 				return;
@@ -1380,6 +1399,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				return;
 			}
 			debugRecords(records);
+			//**拉取记录-end**//
 
 			invokeIfHaveRecords(records);
 			if (this.pendingRecordsAfterError == null) {
@@ -1396,6 +1416,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					processCommits();
 				}
 				catch (CommitFailedException cfe) {
+					//对cfe之后的未处理的records进行处理
 					if (this.pendingRecordsAfterError != null && !this.isBatchListener) {
 						ConsumerRecords<K, V> pending = this.pendingRecordsAfterError;
 						this.pendingRecordsAfterError = null;
@@ -1563,6 +1584,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 			else {
+				//拉取记录列表
 				records = pollConsumer();
 				if (this.pendingRecordsAfterError != null) {
 					int howManyRecords = records.count();
@@ -1575,11 +1597,16 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					this.pendingRecordsAfterError = null;
 				}
 				captureOffsets(records);
+				//检查是否有重平衡的commits
 				checkRebalanceCommits();
 			}
 			return records;
 		}
 
+		/**
+		 * poll 的真正底层方法
+		 * @return
+		 */
 		private ConsumerRecords<K, V> pollConsumer() {
 			beforePoll();
 			try {
@@ -1871,6 +1898,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
+		/**
+		 * 在特殊时点对pending的commit进行提交处理。消费者退出、分区重平衡等情况
+		 */
 		private void commitPendingAcks() {
 			processCommits();
 			if (this.offsets.size() > 0) {
@@ -2879,6 +2909,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			else if (this.producer != null
 					|| ((!this.isAnyManualAck || this.commitRecovered) && !this.autoCommit)) {
+				//不是手动提交场景 或者 commit恢复场景 加入acks队列中
 				this.acks.add(record);
 			}
 			if (this.producer != null) {
@@ -2906,11 +2937,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		 */
 		private void processCommits() {
 			this.count += this.acks.size();
-			//将ack转成offset
+			//处理ack队列数据
 			handleAcks();
 			AckMode ackMode = this.containerProperties.getAckMode();
 			if (!this.isManualImmediateAck) {//不是手动立即ack模式
 				if (!this.isManualAck) {//不是手动ack模式
+					//更新待提交commits 到offset集合
 					updatePendingOffsets();
 				}
 				//是否当前pending的待commit的records 超过了设置的ackCount
@@ -3123,7 +3155,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		/**
-		 * 真正底层的commit方法
+		 * 真正底层的commit方法 批量提交一批commit
 		 */
 		private void commitIfNecessary() {
 			Map<TopicPartition, OffsetAndMetadata> commits = buildCommits();
@@ -3149,6 +3181,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			doCommitSync(commits, 0);
 		}
 
+		/**
+		 * 同步提交commit
+		 * @param commits
+		 * @param retries
+		 */
 		private void doCommitSync(Map<TopicPartition, OffsetAndMetadata> commits, int retries) {
 			try {
 				this.consumer.commitSync(commits, this.syncCommitTimeout);
@@ -3157,12 +3194,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 			catch (RetriableCommitFailedException e) {
+				//可重试的commit失败异常
 				if (retries >= this.containerProperties.getCommitRetries()) {
 					throw e;
 				}
 				doCommitSync(commits, retries + 1);
 			}
 			catch (RebalanceInProgressException e) {
+				//重平衡场景下的提交异常
 				this.logger.debug(e, "Non-fatal commit failure");
 				this.commitsDuringRebalance.putAll(commits);
 			}
